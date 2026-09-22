@@ -6,7 +6,7 @@
 
 **Architecture:** Next.js App Router (TypeScript strict) with Server Components as the default, Supabase (Postgres + Auth + RLS) as the only backend, Tailwind CSS with design tokens lifted verbatim from `docs/puls-cockpit-v5.html`. Two deterministic, unit-tested TypeScript modules (`lib/puls.ts`, `lib/matching.ts`) carry all scoring logic — no database functions, no Edge Functions. A separate `lib/ki/` layer handles the two language-shaped tasks a pure function cannot: reading raw email text into structured fields, and drafting prose for follow-up/offer/nudge emails. GitHub Actions gates every push and PR (lint, typecheck, test, build); Vercel's Git integration deploys previews from PRs and production from `main`.
 
-**Tech Stack:** Next.js (App Router), TypeScript strict, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Tailwind CSS, Vitest, `@anthropic-ai/sdk`, GitHub Actions, Vercel. No state library, no ORM, no component library, no form framework, no chart library.
+**Tech Stack:** Next.js (App Router), TypeScript strict, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Tailwind CSS, Vitest, `@google/genai` (Gemini, free tier), GitHub Actions, Vercel. No state library, no ORM, no component library, no form framework, no chart library.
 
 **Spec:** `docs/superpowers/specs/2026-09-22-puls-design.md` (deployment/CI-CD/KI decisions) and `README.md` (domain model, matching weights, views, design tokens, roles). Both travel with this plan — task descriptions reference them by section rather than repeating them.
 
@@ -25,7 +25,7 @@ Copied verbatim from the spec and README; every task's requirements implicitly i
 - Automatisierte Tests **nur** für `lib/puls.ts`, `lib/matching.ts`, und die reinen Prompt-Bau-/Antwort-Parse-Funktionen in `lib/ki/*` (Spec D9). Keine UI-Tests.
 - `main` muss jederzeit deploybar sein (Spec D2); Feature-Branches, Merge per Pull Request.
 - Der Vercel-Build muss ohne gesetzte Umgebungsvariablen gelingen (Spec D3) — Supabase-Clients werden pro Aufruf erzeugt, nie als Modul-Singleton beim Import.
-- `SUPABASE_SERVICE_ROLE_KEY` und `ANTHROPIC_API_KEY` sind ausschliesslich serverseitig, nie mit `NEXT_PUBLIC_`-Präfix, nie im Repository.
+- `SUPABASE_SERVICE_ROLE_KEY` und `GEMINI_API_KEY` sind ausschliesslich serverseitig, nie mit `NEXT_PUBLIC_`-Präfix, nie im Repository.
 - Farbtoken exakt aus dem Prototyp: `--primary:#065A82 --secondary:#1C7293 --navy:#21295C --bg:#EEF2F5 --surface:#FFFFFF --surface-2:#F7F9FA --ink:#1F2429 --ink-2:#5A6472 --ink-3:#98A2AE --line:#E1E7EC --good:#0F6E56/#F0F6F3 --warn:#A85D14/#FDF3E3 --crit:#9B3232/#F8EBEB`. Dunkelmodus-Basis `#161A33`/`#1E2447`. Eckenradius 10px, keine Schatten ausser beim Drawer.
 - Überschriften/Zahlen in Cambria (Fallback Georgia, serif), alles andere in Outfit über `next/font`.
 - Freigabestufen (`profiles.freigabe_stufe`) werden **serverseitig** in der Server Action geprüft, nie nur in der Oberfläche.
@@ -121,12 +121,12 @@ Das Repo enthält bereits `README.md`, `docs/`, `.git` — `create-next-app` ver
     "types": "supabase gen types typescript --project-id rvxlvrrpltmuzuomdwdf > types/database.ts"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "next": "15.5.25",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "@supabase/supabase-js": "2.58.0",
     "@supabase/ssr": "0.7.0",
-    "@anthropic-ai/sdk": "0.68.0"
+    "@google/genai": "1.30.0"
   },
   "devDependencies": {
     "typescript": "5.7.3",
@@ -136,12 +136,16 @@ Das Repo enthält bereits `README.md`, `docs/`, `.git` — `create-next-app` ver
     "tailwindcss": "3.4.17",
     "postcss": "8.4.49",
     "autoprefixer": "10.4.20",
-    "eslint": "9.17.0",
-    "eslint-config-next": "15.5.4",
-    "vitest": "2.1.8"
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.25",
+    "vitest": "2.1.9"
   }
 }
 ```
+
+Versionen aktualisiert gegenüber der ersten Fassung dieses Plans (siehe Task 1 im Ledger für den Befund): `next` und `eslint-config-next` patchen eine kritische RCE- und mehrere DoS-Schwachstellen aus dem npm-Advisory-Feed, `eslint` und `vitest` schliessen kleinere, nur entwicklungsseitig relevante Lücken. Ein Sprung auf `next@16` oder `vitest@5` (die `npm audit fix --force` vorschlägt) wird bewusst nicht gemacht — beides sind Major-Versionen mit Breaking Changes, die grosse Teile dieses Plans ungültig machen würden, gegen ausschliesslich entwicklungsseitig relevante Restrisiken (Test-Runner-Dev-Server, nie deployed; PostCSS-Sourcemap-Handling zur Build-Zeit ohne fremde Eingaben).
+
+`@anthropic-ai/sdk` wurde nach der ersten Fassung durch `@google/genai` ersetzt (Nutzerwunsch: kostenlose KI-API statt einer kostenpflichtigen). Google Gemini hat ein dauerhaftes kostenloses Kontingent für Flash-Modelle, während Anthropic keine laufend kostenlose Produktivstufe anbietet. Betrifft `lib/ki/erkennung.ts` (M5, Task 37) und `lib/ki/entwuerfe.ts` (M5, Task 38) sowie die Umgebungsvariable — überall `ANTHROPIC_API_KEY` → `GEMINI_API_KEY`.
 
 - [ ] **Step 2: `tsconfig.json` anlegen**
 
@@ -499,7 +503,7 @@ Kritisch für Spec-Entscheidung D3: Der Client darf beim Modulimport keine Umgeb
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
 ```
 
 - [ ] **Step 2: `lib/supabase/client.ts` anlegen (Browser-Client)**
@@ -635,7 +639,7 @@ Unter Settings → Environment Variables, für Production und Preview je einmal:
 NEXT_PUBLIC_SUPABASE_URL=https://rvxlvrrpltmuzuomdwdf.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_N-2dRhHasUaPg8dKTuWqaw_UJNtaZRH
 SUPABASE_SERVICE_ROLE_KEY=<aus dem Supabase-Dashboard kopiert>
-ANTHROPIC_API_KEY=<aus der Anthropic Console>
+GEMINI_API_KEY=<aus Google AI Studio, kostenloses Kontingent>
 ```
 
 - [ ] **Step 3: Ersten Deploy abwarten und URL öffnen**
@@ -2831,7 +2835,7 @@ describe("parseErkennungsAntwort", () => {
 - [ ] **Step 3: Implementieren**
 
 ```ts
-import Anthropic from "@anthropic-ai/sdk"
+import { GoogleGenAI } from "@google/genai"
 import type { Nutzung } from "@/types"
 
 export type ErkannteFelder = {
@@ -2889,15 +2893,16 @@ export function parseErkennungsAntwort(antwort: string): ErkannteFelder {
 }
 
 export async function erkenneFelder(text: string): Promise<ErkannteFelder> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const antwort = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 300,
-    messages: [{ role: "user", content: baueErkennungsPrompt(text) }],
+  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  // Modellname bei Umsetzung gegen die aktuell im kostenlosen Kontingent
+  // verfügbaren Flash-Modelle prüfen (ai.google.dev/gemini-api/docs/models) —
+  // "gemini-2.5-flash" ist der Stand zum Zeitpunkt dieses Plans.
+  const antwort = await client.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: baueErkennungsPrompt(text),
   })
-  const block = antwort.content[0]
-  if (block.type !== "text") throw new Error("Unerwartete Antwort der KI")
-  return parseErkennungsAntwort(block.text)
+  if (!antwort.text) throw new Error("Unerwartete Antwort der KI")
+  return parseErkennungsAntwort(antwort.text)
 }
 ```
 
@@ -2988,7 +2993,7 @@ describe("baueNachfassPrompt", () => {
 - [ ] **Step 3: Implementieren**
 
 ```ts
-import Anthropic from "@anthropic-ai/sdk"
+import { GoogleGenAI } from "@google/genai"
 import type { Anfrage, Kriterium, Objekt } from "@/types"
 import type { ErkannteFelder } from "./erkennung"
 
@@ -3007,15 +3012,13 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
 }
 
 async function frageKi(prompt: string): Promise<Mailentwurf> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const antwort = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 500,
-    messages: [{ role: "user", content: prompt }],
+  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  const antwort = await client.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
   })
-  const block = antwort.content[0]
-  if (block.type !== "text") throw new Error("Unerwartete Antwort der KI")
-  return parseMailAntwort(block.text)
+  if (!antwort.text) throw new Error("Unerwartete Antwort der KI")
+  return parseMailAntwort(antwort.text)
 }
 
 export function baueRueckfragePrompt(felder: ErkannteFelder): string {
