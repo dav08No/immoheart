@@ -121,7 +121,7 @@ Das Repo enthält bereits `README.md`, `docs/`, `.git` — `create-next-app` ver
     "types": "supabase gen types typescript --project-id rvxlvrrpltmuzuomdwdf > types/database.ts"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "next": "15.5.25",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "@supabase/supabase-js": "2.58.0",
@@ -136,12 +136,14 @@ Das Repo enthält bereits `README.md`, `docs/`, `.git` — `create-next-app` ver
     "tailwindcss": "3.4.17",
     "postcss": "8.4.49",
     "autoprefixer": "10.4.20",
-    "eslint": "9.17.0",
-    "eslint-config-next": "15.5.4",
-    "vitest": "2.1.8"
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.25",
+    "vitest": "2.1.9"
   }
 }
 ```
+
+Versionen aktualisiert gegenüber der ersten Fassung dieses Plans (siehe Task 1 im Ledger für den Befund): `next` und `eslint-config-next` patchen eine kritische RCE- und mehrere DoS-Schwachstellen aus dem npm-Advisory-Feed, `eslint` und `vitest` schliessen kleinere, nur entwicklungsseitig relevante Lücken. Ein Sprung auf `next@16` oder `vitest@5` (die `npm audit fix --force` vorschlägt) wird bewusst nicht gemacht — beides sind Major-Versionen mit Breaking Changes, die grosse Teile dieses Plans ungültig machen würden, gegen ausschliesslich entwicklungsseitig relevante Restrisiken (Test-Runner-Dev-Server, nie deployed; PostCSS-Sourcemap-Handling zur Build-Zeit ohne fremde Eingaben).
 
 - [ ] **Step 2: `tsconfig.json` anlegen**
 
