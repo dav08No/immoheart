@@ -929,8 +929,16 @@ $$;
 -- profiles: jede/r sieht das eigene Profil, admin sieht alle
 create policy "eigenes profil lesen" on profiles for select
   using (user_id = auth.uid() or current_rolle() = 'admin');
+-- WITH CHECK ist hier keine Formalität: ohne sie erlaubt UPDATE jedem
+-- eingeloggten Nutzer, die eigene rolle-Spalte beliebig zu setzen, da
+-- USING allein nicht prüft, was geschrieben wird (siehe M1 Task 11 im
+-- Ledger — als kritischer Fund erst nach dem Anwenden entdeckt).
 create policy "eigenes profil aktualisieren" on profiles for update
-  using (user_id = auth.uid() or current_rolle() = 'admin');
+  using (user_id = auth.uid() or current_rolle() = 'admin')
+  with check (
+    current_rolle() = 'admin'
+    or rolle = (select p2.rolle from profiles p2 where p2.user_id = auth.uid())
+  );
 create policy "admin verwaltet profile" on profiles for insert
   with check (current_rolle() = 'admin');
 create policy "admin loescht profile" on profiles for delete
@@ -990,15 +998,26 @@ create policy "vermittler schreibt regeln" on regeln for insert
 create policy "vermittler aendert regeln" on regeln for update
   using (current_rolle() in ('admin', 'vermittler'));
 
--- Vertrauliche Anfragen: leser sieht weder firma_id noch budget_pro_m2
-create view anfragen_sichtbar as
+-- Vertrauliche Anfragen: leser sieht weder firma_id noch budget_pro_m2.
+-- security_invoker ist Pflicht, keine Feinheit: ohne diese Option läuft
+-- die View mit den Rechten des Besitzers (postgres, umgeht RLS komplett)
+-- statt mit denen der aufrufenden Session — RLS auf anfragen würde dann
+-- für niemanden greifen, auch nicht für anon (siehe M1 Task 11 im Ledger).
+-- Die CASE-Bedingung ist bewusst "fail closed" (maskiert ausser bei
+-- explizit admin/vermittler), damit eine unbestimmte Rolle nie als
+-- sicher gilt.
+create view anfragen_sichtbar
+with (security_invoker = true)
+as
 select
   a.id,
-  case when a.vertraulich and current_rolle() = 'leser' then null else a.firma_id end as firma_id,
+  case when (not a.vertraulich) or current_rolle() in ('admin', 'vermittler')
+    then a.firma_id else null end as firma_id,
   a.flaeche_min,
   a.flaeche_max,
   a.ort,
-  case when a.vertraulich and current_rolle() = 'leser' then null else a.budget_pro_m2 end as budget_pro_m2,
+  case when (not a.vertraulich) or current_rolle() in ('admin', 'vermittler')
+    then a.budget_pro_m2 else null end as budget_pro_m2,
   a.bezug,
   a.nutzung,
   a.anforderungen,
