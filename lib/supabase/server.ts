@@ -11,8 +11,13 @@ export async function erstelleServerClient() {
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options)
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options)
+            }
+          } catch {
+            // Aus einer Server Component aufgerufen — unschädlich, solange eine
+            // Middleware (kommt in M3) die Session ohnehin erneuert.
           }
         },
       },

@@ -1112,6 +1112,7 @@ git commit -m "feat: Solothurner Beispieldaten aus dem Prototyp seeden"
 
 Run: `npm run types`
 Expected: `types/database.ts` wird überschrieben mit den generierten Supabase-Typen (Tabellen, Enums, Views inklusive `anfragen_sichtbar`).
+Unter Windows muss der `>`-Redirect in einer Shell laufen, die UTF-8 erzeugt (cmd.exe oder Git Bash) — PowerShells Standardencoding ist UTF-16LE und würde die Datei unbrauchbar machen.
 
 - [ ] **Step 2: Build gegen die echten Typen prüfen**
 

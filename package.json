@@ -2,6 +2,9 @@
   "name": "puls",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,7 +22,8 @@
     "react-dom": "19.1.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.7",
+    "@eslint/compat": "2.1.1",
+    "@eslint/eslintrc": "3.3.7",
     "@types/node": "22.10.5",
     "@types/react": "19.1.1",
     "@types/react-dom": "19.1.1",
