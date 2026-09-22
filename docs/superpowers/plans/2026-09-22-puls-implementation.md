@@ -198,10 +198,9 @@ node_modules
 .next
 .env.local
 *.tsbuildinfo
-types/database.ts
 ```
 
-`types/database.ts` ist generiert (per `npm run types`) und wird bei jeder Schemaänderung neu erzeugt — nicht versioniert.
+`types/database.ts` ist zwar generiert (per `npm run types`), wird aber trotzdem **committet** (Korrektur gegenüber der ersten Fassung dieses Plans — siehe Task 9 im Ledger für den Befund): Ein frischer Checkout ohne diese Datei lässt `next build` mit „Cannot find module '@/types/database'" fehlschlagen, und den Vercel-Build zusätzlich vom Supabase-CLI abhängig zu machen wäre mehr Komplexität als nötig. Nach jeder Schemaänderung wird sie über `npm run types` neu erzeugt und neu committet.
 
 - [ ] **Step 6: `app/globals.css` mit den Design-Tokens anlegen**
 
@@ -398,12 +397,24 @@ git commit -m "feat: Tailwind mit Design-Tokens aus dem Prototyp verbinden"
 
 - [ ] **Step 1: `eslint.config.mjs` anlegen**
 
+Der `ignores`-Block ist nötig, obwohl die drei Pfade unauffällig wirken:
+`.worktrees/**` verhindert, dass `eslint .` — von der Repo-Wurzel aus
+aufgerufen — den vollständigen, auf der Festplatte liegenden Checkout des
+aktiven Feature-Branch-Worktrees mitlintet (samt dessen eigenem
+`node_modules`); `next-env.d.ts` ist eine von Next.js bei jedem Build
+automatisch erweiterte Datei, die nie gelintet werden soll (siehe M0
+Task 9 im Ledger für den Befund, der das erst bei einem Checkout aus
+main statt aus dem Worktree sichtbar machte).
+
 ```js
 import { FlatCompat } from "@eslint/eslintrc"
 
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname })
 
 const eslintConfig = [
+  {
+    ignores: [".next/**", "node_modules/**", ".worktrees/**", "next-env.d.ts"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
@@ -449,12 +460,25 @@ git commit -m "feat: ESLint mit Verbot von any konfigurieren"
 
 - [ ] **Step 1: `vitest.config.ts` anlegen**
 
+Der `exclude`-Block übernimmt Vitests eigene Standardausschlüsse und
+ergänzt `.worktrees/**` — ohne den Zusatz findet Vitest, von der
+Repo-Wurzel aus aufgerufen, jede Testdatei doppelt (einmal im Repo,
+einmal im dort liegenden Worktree-Checkout des Feature-Branches).
+
 ```ts
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   test: {
     environment: "node",
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/cypress/**",
+      "**/.{idea,git,cache,output,temp}/**",
+      "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*",
+      ".worktrees/**",
+    ],
   },
 })
 ```
@@ -548,11 +572,20 @@ export async function erstelleServerClient() {
 
 Beide Funktionen lesen `process.env` erst bei Aufruf, nicht beim Modulimport — genau der in Spec D3 geforderte Aufbau.
 
-- [ ] **Step 4: `types/database.ts` als Platzhalter anlegen, damit der Import kompiliert**
+- [ ] **Step 4: `types/database.ts` als Platzhalter anlegen und committen**
 
-Wird in M1, Task 12 durch die generierten Typen ersetzt (und ist ohnehin `.gitignore`d, siehe Task 1 Step 5 — hier nur lokal für die IDE nötig).
+Wird in M1, Task 12 durch die echten generierten Typen ersetzt. Anders als
+in der ersten Fassung dieses Plans **wird diese Datei committet**, nicht
+`.gitignore`d — ein frischer Checkout ohne sie lässt `next build` mit
+„Cannot find module '@/types/database'" fehlschlagen (siehe M0 Task 9 im
+Ledger). Nach jeder Schemaänderung wird sie über `npm run types` neu
+erzeugt und neu committet, nie live beim Build generiert.
 
 ```ts
+// Generiert via `npm run types` (supabase gen types typescript). Committet,
+// damit der Build (Vercel, CI) ohne laufenden Supabase-CLI-Zugriff gelingt —
+// diese Datei wird nach jeder Schemaänderung neu erzeugt und neu committet,
+// nicht bei jedem Build live generiert.
 export type Database = Record<string, never>
 ```
 
@@ -1085,9 +1118,16 @@ Expected: `types/database.ts` wird überschrieben mit den generierten Supabase-T
 Run: `npx tsc --noEmit`
 Expected: keine Fehler (der bisherige Code verwendet `Database` nur generisch, keine spezifischen Feldzugriffe, die brechen könnten).
 
-- [ ] **Step 3: Merken — diese Datei ist generiert, nicht committen**
+- [ ] **Step 3: Die aktualisierte Datei committen**
 
-`types/database.ts` steht bereits in `.gitignore` (M0 Task 1). Jede Person, die das Projekt auscheckt, führt `npm run types` selbst aus. Kein Commit für diese Datei.
+Anders als in der ersten Fassung dieses Plans ist `types/database.ts`
+**nicht** `.gitignore`d (siehe M0 Task 9 im Ledger) — sie wird committet,
+damit ein frischer Checkout baut, ohne selbst die Supabase-CLI aufzurufen.
+
+```bash
+git add types/database.ts
+git commit -m "chore: generierte Supabase-Typen aktualisieren"
+```
 
 ---
 
