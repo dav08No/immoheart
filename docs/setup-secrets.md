@@ -1,0 +1,58 @@
+# Secrets einrichten
+
+Anleitung, wo jeder Wert herkommt und wo er eingetragen werden muss. Die beiden echten Geheimnisse (Service-Role-Key, Anthropic-Key) stehen hier bewusst nicht als Wert drin — nur wo man sie findet.
+
+---
+
+## Die vier Werte
+
+| Variable | Öffentlich? | Wo finden |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ja, unbedenklich | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *Data API* → Feld **Project URL** |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ja, unbedenklich (dafür gemacht) | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *API Keys* → Eintrag **anon / public** (oder **publishable**) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **nein — geheim** | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *API Keys* → Eintrag **service_role** (Klick auf „Reveal“/Augensymbol) |
+| `ANTHROPIC_API_KEY` | **nein — geheim** | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) → *Create Key* (Name z. B. „PULS“) |
+
+Direkt-Link zum Supabase-Projekt: <https://supabase.com/dashboard/project/rvxlvrrpltmuzuomdwdf/settings/api-keys>
+
+**Wichtig:** `SUPABASE_SERVICE_ROLE_KEY` und `ANTHROPIC_API_KEY` gehören **nie** in eine `NEXT_PUBLIC_`-Variable, nie ins Repository, nie in einen Chat oder eine Nachricht — nur direkt ins jeweilige Formularfeld unten kopieren.
+
+---
+
+## Wo eintragen
+
+### 1 · Vercel — alle vier Werte
+
+*Projekt → Settings → Environment Variables.* Jede der vier Variablen einmal anlegen, dabei **beide** Haken setzen: **Production** und **Preview**.
+
+```
+NEXT_PUBLIC_SUPABASE_URL       (Wert siehe Tabelle oben)
+NEXT_PUBLIC_SUPABASE_ANON_KEY  (Wert siehe Tabelle oben)
+SUPABASE_SERVICE_ROLE_KEY      (Wert aus Supabase-Dashboard, „service_role“)
+ANTHROPIC_API_KEY              (Wert aus der Anthropic Console)
+```
+
+Falls das Projekt in Vercel noch nicht existiert: [vercel.com/new](https://vercel.com/new) → GitHub-Repo `SergeSchaerer/espaceSolothurn` importieren → Framework wird automatisch als Next.js erkannt → zuerst importieren, danach die vier Variablen eintragen, dann „Redeploy“.
+
+### 2 · GitHub — nur zwei Werte
+
+*Repo `SergeSchaerer/espaceSolothurn` → Settings → Secrets and variables → Actions → New repository secret.* Nur diese zwei, für den Keep-alive-Workflow:
+
+```
+NEXT_PUBLIC_SUPABASE_URL       (derselbe Wert wie oben)
+NEXT_PUBLIC_SUPABASE_ANON_KEY  (derselbe Wert wie oben)
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` und `ANTHROPIC_API_KEY` werden hier **nicht** gebraucht.
+
+---
+
+## Kurz-Checkliste
+
+- [ ] Vercel-Projekt importiert
+- [ ] Vercel: `NEXT_PUBLIC_SUPABASE_URL` (Production + Preview)
+- [ ] Vercel: `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Production + Preview)
+- [ ] Vercel: `SUPABASE_SERVICE_ROLE_KEY` (Production + Preview)
+- [ ] Vercel: `ANTHROPIC_API_KEY` (Production + Preview)
+- [ ] GitHub-Secret: `NEXT_PUBLIC_SUPABASE_URL`
+- [ ] GitHub-Secret: `NEXT_PUBLIC_SUPABASE_ANON_KEY`
