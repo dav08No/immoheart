@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PULS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --surface-2:#F7F9FA; --surface-3:#EAF2F7;
+  --ink:#1F2429; --ink-2:#5A6472; --ink-3:#98A2AE;
+  --line:#E1E7EC; --line-2:#CFD8E0;
+  --brand:#065A82; --brand-2:#1C7293; --on-brand:#FFF; --brand-soft:#EAF2F7;
+  --navy:#21295C;
+  --good:#0F6E56; --good-bg:#F0F6F3;
+  --warn:#A85D14; --warn-bg:#FDF3E3;
+  --crit:#9B3232; --crit-bg:#F8EBEB;
+  --fd:"Cambria","Georgia",serif;
+  --fu:"Outfit","Helvetica Neue",Arial,sans-serif;
+  --r:10px;
+}
+:root[data-theme="dark"]{
+  --bg:#161A33; --surface:#1E2447; --surface-2:#262C55; --surface-3:#2E3560;
+  --ink:#EEF2F7; --ink-2:#B8C2D4; --ink-3:#8792AB;
+  --line:#333A66; --line-2:#414A7A;
+  --brand:#8CBFDC; --brand-2:#A8D2EA; --on-brand:#0E1330; --brand-soft:#29315C;
+  --navy:#0E1330;
+  --good:#5DCAA5; --good-bg:#1A3B33;
+  --warn:#E5B23C; --warn-bg:#3A2E14;
+  --crit:#F0908B; --crit-bg:#3D2020;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--fu);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+a{color:var(--brand);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px;border-radius:4px}
+
+/* ---- shell ---- */
+.app{display:grid;grid-template-columns:206px minmax(0,1fr);height:100vh;overflow:hidden}
+.side{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.brand{padding:18px 16px 15px;display:flex;align-items:center;gap:9px}
+.brand-name{font-family:var(--fd);font-weight:700;font-size:19px}
+.brand-sub{font-size:11px;color:var(--ink-3);padding:0 16px 14px;border-bottom:1px solid var(--line)}
+.nav{padding:12px 10px;display:flex;flex-direction:column;gap:2px;flex:1;overflow-y:auto}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;color:var(--ink-2);font-weight:400;text-align:left}
+.nav button:hover{background:var(--surface-2);color:var(--ink)}
+.nav button[aria-current="true"]{background:var(--brand-soft);color:var(--brand);font-weight:600}
+.nav .ico{width:15px;flex:none;opacity:.8;font-size:13px}
+.nav .badge{margin-left:auto;font-size:11px;font-weight:600;background:var(--brand);color:var(--on-brand);border-radius:20px;padding:1px 7px}
+.gate{margin:10px;padding:11px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2)}
+.gate-h{font-size:11.5px;color:var(--ink-3);display:block;margin-bottom:7px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px}
+.seg button{flex:1;padding:5px 0;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--ink-3)}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand)}
+.gate-txt{margin:7px 0 0;font-size:11.5px;color:var(--ink-2)}
+.side-u{padding:12px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2)}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{height:56px;flex:none;border-bottom:1px solid var(--line);background:var(--surface);display:flex;align-items:center;gap:12px;padding:0 20px}
+.top h1{font-family:var(--fd);font-size:18px;font-weight:700;margin:0}
+.top .sub{font-size:12.5px;color:var(--ink-3)}
+.top .sp{flex:1}
+.btn{padding:7px 13px;border-radius:8px;font-weight:500;font-size:13px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
+.btn:hover{background:var(--surface-2)}
+.btn-p{background:var(--brand);color:var(--on-brand);border-color:transparent}
+.btn-p:hover{background:var(--brand-2)}
+.btn-sm{padding:5px 9px;font-size:12px}
+.av{width:27px;height:27px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-size:11px;font-weight:600}
+.scroll{overflow-y:auto;padding:20px;flex:1;min-height:0}
+.view{display:none;max-width:1120px;margin:0 auto;flex-direction:column;gap:18px}
+.view.on{display:flex}
+
+/* ---- generic ---- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.card-h{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card-h h2{font-family:var(--fd);font-size:15px;font-weight:700;margin:0}
+.card-h .n{font-size:12px;color:var(--ink-3);margin-left:auto}
+.sec-h{display:flex;align-items:baseline;gap:10px;padding:0 2px}
+.sec-h h2{font-family:var(--fd);font-size:16px;font-weight:700;margin:0}
+.sec-h .n{font-size:12.5px;color:var(--ink-3);margin-left:auto}
+.chip{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;background:var(--surface-3);color:var(--ink-2);white-space:nowrap}
+.chip.good{background:var(--good-bg);color:var(--good)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.crit{background:var(--crit-bg);color:var(--crit)}
+.ext{font-size:11px;color:var(--ink-3)}
+
+/* ---- tiles ---- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;display:flex;flex-direction:column;gap:3px}
+.tile .l{font-size:12px;color:var(--ink-3)}
+.tile .v{font-family:var(--fd);font-weight:700;font-size:26px;line-height:1.1}
+.tile.acc{border-left:3px solid var(--brand);border-radius:0 var(--r) var(--r) 0}
+.tile.wrn{border-left:3px solid var(--warn);border-radius:0 var(--r) var(--r) 0}
+
+/* ---- match card ---- */
+.matches{display:flex;flex-direction:column;gap:12px}
+.m{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;cursor:pointer}
+.m:hover{border-color:var(--line-2)}
+.m-bot .btn{cursor:pointer}
+.m-top{display:grid;grid-template-columns:118px minmax(0,1fr) 34px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 14px}
+.thumb{width:118px;height:80px;border-radius:8px;overflow:hidden;background:var(--surface-3);position:relative;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-3);font-size:11px;z-index:0}
+.thumb img{position:relative;z-index:1}
+.m-obj .t,.m-firm .t{font-weight:600;font-size:14px;line-height:1.3}
+.m-obj .d,.m-firm .d{font-size:12.5px;color:var(--ink-2);margin-top:3px}
+.m-lnk{font-size:12px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.m-arrow{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:15px}
+.m-firm{display:flex;gap:10px;align-items:flex-start}
+.logo{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;flex:none}
+.m-score{text-align:right;flex:none;padding-left:6px}
+.m-score .p{font-family:var(--fd);font-weight:700;font-size:24px;color:var(--good);line-height:1}
+.m-score .l{font-size:11px;color:var(--ink-3)}
+.m-bot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap}
+.facts{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
+.f{font-size:11.5px;padding:3px 9px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}
+.f.ok{color:var(--good)} .f.nu{color:var(--warn)} .f.no{color:var(--crit)}
+
+/* ---- simple rows ---- */
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .g{flex:1;min-width:0}
+.row .g{display:flex;flex-direction:column}
+.row .t{font-weight:500;font-size:13.5px;display:block}
+.row .s{font-size:12px;color:var(--ink-3);margin-top:2px;display:block}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.age{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+
+/* ---- postfach ---- */
+.inbox{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+.tabs{display:flex;gap:6px;padding:11px 12px;border-bottom:1px solid var(--line)}
+.tab{font-size:12.5px;padding:5px 11px;border-radius:20px;border:1px solid var(--line);color:var(--ink-2)}
+.tab[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.msg{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left}
+.msg:last-child{border-bottom:0}
+.msg:hover{background:var(--surface-2)}
+.msg[aria-selected="true"]{background:var(--brand-soft)}
+.dir{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:13px;flex:none}
+.dir.in{background:var(--surface-3);color:var(--ink-2)}
+.dir.out{background:var(--brand);color:var(--on-brand)}
+.msg .g{display:flex;flex-direction:column;min-width:0;gap:2px}
+.msg .t{font-size:13.5px;font-weight:500;line-height:1.3;display:block}
+.msg .f{font-size:12px;color:var(--ink-3);background:none;border:0;padding:0;display:block}
+.msg .tag{font-size:11px;margin-top:4px;display:inline-block;padding:2px 8px;border-radius:20px;align-self:flex-start}
+.tag.in{background:var(--surface-3);color:var(--ink-2)}
+.tag.out{background:var(--brand-soft);color:var(--brand)}
+.tag.gap{background:var(--warn-bg);color:var(--warn)}
+.msg .time{margin-left:auto;font-size:11.5px;color:var(--ink-3);flex:none}
+
+.det{display:flex;flex-direction:column;gap:0}
+.det-h{padding:14px 16px;border-bottom:1px solid var(--line)}
+.det-h .t{font-family:var(--fd);font-size:16px;font-weight:700}
+.det-h .s{font-size:12.5px;color:var(--ink-3);margin-top:3px}
+.det-b{padding:16px}
+.quote{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--ink-2);white-space:pre-wrap;line-height:1.6}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px;margin-top:14px}
+.fld{border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.fld .k{font-size:11.5px;color:var(--ink-3)}
+.fld .v{font-size:13.5px;font-weight:500;margin-top:2px}
+.fld.gap{border-color:var(--warn);background:var(--warn-bg)}
+.fld.gap .v{color:var(--warn);font-family:var(--fd);font-size:17px}
+.mailform{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mailform .fr{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
+.mailform .fr .k{color:var(--ink-3);width:52px;flex:none}
+.mailform .bd{padding:12px;font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--ink-2)}
+.mailform textarea{width:100%;border:0;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;line-height:1.65;padding:12px;resize:vertical;min-height:150px;display:block}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.reject{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2);display:none;gap:7px;flex-wrap:wrap}
+.reject.on{display:flex}
+.reject button{border:1px solid var(--line-2);border-radius:20px;padding:5px 11px;font-size:12px;color:var(--ink-2)}
+.reject button:hover{border-color:var(--brand);color:var(--brand)}
+.empty{padding:40px 16px;text-align:center;color:var(--ink-3);font-size:13px}
+
+/* ---- hero puls ---- */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px 0;overflow:hidden;position:relative}
+.hero-row{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap}
+.hero .big{font-family:var(--fd);font-weight:700;font-size:42px;line-height:1}
+.hero .lab{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.hero .side-n{display:flex;gap:18px;flex-wrap:wrap;margin-left:auto}
+.hero .side-n b{font-family:var(--fd);font-size:19px;display:block;line-height:1.1}
+.hero .side-n span{font-size:12px;color:var(--ink-3)}
+.hero-ekg{margin:10px -18px 0;height:72px}
+.hero-ekg svg{display:block;width:100%;height:72px}
+
+/* ---- match vergleich ---- */
+.cmp{width:100%;border-collapse:collapse;min-width:0}
+.cmp th{font-size:11.5px;color:var(--ink-3);font-weight:500;text-align:left;padding:0 8px 7px 0;border-bottom:1px solid var(--line)}
+.cmp td{padding:9px 8px 9px 0;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:top}
+.cmp tr:last-child td{border-bottom:0}
+.cmp .k{color:var(--ink-3);width:74px}
+.cmp .st{width:20px;text-align:right;font-weight:700}
+.cmp .st.ok{color:var(--good)} .cmp .st.nu{color:var(--warn)} .cmp .st.no{color:var(--crit)}
+.pair{display:flex;gap:12px;align-items:center;margin-bottom:4px}
+.pair .thumb{width:84px;height:58px}
+
+/* ---- bearbeiten ---- */
+.ed{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13px;align-items:center}
+.ed label{color:var(--ink-3);font-size:12px}
+.ed input{width:100%;padding:7px 9px;border:1px solid var(--line-2);border-radius:7px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px}
+.ed input:focus{outline:2px solid var(--brand-2);outline-offset:-1px}
+.ed input.miss{border-color:var(--warn);background:var(--warn-bg)}
+
+/* ---- tables ---- */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+thead th{font-size:11.5px;color:var(--ink-3);font-weight:500;text-align:left;padding:9px 16px;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr[aria-selected="true"]{background:var(--brand-soft)}
+tbody td{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--ink-2);font-size:13px}
+tbody tr:last-child td{border-bottom:0}
+td .nm{color:var(--ink);font-weight:500;display:flex;align-items:center;gap:8px}
+.q{color:var(--warn);font-family:var(--fd);font-weight:700}
+.lock{font-size:11px;color:var(--ink-3);border:1px solid var(--line-2);border-radius:4px;padding:0 5px}
+
+/* ---- objekte grid ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.o{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.o-ph{display:grid;place-items:center;height:130px;background:var(--surface-3);position:relative;color:var(--ink-3);font-size:11px}
+.o-ph img{position:absolute;inset:0;width:100%;height:130px;object-fit:cover}
+.o-b{padding:12px 13px}
+.o-b .t{font-weight:600;font-size:13.5px}
+.o-b .d{font-size:12.5px;color:var(--ink-2);margin-top:3px}
+.o-b .l{margin-top:7px;display:flex;align-items:center;gap:10px;font-size:12px}
+
+/* ---- drawer ---- */
+.scrim{position:fixed;inset:0;background:rgba(33,41,92,.40);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(440px,94vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:0 2px 24px rgba(33,41,92,.18);transform:translateX(102%);transition:transform .25s;z-index:41;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer-h{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px}
+.drawer-h .t{font-family:var(--fd);font-size:16px;font-weight:700}
+.drawer-h .s{font-size:12px;color:var(--ink-3);margin-top:2px}
+.drawer-h button{margin-left:auto;font-size:19px;color:var(--ink-3);padding:0 5px}
+.drawer-b{overflow-y:auto;padding:16px 17px 40px;display:flex;flex-direction:column;gap:16px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:13px}
+.kv dt{color:var(--ink-3);font-size:12px;padding-top:2px}
+.kv dd{margin:0}
+.sec-t{font-size:11.5px;color:var(--ink-3);padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:11px}
+.srow{display:grid;grid-template-columns:78px 1fr 34px;gap:10px;align-items:center;font-size:12.5px;margin-bottom:7px}
+.bar{height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand)}
+.bar i.w{background:var(--warn)} .bar i.c{background:var(--crit)}
+.srow .val{text-align:right;color:var(--ink-2);font-size:12px}
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:74px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink-2)}
+.log li:last-child{border-bottom:0}
+.log time{font-size:11.5px;color:var(--ink-3)}
+
+/* ---- charts ---- */
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.chart-b{padding:14px}
+.hbar{display:grid;grid-template-columns:92px 1fr 28px;gap:10px;align-items:center;font-size:12.5px;padding:4px 0}
+.hbar .l{color:var(--ink-2);text-align:right}
+.hbar .t{height:14px;background:var(--surface-2);border-radius:0 4px 4px 0;overflow:hidden}
+.hbar .t i{display:block;height:100%;background:var(--brand);border-radius:0 4px 4px 0}
+.hbar .v{color:var(--ink-2);font-size:12px}
+
+/* ---- rules ---- */
+.rule{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:baseline}
+.rule:last-child{border-bottom:0}
+.rule .id{font-size:12px;font-weight:600;color:var(--brand)}
+.rule .tx{font-size:13.5px}
+.rule .ct{font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+/* ---- toasts ---- */
+.toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60;pointer-events:none}
+.toast{background:var(--surface);border:1px solid var(--line-2);border-left:3px solid var(--good);border-radius:8px;box-shadow:0 2px 20px rgba(33,41,92,.14);padding:10px 13px;max-width:300px;animation:tin .2s ease-out}
+.toast.warn{border-left-color:var(--warn)} .toast.info{border-left-color:var(--brand)}
+.toast .tt{font-weight:600;font-size:13px;display:block}
+.toast .td{font-size:12px;color:var(--ink-2)}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(28,114,147,.5)}100%{box-shadow:0 0 0 12px rgba(28,114,147,0)}}
+.flash{animation:flash .9s ease-out 2}
+.note{font-size:12px;color:var(--ink-3)}
+
+@media (max-width:980px){.side{display:none}.app{grid-template-columns:1fr}.inbox{grid-template-columns:1fr}.m-top{grid-template-columns:1fr;gap:10px}.m-arrow{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="none" stroke="var(--brand)" stroke-width="1.5" opacity=".35"/><path d="M3 11h3.6l1.5-4.4L11 15.4l2.2-6.1 1.2 1.7H19" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="brand-name">PULS</span>
+    </div>
+    <span class="brand-sub">espaceSOLOTHURN</span>
+
+    <nav class="nav" id="nav">
+      <button data-v="cockpit" aria-current="true"><span class="ico">◈</span>Matches</button>
+      <button data-v="postfach"><span class="ico">✉</span>Postfach<span class="badge" id="badge">4</span></button>
+      <button data-v="anfragen"><span class="ico">↘</span>Anfragen</button>
+      <button data-v="angebote"><span class="ico">▤</span>Objekte</button>
+      <button data-v="regeln"><span class="ico">§</span>Regeln</button>
+      <button data-v="zahlen"><span class="ico">▁</span>Zahlen</button>
+    </nav>
+
+    <div class="gate">
+      <span class="gate-h">Freigabe</span>
+      <div class="seg" id="seg">
+        <button aria-pressed="true" data-s="1">1</button>
+        <button aria-pressed="false" data-s="2">2</button>
+        <button aria-pressed="false" data-s="3">3</button>
+      </div>
+      <p class="gate-txt" id="gateTxt">Stufe 1 · alles bestätigen</p>
+    </div>
+    <div class="side-u"><span class="av">AZ</span>A. Zellweger</div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <h1 id="vTitle">Matches</h1>
+      <span class="sub" id="vSub">25. August 2026</span>
+      <span class="sp"></span>
+      <button class="btn btn-sm" id="demoBtn">▶ Demo</button>
+      <button class="btn btn-sm" id="themeBtn" aria-label="Hell oder Dunkel"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" style="display:block"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 1a6 6 0 0 0 0 12z" fill="currentColor"/></svg></button>
+    </header>
+
+    <div class="scroll">
+
+      <!-- ===== MATCHES (Startseite) ===== -->
+      <section class="view on" id="v-cockpit">
+        <div class="hero" id="hero"></div>
+        <div class="tiles">
+          <div class="tile acc"><span class="l">Neue Matches</span><span class="v" id="tMatch">3</span></div>
+          <div class="tile"><span class="l">Offene Anfragen</span><span class="v">8</span></div>
+          <div class="tile"><span class="l">Objekte</span><span class="v">6</span></div>
+          <div class="tile wrn"><span class="l">Lange still</span><span class="v">3</span></div>
+        </div>
+
+        <div class="sec-h"><h2>Neue Matches</h2><span class="n" id="matchN">3 Vorschläge</span></div>
+        <div class="matches" id="matches"></div>
+
+        <div class="card">
+          <div class="card-h"><h2>Lange nichts gehört</h2><span class="n">3 Anfragen</span></div>
+          <div class="rows" id="still"></div>
+        </div>
+      </section>
+
+      <!-- ===== POSTFACH ===== -->
+      <section class="view" id="v-postfach">
+        <div class="inbox">
+          <div class="card">
+            <div class="tabs" id="tabs">
+              <button class="tab" data-f="all" aria-pressed="true">Alle</button>
+              <button class="tab" data-f="in" aria-pressed="false">Eingang</button>
+              <button class="tab" data-f="out" aria-pressed="false">Entwürfe</button>
+            </div>
+            <div id="msgs"></div>
+          </div>
+          <div class="card det" id="det"></div>
+        </div>
+      </section>
+
+      <!-- ===== ANFRAGEN ===== -->
+      <section class="view" id="v-anfragen">
+        <div class="card">
+          <div class="card-h"><h2>Anfragen</h2><span class="n">Zeile anklicken</span></div>
+          <div class="tw"><table>
+            <thead><tr><th>Firma</th><th>Sucht</th><th>Ort</th><th>Budget</th><th>Bezug</th><th>Status</th></tr></thead>
+            <tbody id="anfBody"></tbody>
+          </table></div>
+        </div>
+        <p class="note">? = Angabe fehlt noch</p>
+      </section>
+
+      <!-- ===== OBJEKTE ===== -->
+      <section class="view" id="v-angebote">
+        <div class="grid" id="objGrid"></div>
+      </section>
+
+      <!-- ===== REGELN ===== -->
+      <section class="view" id="v-regeln">
+        <div class="card">
+          <div class="card-h"><h2>Regeln</h2><span class="n" id="regelN">6</span></div>
+          <div id="rules"></div>
+        </div>
+      </section>
+
+      <!-- ===== ZAHLEN ===== -->
+      <section class="view" id="v-zahlen">
+        <div class="tiles">
+          <div class="tile"><span class="l">Bis Erstangebot</span><span class="v">1,4 <span style="font-size:14px;color:var(--ink-3)">Tage</span></span></div>
+          <div class="tile"><span class="l">Erfolgsquote</span><span class="v">38 <span style="font-size:14px;color:var(--ink-3)">%</span></span></div>
+          <div class="tile"><span class="l">Nacharbeit / Tag</span><span class="v">11 <span style="font-size:14px;color:var(--ink-3)">Min.</span></span></div>
+          <div class="tile"><span class="l">Freigabequote</span><span class="v">91 <span style="font-size:14px;color:var(--ink-3)">%</span></span></div>
+        </div>
+        <div class="charts">
+          <div class="card">
+            <div class="card-h"><h2>Erfolgsquote</h2><span class="n">2026</span></div>
+            <div class="chart-b"><svg id="lineChart" viewBox="0 0 480 180" style="width:100%;height:auto" role="img" aria-label="Erfolgsquote 2026, steigend von 21 auf 38 Prozent"></svg></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>Gesuchte Grössen</h2><span class="n">offene Anfragen</span></div>
+            <div class="chart-b" id="barChart"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-h"><div><div class="t" id="dT">—</div><div class="s" id="dS">—</div></div><button id="dX" aria-label="Schliessen">×</button></div>
+  <div class="drawer-b" id="dB"></div>
+</aside>
+<div class="toasts" id="toasts"></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const maps=q=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(q);
+const web=n=>"https://www.google.com/search?q="+encodeURIComponent(n);
+const photo=(seed,w,h)=>"https://picsum.photos/seed/"+seed+"/"+w+"/"+h;
+const LC=["#065A82","#1C7293","#21295C","#3E7C8C","#4A5899"];
+const initials=n=>n.replace(/[^A-Za-zÄÖÜäöü ]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+const logo=(n,i)=>`<span class="logo" style="background:${LC[i%LC.length]}">${initials(n)}</span>`;
+const img=(src,cls,alt)=>`<img class="${cls}" src="${src}" alt="${alt}" loading="lazy" onerror="this.style.display='none'">`;
+
+/* ---------- daten ---------- */
+const objekte=[
+  {id:"O-31",t:"Büro Altstadt",adr:"Hauptgasse 12, 4500 Solothurn",fl:"240 m²",pr:"CHF 245/m²",eig:"Bürgergemeinde",tr:2,seed:"puls-o31",neu:true},
+  {id:"O-19",t:"Gewerbehalle Zuchwil",adr:"Industriestrasse 10, 4528 Zuchwil",fl:"2'400 m²",pr:"CHF 128/m²",eig:"Privat",tr:4,seed:"puls-o19",neu:true},
+  {id:"O-27",t:"Gewerbe Bettlach",adr:"Industriestrasse 4, 2544 Bettlach",fl:"380 m²",pr:"CHF 158/m²",eig:"Suter Immobilien AG",tr:1,seed:"puls-o27"},
+  {id:"O-14",t:"Logistik Derendingen",adr:"Gewerbestrasse 5, 4552 Derendingen",fl:"2'850 m²",pr:"CHF 121/m²",eig:"Aare Invest AG",tr:2,seed:"puls-o14"},
+  {id:"O-08",t:"Produktionshalle Biberist",adr:"Fabrikstrasse 2, 4562 Biberist",fl:"2'300 m²",pr:"CHF 112/m²",eig:"Privat",tr:1,seed:"puls-o08"},
+  {id:"O-33",t:"Bauland Luterbach",adr:"Arbeitszone, 4542 Luterbach",fl:"6'200 m²",pr:"auf Anfrage",eig:"Gemeinde Luterbach",tr:3,seed:"puls-o33"}
+];
+
+let anfragen=[
+  {id:"A-118",f:"Helvetia Dental Labor",br:"Medizintechnik",sucht:"320–450 m²",ort:"Bettlach",bud:"CHF 165/m²",bez:"Q1 2027",tage:1,vertr:false,
+   score:[["Fläche",96],["Preis",88],["Lage",94],["Termin",82]],obj:"Gewerbe Bettlach"},
+  {id:"A-104",f:"Meier Präzisionstechnik AG",br:"Fertigung",sucht:"1'800–2'600 m²",ort:"Wasseramt",bud:"CHF 130/m²",bez:"Q2 2027",tage:3,vertr:false,
+   score:[["Fläche",94],["Preis",91],["Lage",86],["Termin",78]],obj:"Gewerbehalle Zuchwil"},
+  {id:"A-097",f:"Studio Bruggmann",br:"Kreativ",sucht:"180–260 m²",ort:"Solothurn",bud:"CHF 250/m²",bez:"Q4 2026",tage:12,vertr:false,
+   score:[["Fläche",92],["Preis",89],["Lage",97],["Termin",84]],obj:"Büro Altstadt"},
+  {id:"A-089",f:"Beat's Musikbar GmbH",br:"Gastro",sucht:"200–300 m²",ort:"Solothurn",bud:"CHF 210/m²",bez:"Q1 2027",tage:15,vertr:false,
+   score:[["Fläche",90],["Preis",81],["Lage",12],["Termin",76]],obj:"— Regel R-01"},
+  {id:"A-076",f:"Frischwerk Getränke AG",br:"Handel",sucht:"1'500–2'500 m²",ort:"Region Solothurn",bud:"CHF 110/m²",bez:"Q1 2027",tage:22,vertr:false,
+   score:[["Fläche",88],["Preis",44],["Lage",79],["Termin",71]],obj:"Logistik Derendingen"},
+  {id:"A-061",f:"Lagerhaus Aare GmbH",br:"Logistik",sucht:"2'000–3'000 m²",ort:"Solothurn Ost",bud:"CHF 118/m²",bez:"sofort",tage:41,vertr:true,
+   score:[["Fläche",93],["Preis",84],["Lage",72],["Termin",96]],obj:"Logistik Derendingen"},
+  {id:"A-052",f:"Kaufmann Baunebengewerbe",br:"Bau",sucht:"1'900–2'400 m²",ort:"Bucheggberg",bud:null,bez:null,tage:63,vertr:false,
+   score:[["Fläche",85],["Preis",0],["Lage",68],["Termin",30]],obj:"— Budget fehlt"},
+  {id:"A-041",f:"Nordwest Metallbau AG",br:"Metallbau",sucht:"ab 2'200 m²",ort:"Zuchwil",bud:"CHF 125/m²",bez:"Q4 2026",tage:96,vertr:true,
+   score:[["Fläche",91],["Preis",87],["Lage",83],["Termin",44]],obj:"Gewerbehalle Zuchwil"}
+];
+
+let matches=[
+  {id:"M1",oid:"O-31",aid:"A-097",p:91,facts:[["ok","Fläche ✓"],["ok","Preis ✓"],["ok","Lage ✓"],["nu","Termin ~"]],
+   crit:[["Fläche","180–260 m²","240 m²","ok"],["Preis","bis CHF 250/m²","CHF 245/m²","ok"],
+         ["Lage","Altstadt Solothurn","Hauptgasse 12","ok"],["Bezug","Q4 2026","ab 01.11.2026","nu"],
+         ["Zone","Dienstleistung","Dienstleistung","ok"]],
+   hint:"Bezug liegt einen Monat nach dem Wunschtermin."},
+  {id:"M2",oid:"O-19",aid:"A-041",p:88,facts:[["ok","Fläche ✓"],["ok","Preis ✓"],["ok","Kran ✓"],["nu","seit 96 Tagen still"]],
+   crit:[["Fläche","ab 2'200 m²","2'400 m²","ok"],["Preis","CHF 125/m²","CHF 128/m²","nu"],
+         ["Lage","Zuchwil","Industriestrasse 10","ok"],["Bezug","Q4 2026","sofort","ok"],
+         ["Kran","16 t nötig","16-t-Kranbahn","ok"],["Kontakt","—","96 Tage still","nu"]],
+   hint:"Preis 2 % über Budget — nach Regel R-04 noch ein Treffer."},
+  {id:"M3",oid:"O-14",aid:"A-061",p:84,facts:[["ok","Fläche ✓"],["ok","Rampe ✓"],["ok","Preis ✓"],["nu","vertraulich"]],
+   crit:[["Fläche","2'000–3'000 m²","2'850 m²","ok"],["Preis","CHF 118/m²","CHF 121/m²","nu"],
+         ["Lage","Solothurn Ost","Derendingen","ok"],["Bezug","sofort","sofort","ok"],
+         ["Rampe","nötig","vorhanden","ok"]],
+   hint:"Anfrage ist vertraulich — Firmenname nur intern sichtbar."}
+];
+
+let msgs=[
+  {id:"P1",dir:"in",from:"B. Frei · Thermo-Kunststoff GmbH",mail:"b.frei@thermo-kunststoff.ch",subj:"Suche Produktionsfläche",time:"07:12",gap:true,
+   text:"Guten Tag\n\nWir suchen eine Produktionsfläche von rund 900 bis 1'400 m² im Wasseramt. Bezug wäre Frühling 2027.\n\nFreundliche Grüsse\nB. Frei",
+   fields:[["Firma","Thermo-Kunststoff GmbH"],["Fläche","900–1'400 m²"],["Ort","Wasseramt"],["Bezug","Q2 2027"],["Budget",null],["Branche",null]],
+   draft:{to:"b.frei@thermo-kunststoff.ch",subj:"Kurze Rückfrage",body:"Guten Tag Herr Frei\n\nDanke für Ihre Anfrage. Zwei Angaben fehlen uns noch:\n\n– Kostenrahmen pro m²?\n– Ihre Branche?\n\nDanach melden wir passende Objekte.\n\nFreundliche Grüsse\nA. Zellweger"}},
+
+  {id:"P2",dir:"out",from:"An: N. Bruggmann · Studio Bruggmann",mail:"n.bruggmann@studiobruggmann.ch",subj:"240 m² Büro Altstadt frei",time:"06:11",kind:"angebot",
+   why:[["ok","Fläche 240 m² · gesucht 180–260"],["ok","CHF 245 · Budget 250"],["ok","Altstadt gewünscht"],["nu","frei ab 01.11."]],
+   draft:{to:"n.bruggmann@studiobruggmann.ch",subj:"240 m² Büro Altstadt frei",body:"Guten Tag Frau Bruggmann\n\nIn der Altstadt ist per 1. November eine Bürofläche von 240 m² frei — CHF 245/m².\n\nBesichtigung nächste Woche Dienstag oder Mittwoch?\n\nFreundliche Grüsse\nA. Zellweger",att:"Expose_Altstadt.pdf"}},
+
+  {id:"P3",dir:"out",from:"An: R. Hunziker · Nordwest Metallbau AG",mail:"r.hunziker@nordwest-metallbau.ch",subj:"Suche noch aktuell?",time:"06:04",kind:"nachfass",
+   why:[["no","96 Tage kein Kontakt"],["ok","Neue Halle Zuchwil passt"]],
+   draft:{to:"r.hunziker@nordwest-metallbau.ch",subj:"Suche noch aktuell?",body:"Guten Tag Herr Hunziker\n\nIst Ihre Suche nach einer Halle ab 2'200 m² noch aktuell?\n\nIn Zuchwil ist neu eine Halle mit 16-t-Kranbahn verfügbar.\n\nFreundliche Grüsse\nA. Zellweger"}},
+
+  {id:"P4",dir:"in",from:"M. Kaufmann · Kaufmann Baunebengewerbe",mail:"m.kaufmann@kaufmann-bau.ch",subj:"Antwort: Ihre Rückfrage",time:"gestern",gap:true,
+   text:"Grüezi\n\nJa, wir suchen weiterhin. Zum Preis kann ich noch nichts sagen, das entscheidet der Verwaltungsrat im September.\n\nM. Kaufmann",
+   fields:[["Firma","Kaufmann Baunebengewerbe"],["Fläche","1'900–2'400 m²"],["Ort","Bucheggberg"],["Bezug",null],["Budget",null],["Status","aktiv"]],
+   draft:{to:"m.kaufmann@kaufmann-bau.ch",subj:"Notiert — wir melden uns im September",body:"Grüezi Herr Kaufmann\n\nDanke, wir halten die Anfrage aktiv und fragen im September nochmals nach dem Kostenrahmen.\n\nFreundliche Grüsse\nA. Zellweger"}}
+];
+
+let rules=[
+  {id:"R-01",tx:"Laute Nutzungen nicht in die Altstadt",ct:"3×"},
+  {id:"R-02",tx:"Logistik nur mit Rampe",ct:"11×"},
+  {id:"R-03",tx:"Produktion über 1'500 m² nur in Arbeitszone",ct:"24×"},
+  {id:"R-04",tx:"Budget bis ±12 % gilt als Treffer",ct:"31×"},
+  {id:"R-05",tx:"Gastro erst nach Bewilligungscheck",ct:"5×"},
+  {id:"R-06",tx:"Bezug «offen» nach 90 Tagen ruhend",ct:"9×"}
+];
+
+const obj=id=>objekte.find(o=>o.id===id);
+const anf=id=>anfragen.find(a=>a.id===id);
+
+function toast(t,d,k){
+  const el=document.createElement("div");
+  el.className="toast "+(k||"");
+  el.innerHTML=`<span class="tt">${esc(t)}</span><span class="td">${esc(d||"")}</span>`;
+  $("#toasts").appendChild(el);
+  setTimeout(()=>{el.style.transition="opacity .3s";el.style.opacity="0";setTimeout(()=>el.remove(),300);},3600);
+}
+
+/* ---------- puls ---------- */
+const pulsOf=a=>Math.max(4,100-a.tage);
+const pulsCol=p=>p>=60?"var(--good)":p>=25?"var(--warn)":"var(--crit)";
+
+function ekgPath(w,h,puls,beats){
+  const mid=h/2, amp=Math.max(2,(puls/100)*(h*0.40)), seg=w/beats;
+  let d=`M0 ${mid}`;
+  for(let i=0;i<beats;i++){
+    const x=i*seg;
+    d+=` L${(x+seg*0.30).toFixed(1)} ${mid}`;
+    d+=` L${(x+seg*0.36).toFixed(1)} ${(mid+amp*0.22).toFixed(1)}`;
+    d+=` L${(x+seg*0.44).toFixed(1)} ${(mid-amp).toFixed(1)}`;
+    d+=` L${(x+seg*0.52).toFixed(1)} ${(mid+amp*0.55).toFixed(1)}`;
+    d+=` L${(x+seg*0.60).toFixed(1)} ${mid}`;
+    d+=` L${(x+seg).toFixed(1)} ${mid}`;
+  }
+  return d;
+}
+
+function renderHero(){
+  const ps=anfragen.map(pulsOf);
+  const avg=Math.round(ps.reduce((s,v)=>s+v,0)/ps.length);
+  const frisch=ps.filter(p=>p>=60).length, altert=ps.filter(p=>p>=25&&p<60).length, krit=ps.filter(p=>p<25).length;
+  const col=pulsCol(avg), W=1000, H=72, d=ekgPath(W,H,avg,9);
+  $("#hero").innerHTML=`
+    <div class="hero-row">
+      <div>
+        <div class="big" style="color:${col}">${avg}</div>
+        <div class="lab">Bestandspuls</div>
+      </div>
+      <div class="side-n">
+        <div><b style="color:var(--good)">${frisch}</b><span>frisch</span></div>
+        <div><b style="color:var(--warn)">${altert}</b><span>altert</span></div>
+        <div><b style="color:var(--crit)">${krit}</b><span>kritisch</span></div>
+      </div>
+    </div>
+    <div class="hero-ekg">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="fade" x1="0" x2="1">
+          <stop offset="0" stop-color="var(--surface)" stop-opacity="1"/>
+          <stop offset=".06" stop-color="var(--surface)" stop-opacity="0"/>
+          <stop offset=".94" stop-color="var(--surface)" stop-opacity="0"/>
+          <stop offset="1" stop-color="var(--surface)" stop-opacity="1"/>
+        </linearGradient></defs>
+        <path d="M0 ${H/2} L${W} ${H/2}" stroke="var(--line)" stroke-width="1" fill="none"/>
+        <path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".26"/>
+        <path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+              stroke-dasharray="150 3000" stroke-dashoffset="150">
+          <animate attributeName="stroke-dashoffset" from="150" to="-3000" dur="7s" repeatCount="indefinite"/>
+        </path>
+        <rect width="${W}" height="${H}" fill="url(#fade)"/>
+      </svg>
+    </div>`;
+}
+
+/* ---------- matches ---------- */
+function renderMatches(){
+  $("#matches").innerHTML=matches.map((m,i)=>{
+    const o=obj(m.oid), a=anf(m.aid);
+    return `<article class="m" data-m="${m.id}">
+      <div class="m-top">
+        <span class="thumb">${img(photo(o.seed,240,160),"","")}<span class="ph">Foto</span></span>
+        <div class="m-obj">
+          <div class="t">${esc(o.t)}</div>
+          <div class="d">${o.fl} · ${o.pr}</div>
+          <div class="m-lnk"><a href="${maps(o.adr)}" target="_blank" rel="noopener">Karte ↗</a><span class="ext">${esc(o.adr)}</span></div>
+        </div>
+        <span class="m-arrow">↔</span>
+        <div class="m-firm">
+          ${logo(a.f,i)}
+          <div>
+            <div class="t">${esc(a.f)}</div>
+            <div class="d">sucht ${a.sucht}</div>
+            <div class="m-lnk"><a href="${web(a.f)}" target="_blank" rel="noopener">Website ↗</a></div>
+          </div>
+        </div>
+        <div class="m-score"><div class="p">${m.p}%</div><div class="l">Treffer</div></div>
+      </div>
+      <div class="m-bot">
+        <span class="facts">${m.facts.map(([k,t])=>`<span class="f ${k}">${esc(t)}</span>`).join("")}</span>
+        <button class="btn btn-p btn-sm" data-ma="send">Angebot senden</button>
+        <button class="btn btn-sm" data-ma="no">Verwerfen</button>
+      </div>
+    </article>`;
+  }).join("")||`<div class="card empty">Keine offenen Matches.</div>`;
+  $("#matchN").textContent=matches.length+" Vorschläge";
+  $("#tMatch").textContent=matches.length;
+}
+
+function renderStill(){
+  $("#still").innerHTML=[...anfragen].sort((a,b)=>b.tage-a.tage).slice(0,3).map(a=>
+    `<div class="row" data-id="${a.id}">
+      <span class="dot" style="background:${a.tage>60?"var(--crit)":"var(--warn)"}"></span>
+      <span class="g"><span class="t">${esc(a.f)}</span><span class="s">${esc(a.sucht)} · ${esc(a.ort)}</span></span>
+      <span class="age">${a.tage} Tage</span>
+      <button class="btn btn-sm" data-ask="${a.id}">Nachfragen</button>
+    </div>`).join("");
+}
+
+/* ---------- postfach ---------- */
+let filter="all", sel=msgs[0].id;
+
+function renderMsgs(){
+  const list=msgs.filter(m=>filter==="all"||m.dir===filter);
+  $("#msgs").innerHTML=list.map(m=>`
+    <button class="msg" data-p="${m.id}" aria-selected="${m.id===sel}">
+      <span class="dir ${m.dir}">${m.dir==="in"?"↓":"↑"}</span>
+      <span class="g">
+        <span class="t">${esc(m.subj)}</span>
+        <span class="f">${esc(m.from)}</span><br>
+        <span class="tag ${m.gap?"gap":m.dir}">${m.dir==="in"?(m.gap?"Anfrage · unvollständig":"Anfrage"):"Entwurf von PULS"}</span>
+      </span>
+      <span class="time">${esc(m.time)}</span>
+    </button>`).join("")||`<div class="empty">Nichts hier.</div>`;
+  $("#badge").textContent=msgs.length;
+  $("#badge").style.display=msgs.length?"":"none";
+}
+
+function renderDet(){
+  const m=msgs.find(x=>x.id===sel);
+  if(!m){$("#det").innerHTML=`<div class="empty">Nachricht wählen.</div>`;return;}
+
+  if(m.dir==="in"){
+    const gaps=m.fields.filter(f=>!f[1]).length;
+    $("#det").innerHTML=`
+      <div class="det-h">
+        <div class="t">${esc(m.subj)}</div>
+        <div class="s">${esc(m.from)} · <a href="mailto:${m.mail}">${esc(m.mail)}</a></div>
+      </div>
+      <div class="det-b">
+        <div class="quote">${esc(m.text)}</div>
+        <div class="sec-t" style="margin:16px 0 0">PULS hat erkannt${gaps?` · ${gaps} fehlt`:""}</div>
+        <div class="fields">
+          ${m.fields.map(([k,v])=>v
+            ?`<div class="fld"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`
+            :`<div class="fld gap"><div class="k">${esc(k)}</div><div class="v">?</div></div>`).join("")}
+        </div>
+        <div class="acts">
+          <button class="btn btn-p btn-sm" data-pa="save">Als Anfrage speichern</button>
+          ${gaps?`<button class="btn btn-sm" data-pa="ask">Rückfrage öffnen</button>`:""}
+        </div>
+      </div>`;
+    return;
+  }
+
+  const d=m.draft;
+  $("#det").innerHTML=`
+    <div class="det-h">
+      <div class="t">${esc(m.subj)}</div>
+      <div class="s">Entwurf von PULS · noch nicht gesendet</div>
+    </div>
+    <div class="det-b">
+      ${m.why?`<div class="facts" style="margin-bottom:14px">${m.why.map(([k,t])=>`<span class="f ${k}">${esc(t)}</span>`).join("")}</div>`:""}
+      <div class="mailform">
+        <div class="fr"><span class="k">An</span><span>${esc(d.to)}</span></div>
+        <div class="fr"><span class="k">Betreff</span><span>${esc(d.subj)}</span></div>
+        ${d.att?`<div class="fr"><span class="k">Anhang</span><span>${esc(d.att)}</span></div>`:""}
+        <div class="bd">${esc(d.body)}</div>
+      </div>
+      <div class="acts">
+        <button class="btn btn-p btn-sm" data-pa="send">Senden</button>
+        <button class="btn btn-sm" data-pa="edit">Bearbeiten</button>
+        <button class="btn btn-sm" data-pa="drop">Verwerfen</button>
+      </div>
+      <div class="reject" id="rej">
+        <button data-r="Passt nicht zur Lage">Passt nicht zur Lage</button>
+        <button data-r="Preis unrealistisch">Preis unrealistisch</button>
+        <button data-r="Zu früh">Zu früh</button>
+        <button data-r="Anderer Grund">Anderer Grund</button>
+      </div>
+    </div>`;
+}
+
+/* ---------- tabellen ---------- */
+function renderAnf(){
+  $("#anfBody").innerHTML=anfragen.map((a,i)=>`<tr data-id="${a.id}" tabindex="0">
+    <td><div class="nm">${logo(a.f,i)}${esc(a.f)}${a.vertr?'<span class="lock">vertraulich</span>':""}</div></td>
+    <td>${esc(a.sucht)}</td>
+    <td><a href="${maps(a.ort+", Schweiz")}" target="_blank" rel="noopener">${esc(a.ort)} ↗</a></td>
+    <td>${a.bud?esc(a.bud):'<span class="q">?</span>'}</td>
+    <td>${a.bez?esc(a.bez):'<span class="q">?</span>'}</td>
+    <td>${a.tage>60?'<span class="chip crit">'+a.tage+' Tage still</span>':a.tage>20?'<span class="chip warn">'+a.tage+' Tage</span>':'<span class="chip good">aktuell</span>'}</td>
+  </tr>`).join("");
+}
+
+function renderObj(){
+  $("#objGrid").innerHTML=objekte.map(o=>`<article class="o">
+    <span class="o-ph">Foto${img(photo(o.seed,480,300),"",esc(o.t))}</span>
+    <div class="o-b">
+      <div class="t">${esc(o.t)}${o.neu?' <span class="chip good">neu</span>':""}</div>
+      <div class="d">${o.fl} · ${o.pr}</div>
+      <div class="d">${esc(o.eig)}</div>
+      <div class="l"><a href="${maps(o.adr)}" target="_blank" rel="noopener">Karte ↗</a><span class="ext">${o.tr} Treffer</span></div>
+    </div>
+  </article>`).join("");
+}
+
+function renderRules(){
+  $("#rules").innerHTML=rules.map(r=>`<div class="rule"><span class="id">${r.id}</span><span class="tx">${esc(r.tx)}</span><span class="ct">${r.ct}</span></div>`).join("");
+  $("#regelN").textContent=rules.length;
+}
+
+/* ---------- charts ---------- */
+function drawLine(){
+  const data=[["Jan",21],["Feb",23],["Mär",22],["Apr",26],["Mai",29],["Jun",31],["Jul",35],["Aug",38]];
+  const W=480,H=180,L=32,R=12,T=12,B=26, iw=W-L-R, ih=H-T-B, max=45;
+  const x=i=>L+(i/(data.length-1))*iw, y=v=>T+ih-(v/max)*ih;
+  let grid="",lbl="";
+  [0,15,30,45].forEach(g=>{grid+=`<line x1="${L}" x2="${W-R}" y1="${y(g)}" y2="${y(g)}" stroke="var(--line)"/>`;
+    lbl+=`<text x="${L-6}" y="${y(g)+3.5}" text-anchor="end" font-family="Outfit, sans-serif" font-size="9" fill="var(--ink-3)">${g}%</text>`;});
+  const pts=data.map((d,i)=>`${x(i).toFixed(1)},${y(d[1]).toFixed(1)}`).join(" ");
+  const xl=data.map((d,i)=>`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-family="Outfit, sans-serif" font-size="9" fill="var(--ink-3)">${d[0]}</text>`).join("");
+  const last=data.length-1;
+  $("#lineChart").innerHTML=`
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--brand)" stop-opacity=".18"/><stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>
+    ${grid}${lbl}
+    <path d="M${L},${T+ih} L${pts.split(" ").join(" L")} L${W-R},${T+ih} Z" fill="url(#ag)"/>
+    <polyline points="${pts}" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${x(last)}" cy="${y(data[last][1])}" r="4" fill="var(--brand)" stroke="var(--surface)" stroke-width="2"/>
+    ${xl}`;
+}
+function drawBars(){
+  const d=[["bis 300 m²",4],["300–800 m²",6],["800–1'500 m²",5],["1'500–2'500 m²",9],["über 2'500 m²",7],["Bauland",3]];
+  const max=Math.max(...d.map(r=>r[1]));
+  $("#barChart").innerHTML=d.map(([l,v])=>`<div class="hbar"><span class="l">${l}</span><span class="t"><i style="width:${(v/max*100).toFixed(1)}%"></i></span><span class="v">${v}</span></div>`).join("");
+}
+
+/* ---------- drawer: match ---------- */
+function openMatch(m){
+  const o=obj(m.oid), a=anf(m.aid);
+  $("#dT").textContent=m.p+"% Treffer";
+  $("#dS").textContent=o.t+" ↔ "+a.f;
+  $("#dB").innerHTML=`
+    <div>
+      <div class="pair">
+        <span class="thumb">${img(photo(o.seed,240,160),"","")}<span class="ph">Foto</span></span>
+        <div><div style="font-weight:600">${esc(o.t)}</div>
+          <div style="font-size:12.5px;color:var(--ink-2)">${o.fl} · ${o.pr}</div>
+          <a href="${maps(o.adr)}" target="_blank" rel="noopener" style="font-size:12px">Karte ↗</a></div>
+      </div>
+      <div class="pair">
+        ${logo(a.f,0)}
+        <div><div style="font-weight:600">${esc(a.f)}</div>
+          <div style="font-size:12.5px;color:var(--ink-2)">sucht ${esc(a.sucht)}</div>
+          <a href="${web(a.f)}" target="_blank" rel="noopener" style="font-size:12px">Website ↗</a></div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-t">Was verglichen wurde</div>
+      <table class="cmp">
+        <thead><tr><th></th><th>Gesucht</th><th>Objekt</th><th></th></tr></thead>
+        <tbody>${m.crit.map(([k,g,ob,st])=>`<tr>
+          <td class="k">${esc(k)}</td><td>${esc(g)}</td><td>${esc(ob)}</td>
+          <td class="st ${st}">${st==="ok"?"✓":st==="nu"?"~":"✕"}</td></tr>`).join("")}</tbody>
+      </table>
+      ${m.hint?`<p class="note" style="margin-top:11px">${esc(m.hint)}</p>`:""}
+    </div>
+    <div class="acts">
+      <button class="btn btn-p btn-sm" data-md="send" data-m="${m.id}">Angebot senden</button>
+      <button class="btn btn-sm" data-md="no" data-m="${m.id}">Verwerfen</button>
+    </div>`;
+  showDrawer();
+}
+
+/* ---------- drawer: anfrage ---------- */
+function showDrawer(){
+  $("#drawer").classList.add("on");$("#drawer").setAttribute("aria-hidden","false");$("#scrim").classList.add("on");
+}
+
+const F=[["sucht","Sucht"],["ort","Ort"],["bud","Budget"],["bez","Bezug"]];
+
+function openDrawer(a,edit){
+  const p=pulsOf(a), miss=F.filter(([k])=>!a[k]).length;
+  $("#dT").textContent=a.f;
+  $("#dS").textContent=a.id+" · "+a.br+(a.vertr?" · vertraulich":"");
+
+  const daten=edit
+    ? `<div class="ed">
+         ${F.map(([k,l])=>`<label for="e-${k}">${l}</label><input id="e-${k}" data-e="${k}" class="${a[k]?"":"miss"}" value="${a[k]?esc(a[k]):""}" placeholder="fehlt">`).join("")}
+       </div>
+       <div class="acts">
+         <button class="btn btn-p btn-sm" data-ae="save" data-id="${a.id}">Speichern</button>
+         <button class="btn btn-sm" data-ae="cancel" data-id="${a.id}">Abbrechen</button>
+       </div>`
+    : `<dl class="kv">
+         ${F.map(([k,l])=>`<dt>${l}</dt><dd>${a[k]?(k==="ort"?`<a href="${maps(a.ort+", Schweiz")}" target="_blank" rel="noopener">${esc(a.ort)} ↗</a>`:esc(a[k])):'<span class="q">?</span>'}</dd>`).join("")}
+         <dt>Puls</dt><dd><b style="color:${pulsCol(p)}">${p}</b> · seit ${a.tage} Tagen</dd>
+       </dl>
+       <div class="acts">
+         <button class="btn btn-sm" data-ae="edit" data-id="${a.id}">Bearbeiten</button>
+         <a class="btn btn-sm" href="${web(a.f)}" target="_blank" rel="noopener">Website ↗</a>
+       </div>`;
+
+  $("#dB").innerHTML=`
+    <div>
+      <div class="sec-t">Daten${miss?` · ${miss} fehlt`:""}</div>
+      ${daten}
+    </div>
+    <div>
+      <div class="sec-t">Bester Treffer · ${esc(a.obj)}</div>
+      ${a.score.map(([l,v])=>`<div class="srow"><span>${l}</span><span class="bar"><i class="${v>=70?"":v>=40?"w":"c"}" style="width:${v}%"></i></span><span class="val">${v}</span></div>`).join("")}
+    </div>
+    <div>
+      <div class="sec-t">Verlauf</div>
+      <ul class="log">
+        <li><time>25.08.</time><span>Neu gematcht</span></li>
+        <li><time>19.07.</time><span>Angebot gesendet</span></li>
+        <li><time>21.05.</time><span>Telefonisch bestätigt</span></li>
+      </ul>
+    </div>`;
+  showDrawer();
+}
+function closeDrawer(){$("#drawer").classList.remove("on");$("#drawer").setAttribute("aria-hidden","true");$("#scrim").classList.remove("on");$$("tbody tr").forEach(r=>r.removeAttribute("aria-selected"));}
+
+function doMatch(m,send){
+  if(send){
+    const a=anf(m.aid), o=obj(m.oid);
+    msgs.unshift({id:"P"+Date.now(),dir:"out",from:"An: "+a.f,mail:"kontakt@example.ch",subj:o.t+" für "+a.f,time:"jetzt",kind:"angebot",
+      why:m.facts.map(([k,t])=>[k,t]),
+      draft:{to:"kontakt@example.ch",subj:o.t+" verfügbar",body:"Guten Tag\n\n"+o.t+" ("+o.fl+", "+o.pr+") ist verfügbar und passt zu Ihrer Suche.\n\nBesichtigung möglich?\n\nFreundliche Grüsse\nA. Zellweger"}});
+    matches=matches.filter(x=>x.id!==m.id);
+    renderMatches();renderMsgs();
+    toast("Entwurf im Postfach","Wartet auf Freigabe.","info");
+  } else {
+    matches=matches.filter(x=>x.id!==m.id);renderMatches();
+    toast("Verworfen","");
+  }
+}
+
+/* ---------- navigation ---------- */
+const titles={cockpit:["Matches","25. August 2026"],postfach:["Postfach","Eingang und Entwürfe"],anfragen:["Anfragen","8 offen"],angebote:["Objekte","6 im Bestand"],regeln:["Regeln","gelernt aus Entscheiden"],zahlen:["Zahlen","2026"]};
+function go(v){
+  $$("#nav button").forEach(x=>x.setAttribute("aria-current",String(x.dataset.v===v)));
+  $$(".view").forEach(s=>s.classList.remove("on"));
+  $("#v-"+v).classList.add("on");
+  $("#vTitle").textContent=titles[v][0];
+  $("#vSub").textContent=titles[v][1];
+  $(".scroll").scrollTop=0;
+}
+$("#nav").addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b)go(b.dataset.v);});
+
+/* ---------- klicks ---------- */
+document.addEventListener("click",e=>{
+  /* match im drawer öffnen */
+  const mc=e.target.closest(".m");
+  if(mc&&!e.target.closest("[data-ma]")&&!e.target.closest("a")){
+    const m=matches.find(x=>x.id===mc.dataset.m); if(m){openMatch(m);return;}
+  }
+
+  /* aktionen aus dem match-drawer */
+  const md=e.target.closest("[data-md]");
+  if(md){
+    const m=matches.find(x=>x.id===md.dataset.m); if(!m)return;
+    closeDrawer();
+    doMatch(m,md.dataset.md==="send");
+    return;
+  }
+
+  /* anfrage bearbeiten */
+  const ae=e.target.closest("[data-ae]");
+  if(ae){
+    const a=anf(ae.dataset.id); if(!a)return;
+    if(ae.dataset.ae==="edit"){openDrawer(a,true);return;}
+    if(ae.dataset.ae==="cancel"){openDrawer(a,false);return;}
+    if(ae.dataset.ae==="save"){
+      $$("#dB [data-e]").forEach(inp=>{a[inp.dataset.e]=inp.value.trim()||null;});
+      const off=F.filter(([k])=>!a[k]).length;
+      renderAnf();renderHero();openDrawer(a,false);
+      toast("Gespeichert",off?off+" Angabe fehlt noch":"Alle Angaben vollständig.");
+      return;
+    }
+  }
+
+  /* match aktionen */
+  const ma=e.target.closest("[data-ma]");
+  if(ma){
+    const card=ma.closest(".m"), m=matches.find(x=>x.id===card.dataset.m);
+    if(m)doMatch(m,ma.dataset.ma==="send");
+    return;
+  }
+
+  /* nachfragen aus "lange still" */
+  const ask=e.target.closest("[data-ask]");
+  if(ask){
+    const a=anf(ask.dataset.ask);
+    msgs.unshift({id:"P"+Date.now(),dir:"out",from:"An: "+a.f,mail:"kontakt@example.ch",subj:"Suche noch aktuell?",time:"jetzt",kind:"nachfass",
+      why:[["no",a.tage+" Tage kein Kontakt"]],
+      draft:{to:"kontakt@example.ch",subj:"Suche noch aktuell?",body:"Guten Tag\n\nIst Ihre Suche nach "+a.sucht+" noch aktuell?\n\nFreundliche Grüsse\nA. Zellweger"}});
+    renderMsgs();sel=msgs[0].id;renderDet();go("postfach");
+    toast("Entwurf erstellt","Im Postfach unter Entwürfe.","info");
+    return;
+  }
+
+  /* postfach auswahl */
+  const pm=e.target.closest("[data-p]");
+  if(pm){sel=pm.dataset.p;renderMsgs();renderDet();return;}
+
+  const tb=e.target.closest("#tabs .tab");
+  if(tb){filter=tb.dataset.f;$$("#tabs .tab").forEach(t=>t.setAttribute("aria-pressed",String(t===tb)));renderMsgs();return;}
+
+  /* postfach aktionen */
+  const pa=e.target.closest("[data-pa]");
+  if(pa){
+    const m=msgs.find(x=>x.id===sel); if(!m)return;
+    const act=pa.dataset.pa;
+
+    if(act==="save"){
+      anfragen.unshift({id:"A-"+(120+anfragen.length),f:m.fields[0][1],br:m.fields[5]&&m.fields[5][1]||"—",
+        sucht:m.fields[1][1],ort:m.fields[2][1],bud:m.fields[4][1],bez:m.fields[3][1],tage:0,vertr:false,
+        score:[["Fläche",81],["Preis",0],["Lage",88],["Termin",70]],obj:"— Budget fehlt"});
+      msgs=msgs.filter(x=>x.id!==m.id);sel=msgs[0]&&msgs[0].id;
+      renderMsgs();renderDet();renderAnf();renderHero();renderStill();
+      toast("Anfrage gespeichert","Offene Felder sind markiert.");
+      return;
+    }
+    if(act==="ask"){
+      msgs.unshift({id:"P"+Date.now(),dir:"out",from:"An: "+m.from,mail:m.mail,subj:m.draft.subj,time:"jetzt",kind:"nachfass",
+        why:[["nu","Fehlende Angaben"]],draft:m.draft});
+      sel=msgs[0].id;renderMsgs();renderDet();
+      toast("Rückfrage vorbereitet","");
+      return;
+    }
+    if(act==="send"){
+      msgs=msgs.filter(x=>x.id!==m.id);sel=msgs[0]&&msgs[0].id;
+      renderMsgs();renderDet();
+      toast("Gesendet","");
+      return;
+    }
+    if(act==="edit"){
+      const box=$("#det .bd");
+      if(box){const ta=document.createElement("textarea");ta.value=m.draft.body;box.replaceWith(ta);ta.focus();pa.textContent="Übernehmen";}
+      else{const ta=$("#det textarea");if(ta){m.draft.body=ta.value;renderDet();toast("Angepasst","");}}
+      return;
+    }
+    if(act==="drop"){$("#rej").classList.toggle("on");return;}
+  }
+
+  const rr=e.target.closest("#rej [data-r]");
+  if(rr){
+    const m=msgs.find(x=>x.id===sel);
+    rules.push({id:"R-"+String(rules.length+1).padStart(2,"0"),tx:rr.dataset.r,ct:"neu"});
+    msgs=msgs.filter(x=>x.id!==m.id);sel=msgs[0]&&msgs[0].id;
+    renderMsgs();renderDet();renderRules();
+    toast("Neue Regel","„"+rr.dataset.r+"“ ist gespeichert.","warn");
+    return;
+  }
+
+  /* tabelle → drawer */
+  const row=e.target.closest("tbody tr[data-id]");
+  if(row&&!e.target.closest("a")){
+    const a=anf(row.dataset.id);
+    if(a){$$("tbody tr").forEach(r=>r.removeAttribute("aria-selected"));row.setAttribute("aria-selected","true");openDrawer(a,!!e.target.closest(".q"));}
+  }
+});
+
+$("#seg").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-s]"); if(!b)return;
+  $$("#seg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  $("#gateTxt").textContent={1:"Stufe 1 · alles bestätigen",2:"Stufe 2 · Nachfragen automatisch",3:"Stufe 3 · voll autonom"}[b.dataset.s];
+});
+
+$("#dX").addEventListener("click",closeDrawer);
+$("#scrim").addEventListener("click",closeDrawer);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer();});
+$("#themeBtn").addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme",cur==="dark"?"light":"dark");
+  drawLine();renderHero();
+});
+
+/* ---------- demo ---------- */
+let running=false;
+$("#demoBtn").addEventListener("click",()=>{
+  if(running)return; running=true; $("#demoBtn").textContent="läuft …";
+  setTimeout(()=>toast("Neue Mail","Von b.frei@thermo-kunststoff.ch","info"),300);
+  setTimeout(()=>{
+    msgs.unshift({id:"P"+Date.now(),dir:"in",from:"B. Frei · Thermo-Kunststoff GmbH",mail:"b.frei@thermo-kunststoff.ch",
+      subj:"Suche Produktionsfläche",time:"jetzt",gap:true,
+      text:"Guten Tag\n\nWir suchen 900–1'400 m² Produktion im Wasseramt, Bezug Frühling 2027.\n\nB. Frei",
+      fields:[["Firma","Thermo-Kunststoff GmbH"],["Fläche","900–1'400 m²"],["Ort","Wasseramt"],["Bezug","Q2 2027"],["Budget",null],["Branche",null]],
+      draft:{to:"b.frei@thermo-kunststoff.ch",subj:"Kurze Rückfrage",body:"Guten Tag Herr Frei\n\nWie hoch ist Ihr Kostenrahmen pro m²?\n\nFreundliche Grüsse\nA. Zellweger"}});
+    sel=msgs[0].id;filter="all";
+    $$("#tabs .tab").forEach(t=>t.setAttribute("aria-pressed",String(t.dataset.f==="all")));
+    renderMsgs();renderDet();go("postfach");
+    const el=$('[data-p="'+sel+'"]'); if(el)el.classList.add("flash");
+    toast("2 Angaben fehlen","Budget und Branche.","warn");
+  },1800);
+  setTimeout(()=>{$("#demoBtn").textContent="▶ Demo";running=false;},4200);
+});
+
+/* ---------- init ---------- */
+renderHero();renderMatches();renderStill();renderMsgs();renderDet();renderAnf();renderObj();renderRules();drawLine();drawBars();
+})();
+</script>
+</body>
+</html>
