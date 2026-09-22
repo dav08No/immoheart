@@ -14,7 +14,7 @@ wiederholt** — das README bleibt die fachliche Quelle.
 
 | | |
 |---|---|
-| Repo | `github.com/SergeSchaerer/espaceSolothurn`, Branch `main`, bisher nur `README.md` |
+| Repo | `github.com/dav08No/immoheart` (bis 2026-09-22 `github.com/SergeSchaerer/espaceSolothurn` — auf ein eigenes Repo umgestellt, weil Vercels GitHub-App keinen Zugriff auf ein fremdes Repo erhielt), Branch `main` |
 | Prototyp | `docs/puls-cockpit-v5.html` — vorhanden, durchgesehen |
 | Notion | Für den Connector nicht freigegeben; Abschnitt „Ergänzungen aus Notion" im README ist leer |
 | Toolchain | Node 22.14, npm 11.6.2, Supabase CLI 2.51 |
