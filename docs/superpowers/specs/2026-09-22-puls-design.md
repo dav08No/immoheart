@@ -57,12 +57,22 @@ Fake-Daten simuliert. Das wird jetzt echt gebaut, und zwar früh: Postfach
 mit KI-Erkennung kommt direkt nach Auth und Layout, vor den UI-Bildschirmen
 für Anfragen und Objekte (siehe Meilensteine).
 
-**D7 · Mail-Eingang bleibt manuelles Einfügen, das Lesen übernimmt die
-KI.** Mitarbeitende fügen den Rohtext einer eingehenden Mail über ein
-Formular im Postfach ein. Kein IMAP, kein Webhook, kein externer
-Maildienst — das wäre Infrastruktur, die der aktuelle Bedarf nicht
-rechtfertigt. Ab dort übernimmt die KI das Lesen: Sie zerlegt den Text in
-die Felder der `anfragen`-Tabelle (`erkannte_felder`).
+**D7 · Mail-Eingang bleibt vorerst manuelles Einfügen, die Verarbeitung
+ist von der Quelle entkoppelt.** Mitarbeitende fügen den Rohtext einer
+eingehenden Mail über ein Formular im Postfach ein. Kein IMAP, kein
+Webhook, kein externer Maildienst — das wäre Infrastruktur, die der
+aktuelle Bedarf nicht rechtfertigt.
+
+Damit ein echter Posteingang später ohne Umbau nachgerüstet werden kann,
+läuft alles, was nach dem Rohtext passiert, durch eine einzige Funktion:
+`nachrichtEingegangen(text, von, betreff)` in `app/actions/nachrichten.ts`.
+Sie legt die `nachrichten`-Zeile an, ruft `erkenneFelder` auf und stösst
+bei Lücken den Rückfrage-Entwurf an. Das Einfügen-Formular ruft sie mit
+dem eingefügten Text auf; ein späterer IMAP-Job oder
+Weiterleitungs-Webhook würde dieselbe Funktion mit denselben drei Werten
+aufrufen — nur die Quelle wechselt, an `erkenneFelder` oder den
+Entwürfen ändert sich nichts. Das ist keine Vorarbeit, die heute gebaut
+wird, nur ein Schnitt, der offengehalten wird.
 
 **D8 · Die KI ergänzt die Matching-Logik, sie ersetzt sie nicht.** Zwei
 getrennte Zuständigkeiten:
