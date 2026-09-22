@@ -14,7 +14,7 @@ wiederholt** — das README bleibt die fachliche Quelle.
 
 | | |
 |---|---|
-| Repo | `github.com/SergeSchaerer/espaceSolothurn`, Branch `main`, bisher nur `README.md` |
+| Repo | `github.com/dav08No/immoheart` (bis 2026-09-22 `github.com/SergeSchaerer/espaceSolothurn` — auf ein eigenes Repo umgestellt, weil Vercels GitHub-App keinen Zugriff auf ein fremdes Repo erhielt), Branch `main` |
 | Prototyp | `docs/puls-cockpit-v5.html` — vorhanden, durchgesehen |
 | Notion | Für den Connector nicht freigegeben; Abschnitt „Ergänzungen aus Notion" im README ist leer |
 | Toolchain | Node 22.14, npm 11.6.2, Supabase CLI 2.51 |
@@ -130,7 +130,7 @@ für Production **und** Preview:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://rvxlvrrpltmuzuomdwdf.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | der Publishable Key des Projekts |
 | `SUPABASE_SERVICE_ROLE_KEY` | nur aus dem Supabase-Dashboard, **nie** mit `NEXT_PUBLIC_` und nie im Repo |
-| `ANTHROPIC_API_KEY` | aus der [Anthropic Console](https://console.anthropic.com/settings/keys), nur serverseitig, nie `NEXT_PUBLIC_` |
+| `GEMINI_API_KEY` | aus [Google AI Studio](https://aistudio.google.com/apikey), kostenloses Kontingent, nur serverseitig, nie `NEXT_PUBLIC_` |
 
 `.env.local` steht in `.gitignore`. `.env.example` enthält die Namen ohne Werte.
 
@@ -160,7 +160,7 @@ Jeder Schritt endet grün, deploybar und auf Vercel sichtbar.
 | M10 | Zahlen |
 
 M4 bis M8 setzen den Prototyp voraus. M0 bis M3 laufen ohne ihn.
-M5 und M8 setzen zusätzlich `ANTHROPIC_API_KEY` voraus (siehe
+M5 und M8 setzen zusätzlich `GEMINI_API_KEY` voraus (siehe
 Umgebungsvariablen) — ohne Schlüssel bleiben Felder leer bzw. es entsteht
 kein Entwurf, das Speichern von Hand funktioniert trotzdem weiter.
 
@@ -181,8 +181,8 @@ Die acht Kriterien aus dem README gelten unverändert. Ergänzend:
   Variablen eintragen macht Davide von Hand.
 - **Service-Role-Key** ist über die Supabase-Werkzeuge nicht abrufbar und
   muss aus dem Dashboard kopiert werden.
-- **ANTHROPIC_API_KEY** muss Davide aus der Anthropic Console besorgen
-  und in `.env.local` sowie bei Vercel eintragen.
+- **GEMINI_API_KEY** muss Davide aus Google AI Studio besorgen (kostenloses
+  Kontingent) und in `.env.local` sowie bei Vercel eintragen.
 - **Branch-Schutz** auf `main` setzt Admin-Rechte am Repo voraus. Ohne sie
   gilt D2 als Vereinbarung, nicht als erzwungene Regel.
 
