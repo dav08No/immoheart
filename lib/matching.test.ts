@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { punkteFlaeche, punktePreis } from "./matching"
+import { punkteBezug, punkteFlaeche, punkteLage, punktePreis } from "./matching"
 import type { Anfrage, Objekt } from "@/types"
 
 function anfrage(teil: Partial<Anfrage> = {}): Anfrage {
@@ -69,5 +69,33 @@ describe("punktePreis", () => {
     // und bedeutet damit explizit "0 CHF/m² Budget". Ohne Sonderfall-Guard
     // sorgt IEEE-754 (positive/0 = Infinity) dafür, dass Math.max(0, ...) korrekt 0 liefert.
     expect(punktePreis(anfrage({ budgetProM2: 0 }), objekt({ preisProM2: 200 }))).toBe(0)
+  })
+})
+
+describe("punkteLage", () => {
+  it("gibt volle Punktzahl bei gleichem Ort", () => {
+    expect(punkteLage(anfrage({ ort: "Solothurn" }), objekt({ ort: "Solothurn" }))).toBe(100)
+  })
+  it("gibt Teilpunkte bei gleicher Region", () => {
+    expect(punkteLage(anfrage({ ort: "Wasseramt" }), objekt({ ort: "Zuchwil" }))).toBe(60)
+  })
+  it("gibt wenig Punkte bei unterschiedlicher Region", () => {
+    expect(punkteLage(anfrage({ ort: "Solothurn" }), objekt({ ort: "Bettlach" }))).toBeLessThan(60)
+  })
+  it("liefert 50 wenn kein Ort genannt ist", () => {
+    expect(punkteLage(anfrage({ ort: null }), objekt())).toBe(50)
+  })
+})
+
+describe("punkteBezug", () => {
+  it("gibt volle Punktzahl wenn beide 'sofort' sind", () => {
+    expect(punkteBezug(anfrage({ bezug: "sofort" }), objekt({ verfuegbarAb: new Date() }))).toBe(100)
+  })
+  it("gibt Teilpunkte bei bis zu einem Monat Abweichung", () => {
+    const inDreiWochen = new Date(Date.now() + 21 * 86_400_000)
+    expect(punkteBezug(anfrage({ bezug: "sofort" }), objekt({ verfuegbarAb: inDreiWochen }))).toBe(60)
+  })
+  it("liefert 50 wenn kein Bezugstermin genannt ist", () => {
+    expect(punkteBezug(anfrage({ bezug: null }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
   })
 })

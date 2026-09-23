@@ -24,3 +24,29 @@ export function punktePreis(anfrage: Anfrage, objekt: Objekt): number {
   const ueberTolerierten = ueberschreitung - 12
   return Math.max(0, Math.round(100 - ueberTolerierten * 2))
 }
+
+const REGIONEN: Record<string, string> = {
+  Solothurn: "Solothurn", Bettlach: "Jura", Selzach: "Jura",
+  Zuchwil: "Wasseramt", Derendingen: "Wasseramt", Biberist: "Wasseramt", Luterbach: "Wasseramt",
+  Wasseramt: "Wasseramt",
+}
+
+export function punkteLage(anfrage: Anfrage, objekt: Objekt): number {
+  if (anfrage.ort === null) return 50
+  if (anfrage.ort === objekt.ort) return 100
+  const regionAnfrage = REGIONEN[anfrage.ort] ?? anfrage.ort
+  const regionObjekt = REGIONEN[objekt.ort] ?? objekt.ort
+  if (regionAnfrage === regionObjekt) return 60
+  return 20
+}
+
+export function punkteBezug(anfrage: Anfrage, objekt: Objekt): number {
+  if (anfrage.bezug === null) return 50
+  if (anfrage.bezug.trim().toLowerCase() === "sofort") {
+    const tage = (objekt.verfuegbarAb.getTime() - Date.now()) / 86_400_000
+    if (tage <= 0) return 100
+    if (tage <= 30) return 60
+    return 20
+  }
+  return 60
+}
