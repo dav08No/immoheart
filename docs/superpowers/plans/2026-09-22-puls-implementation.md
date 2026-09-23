@@ -2696,13 +2696,13 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 - [ ] **Step 4: `components/ui/Feld.tsx`**
 
-Zentrale Umsetzung der wichtigsten Textregel des Projekts: ein fehlender Wert erscheint als **?**, nicht als Erklärsatz.
+Zentrale Umsetzung der wichtigsten Textregel des Projekts: ein fehlender Wert erscheint als **?**, nicht als Erklärsatz. Ein rein aus Leerzeichen bestehender Wert zählt wie `null`/`""` als "fehlt" — analog zu `punkteLage`/`punkteBezug` in `lib/matching.ts` (M2), wo dieselbe Whitespace-Normalisierung nötig war. Da `Feld` von praktisch jeder Komponente ab M4 verwendet wird, hätte eine Abweichung hiervon genau den M2-Bug an vielen Stellen gleichzeitig reproduziert statt an einer.
 
 ```tsx
 type Props = { label: string; wert: string | null }
 
 export function Feld({ label, wert }: Props) {
-  const fehlt = wert === null || wert === ""
+  const fehlt = wert === null || wert.trim() === ""
   return (
     <div className={`rounded-lg border px-3 py-2 ${fehlt ? "border-warn bg-warn-bg" : "border-line"}`}>
       <div className="text-xs text-ink-3">{label}</div>
@@ -2758,9 +2758,16 @@ export function FreigabeSchalter({ aktuelleStufe }: { aktuelleStufe: 1 | 2 | 3 }
   const [istPending, startTransition] = useTransition()
 
   function waehlen(neu: 1 | 2 | 3) {
+    const vorherige = stufe
     setStufe(neu)
     startTransition(() => {
-      setzeFreigabeStufe(neu)
+      // setzeFreigabeStufe kann werfen (M3-Validierungs-Guard, oder
+      // .select().single(), falls RLS die Zeile herausfiltert). Ohne
+      // .catch würde die optimistische Anzeige (setStufe(neu) oben) bei
+      // einem Fehlschlag nie zurückgesetzt -- die Oberfläche zeigt dann
+      // eine "übernommene" Stufe, die nie gespeichert wurde, ohne jeden
+      // sichtbaren Hinweis.
+      setzeFreigabeStufe(neu).catch(() => setStufe(vorherige))
     })
   }
 
@@ -2810,12 +2817,20 @@ const EINTRAEGE = [
 
 export function Sidebar({ profil }: { profil: Profil }) {
   const pfad = usePathname()
-  const initialen = profil.name
-    .split(" ")
-    .map((teil) => teil[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
+  // .filter(Boolean) fängt Doppel-Leerzeichen und einen pathologischen
+  // Fall aus Task 23s Trigger ab (coalesce(..., split_part(email,'@',1)) --
+  // eine E-Mail mit leerem lokalem Teil würde sonst über String(undefined)
+  // das buchstäbliche Wort "undefined" in den Initialen erzeugen, da
+  // TypeScripts String-Indexzugriff (anders als Array-/Record-Zugriff)
+  // auch unter noUncheckedIndexedAccess als immer-string typisiert ist.
+  const initialen =
+    profil.name
+      .split(" ")
+      .map((teil) => teil[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "?"
 
   return (
     <aside className="flex h-screen w-[206px] flex-none flex-col border-r border-line bg-surface">
@@ -2952,12 +2967,17 @@ type Props = {
 
 export function Drawer({ offen, titel, untertitel, onSchliessen, children }: Props) {
   useEffect(() => {
+    // "if (offen && ...)" statt eines global immer aktiven Listeners:
+    // sonst würde jede geschlossene Drawer-Instanz auf jeden Escape-Druck
+    // im ganzen App reagieren -- harmlos, solange onSchliessen idempotent
+    // ist, aber unnötige Arbeit und ein Footgun, sobald onSchliessen
+    // irgendwann mehr tut als nur offen=false zu setzen.
     function beiEscape(ereignis: KeyboardEvent) {
-      if (ereignis.key === "Escape") onSchliessen()
+      if (offen && ereignis.key === "Escape") onSchliessen()
     }
     document.addEventListener("keydown", beiEscape)
     return () => document.removeEventListener("keydown", beiEscape)
-  }, [onSchliessen])
+  }, [offen, onSchliessen])
 
   return (
     <>
@@ -2969,6 +2989,12 @@ export function Drawer({ offen, titel, untertitel, onSchliessen, children }: Pro
       />
       <aside
         aria-hidden={!offen}
+        // inert (nicht nur aria-hidden) entfernt den geschlossenen Drawer
+        // zusätzlich aus der Tab-Reihenfolge und blockiert Pointer-Events --
+        // sonst bliebe sein Schliessen-Button (und jeder von children
+        // mitgebrachte interaktive Inhalt) per Tab erreichbar, obwohl er
+        // unsichtbar und aria-hidden ist: ein bekanntes WAI-ARIA-Antipattern.
+        inert={!offen ? true : undefined}
         className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col border-l border-line bg-surface shadow-2xl transition-transform ${
           offen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -3003,6 +3029,8 @@ git commit -m "feat: generischer Drawer"
 **Files:**
 - Create: `app/(app)/layout.tsx`
 - Move: `app/page.tsx` → `app/(app)/page.tsx`
+- Modify: `app/layout.tsx` (Root-Layout, Cookie-Read gegen Dunkelmodus-Flackern — siehe Step 2a)
+- Modify: `components/layout/Header.tsx` (Umschalter setzt zusätzlich das Cookie — siehe Step 2a)
 
 **Interfaces:**
 - Consumes: `holeEigenesProfil` (M3 Task 24), `Sidebar` (Task 31).
@@ -3036,6 +3064,65 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 }
 ```
 
+- [ ] **Step 2a: Dunkelmodus-Flackern beim Laden vermeiden**
+
+Task 32s `Header` liest die gespeicherte Theme-Einstellung nur in einem
+`useEffect` (also erst nach dem ersten Rendern/Hydration). Da `app/layout.tsx`
+bislang kein `data-theme` setzt, rendert jede Seite zunächst hell und
+springt danach sichtbar auf dunkel um — bei jedem Laden, für jede Nutzerin
+mit gespeicherter Dunkelmodus-Einstellung. Gefunden bei der Task-32-Review;
+absichtlich nicht dort behoben, weil `app/layout.tsx` erst hier zum ersten
+Mal zu einer Server-Component-Umgebung wird, in der ein serverseitiger
+Cookie-Read sauber möglich ist (kein Inline-`<script>` nötig, kein
+CSP-Nonce-Aufwand für die Zukunft).
+
+`app/layout.tsx` liest das Cookie serverseitig und rendert `data-theme`
+direkt mit, statt sich auf einen nachträglichen Client-Effekt zu verlassen:
+
+```tsx
+import type { Metadata } from "next"
+import { Outfit } from "next/font/google"
+import { cookies } from "next/headers"
+import "./globals.css"
+
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" })
+
+export const metadata: Metadata = {
+  title: "PULS",
+  description: "Vermittlung von Gewerbeimmobilien für espaceSOLOTHURN",
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies()
+  const theme = cookieStore.get("puls-theme")?.value === "dark" ? "dark" : "light"
+
+  return (
+    <html lang="de" data-theme={theme}>
+      <body className={`${outfit.variable} font-sans`}>{children}</body>
+    </html>
+  )
+}
+```
+
+Damit das beim nächsten vollständigen Laden greift, muss `Header`s
+Umschalt-Funktion das Cookie zusätzlich zu `localStorage` setzen (die
+bestehende sofortige Client-seitige Umschaltung per `setAttribute` bleibt
+unverändert für den unmittelbaren visuellen Wechsel ohne Reload):
+
+```tsx
+function umschalten() {
+  const neu = !dunkel
+  setDunkel(neu)
+  document.documentElement.setAttribute("data-theme", neu ? "dark" : "light")
+  localStorage.setItem("puls-theme", neu ? "dark" : "light")
+  document.cookie = `puls-theme=${neu ? "dark" : "light"}; path=/; max-age=31536000; samesite=lax`
+}
+```
+
+`git add app/layout.tsx components/layout/Header.tsx` gehört zum Commit
+dieser Task dazu (Dateiliste oben entsprechend erweitert um diese beiden
+bestehenden Dateien).
+
 - [ ] **Step 3: Platzhalterseite an das neue Muster anpassen**
 
 Jede echte Seite rendert `Header` selbst und umschliesst ihren Inhalt mit einem scrollbaren Container — hier schon als Muster für M6–M10.
@@ -3061,7 +3148,10 @@ Expected: Seitenleiste links mit sechs Navigationspunkten, „Matches" aktiv her
 - [ ] **Step 5: Dunkelmodus manuell prüfen**
 
 Auf den Dunkelmodus-Knopf klicken.
-Expected: Hintergrund wechselt zu `#161A33`, Seite neu laden — Einstellung bleibt erhalten (localStorage).
+Expected: Hintergrund wechselt zu `#161A33`, Seite neu laden (harter Reload,
+nicht nur Client-Navigation) — Einstellung bleibt erhalten UND das Layout
+rendert beim Neuladen direkt dunkel, ohne sichtbares Aufblitzen von hell
+auf dunkel (Cookie-Read in `app/layout.tsx`, siehe Step 2a).
 
 - [ ] **Step 6: Commit**
 
