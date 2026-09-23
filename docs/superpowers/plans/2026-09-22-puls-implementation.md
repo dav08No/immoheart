@@ -4479,6 +4479,48 @@ export default async function PostfachPage() {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (`PostfachAnsicht.tsx`)** (der
+Block in Step 1 zeigt, wie beide Callout-Notizen oben bereits ankündigen, noch
+die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
+
+1. **Fehlerbehandlung für `alsAnfrageSpeichern`**: Wie im "Offenen Punkt aus
+   Task 39s Review" gefordert, ruft `PostfachAnsicht` `alsAnfrageSpeichern`
+   nicht mehr als Fire-and-forget auf. Eine neue async Funktion
+   `speichernAlsAnfrage(nachrichtId, nutzungUeberschreibung?)` kapselt den
+   Aufruf in try/catch; ein Fehler landet in lokalem `fehler`-State und wird
+   oben im rechten Panel in `text-crit` angezeigt -- dieselbe Konvention wie
+   in `MailEinfuegen` (Task 40) und `EntwurfDetail` (Task 43).
+2. **Argument-Weiterreichung**: `onSpeichern={(nutzungUeberschreibung) =>
+   void speichernAlsAnfrage(ausgewaehlt.id, nutzungUeberschreibung)}` reicht
+   die von `EingangDetail` (Task 42) durchgereichte manuelle
+   Nutzung-Überschreibung an `alsAnfrageSpeichern` weiter, wie im Nachtrag aus
+   Task 42 oben vorgegeben.
+3. **`key={nachricht.id}` auf `<EntwurfDetail>`**: ergänzt, wie von Task 43s
+   Review gefordert (schliesst die dort dokumentierte
+   Stale-Async-Response-Race beim Wechsel der Auswahl).
+4. **Auswahl nach erfolgreichem Speichern**: `alsAnfrageSpeichern` löscht bei
+   Erfolg die Quelle-Nachricht (`loescheNachricht`, siehe
+   `app/actions/nachrichten.ts`). `ausgewaehlt = nachrichten.find(...) ??
+   null` würde nach dem nächsten `revalidatePath`-Refresh zwar ohnehin
+   automatisch `null` ergeben (kein Crash), aber bis dahin könnte kurzzeitig
+   eine bereits gelöschte Zeile angezeigt werden. `speichernAlsAnfrage` setzt
+   deshalb bei Erfolg `ausgewaehlteId` explizit auf `null` -- die Detailansicht
+   zeigt danach sofort "Nachricht wählen.", die Liste selbst aktualisiert sich
+   sobald `revalidatePath` durchkommt.
+5. **Race-Schutz analog zu `EntwurfDetail`s `nachrichtIdRef`**: Während
+   `alsAnfrageSpeichern` läuft, ist die Liste nicht gesperrt -- die Nutzerin
+   könnte eine andere Nachricht auswählen, bevor die Antwort eintrifft. Ein
+   `ausgewaehlteIdRef`, in einem `useEffect` synchron zu `ausgewaehlteId`
+   gehalten, wird nach dem `await` mit der ursprünglichen `nachrichtId`
+   verglichen; nur bei Übereinstimmung werden `fehler`/Auswahl-Reset
+   angewendet. Verhindert, dass ein verspäteter Fehler (oder ein verspäteter
+   Erfolgs-Reset) der ALTEN Nachricht auf der inzwischen neu ausgewählten
+   Nachricht landet.
+6. **`Header`-Props stimmten bereits**: anders als bei anderen Tasks in diesem
+   Meilenstein war der `Header`-Aufruf im Code-Block (`titel`/`untertitel`)
+   deckungsgleich mit der tatsächlichen `Header.tsx`-Signatur -- keine
+   Anpassung nötig.
+
 - [ ] **Step 3: Manuell end-to-end prüfen**
 
 Run: `npm run dev`, angemeldet auf `/postfach` öffnen, „Neue Mail einfügen" klicken, folgenden Text einfügen:
