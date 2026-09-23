@@ -3395,11 +3395,15 @@ ${text}
 Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung:
 {"firma": string|null, "flaeche_min": number|null, "flaeche_max": number|null, "ort": string|null, "budget_pro_m2": number|null, "bezug": string|null, "branche": string|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null}
 
-Werte, die im Text nicht vorkommen, werden null. Zahlen ohne Tausendertrennzeichen. "bezug" bleibt der Originaltext des Zeitpunkts (z.B. "Q1 2027", "sofort"). "nutzung" ist genau einer der sieben genannten Werte oder null, wenn unklar.`
+Werte, die im Text nicht vorkommen, werden null. Zahlen ohne Tausendertrennzeichen. "bezug" bleibt der Originaltext des Zeitpunkts (z.B. "Q1 2027", "sofort"). "nutzung" ist genau einer der sechs genannten Werte oder null, wenn unklar.`
 }
 
 export function parseErkennungsAntwort(antwort: string): ErkannteFelder {
-  const bereinigt = antwort.trim().replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "")
+  const bereinigt = antwort
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
   return {
     firma: alsString(daten.firma),
@@ -3524,12 +3528,22 @@ const AUSGABEFORMAT =
   'Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung: {"betreff": string, "body": string}. Der Ton ist knapp, sachlich, per Sie, ohne Floskeln. Unterschrift: "Freundliche Grüsse\\nespaceSOLOTHURN".'
 
 export function parseMailAntwort(antwort: string): Mailentwurf {
-  const bereinigt = antwort.trim().replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "")
+  const bereinigt = antwort
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
-  return {
-    betreff: typeof daten.betreff === "string" ? daten.betreff : "Ihre Anfrage bei espaceSOLOTHURN",
-    body: typeof daten.body === "string" ? daten.body : "",
+  // Bewusst werfen statt auf einen leeren/generischen Platzhalter
+  // auszuweichen: bei Freigabestufe 2/3 (Task 39) wird ein Entwurf ohne
+  // Klick automatisch versendet. Ein stiller Fallback auf body: "" würde
+  // in diesem Fall eine echte, leere E-Mail an eine Firma verschicken,
+  // ohne dass je ein Mensch sie gesehen hätte -- die "wird ja sowieso
+  // gegengelesen"-Annahme stimmt für Stufe 1, aber nicht generell.
+  if (typeof daten.betreff !== "string" || typeof daten.body !== "string") {
+    throw new Error("Unerwartete Antwort der KI: betreff/body fehlen oder haben falschen Typ")
   }
+  return { betreff: daten.betreff, body: daten.body }
 }
 
 async function frageKi(prompt: string): Promise<Mailentwurf> {
@@ -3542,10 +3556,22 @@ async function frageKi(prompt: string): Promise<Mailentwurf> {
   return parseMailAntwort(antwort.text)
 }
 
+// Menschenlesbare Labels statt der rohen snake_case-Schlüssel im Prompt:
+// eine KI, die aufgefordert wird, nach "budget_pro_m2" statt nach "Budget
+// pro m²" zu fragen, übernimmt den technischen Bezeichner erfahrungsgemäss
+// öfter wörtlich in den generierten Text, statt ihn zu übersetzen. Der rohe
+// Schlüssel bleibt zusätzlich im Text (nicht nur das Label), damit die
+// bestehenden toContain-Tests unverändert gültig bleiben.
+const FELD_LABELS: Record<string, string> = {
+  firma: "Firma", flaeche_min: "Fläche min.", flaeche_max: "Fläche max.",
+  ort: "Ort", budget_pro_m2: "Budget pro m²", bezug: "Bezugstermin",
+  branche: "Branche", nutzung: "Nutzungsart",
+}
+
 export function baueRueckfragePrompt(felder: ErkannteFelder): string {
   const fehlend = (Object.entries(felder) as [string, unknown][])
     .filter(([, wert]) => wert === null)
-    .map(([schluessel]) => schluessel)
+    .map(([schluessel]) => `${schluessel} (${FELD_LABELS[schluessel] ?? schluessel})`)
   return `Eine Firma hat eine Anfrage nach einer Gewerbefläche geschickt. Folgende Angaben fehlen noch: ${fehlend.join(", ")}.
 
 Schreibe eine kurze Rückfrage-Mail, die genau nach diesen fehlenden Angaben fragt. ${AUSGABEFORMAT}`
@@ -3555,6 +3581,9 @@ export function entwurfRueckfrage(felder: ErkannteFelder): Promise<Mailentwurf> 
   return frageKi(baueRueckfragePrompt(felder))
 }
 
+// anfrage wird aktuell nicht im Prompt verwendet (nur objekt/kriterien/hinweis)
+// -- bleibt Teil der Signatur für künftige Personalisierung ab M8, siehe
+// "Produces"-Zeile oben. Absichtlich nicht entfernen.
 export function baueAngebotPrompt(anfrage: Anfrage, objekt: Objekt, kriterien: Kriterium[], hinweis: string): string {
   const kriterienText = kriterien
     .map((k) => `- ${k.kriterium}: gesucht ${k.gesucht}, Objekt ${k.angeboten} (${k.status})`)
