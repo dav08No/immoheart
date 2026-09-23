@@ -85,6 +85,12 @@ describe("punkteLage", () => {
   it("liefert 50 wenn kein Ort genannt ist", () => {
     expect(punkteLage(anfrage({ ort: null }), objekt())).toBe(50)
   })
+  it("liefert 50 wenn der Ort ein Leerstring ist", () => {
+    expect(punkteLage(anfrage({ ort: "" }), objekt())).toBe(50)
+  })
+  it("ist unabhängig von Gross-/Kleinschreibung und Whitespace", () => {
+    expect(punkteLage(anfrage({ ort: " solothurn " }), objekt({ ort: "Solothurn" }))).toBe(100)
+  })
 })
 
 describe("punkteBezug", () => {
@@ -97,6 +103,9 @@ describe("punkteBezug", () => {
   })
   it("liefert 50 wenn kein Bezugstermin genannt ist", () => {
     expect(punkteBezug(anfrage({ bezug: null }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
+  })
+  it("liefert 50 wenn der Bezugstermin nur aus Leerraum besteht", () => {
+    expect(punkteBezug(anfrage({ bezug: "   " }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
   })
 })
 
@@ -212,5 +221,48 @@ describe("berechneMatch", () => {
     expect(match).not.toBeNull()
     expect(match!.hinweis.toLowerCase()).toContain("preis")
     expect(match!.hinweis.toLowerCase()).not.toContain("fläche")
+  })
+
+  it("liefert null bei unterschiedlicher Nutzung, unabhängig von allen anderen Kriterien", () => {
+    // Ansonsten ein perfekter Treffer -- nur die Nutzung weicht ab.
+    const a = anfrage({ nutzung: "produktion", bezug: "sofort" })
+    const o = objekt({ nutzung: "buero", verfuegbarAb: new Date() })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("liefert null bei einem nicht-endlichen Score statt das Ausschluss-Gate stillschweigend zu umgehen", () => {
+    // NaN < 60 ist in JS false -- ohne Number.isFinite-Check würde ein
+    // kaputter Eingabewert (z. B. eine nicht parsbare Fläche aus der
+    // KI-Extraktion) das einzige Schutz-Gate der Funktion umgehen.
+    const a = anfrage()
+    const o = objekt({ flaeche: NaN })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("wirft nicht bei einem ungültigen verfuegbarAb-Datum", () => {
+    const a = anfrage({ bezug: "sofort" })
+    const o = objekt({ verfuegbarAb: new Date(NaN) })
+    expect(() => berechneMatch(a, o)).not.toThrow()
+  })
+
+  it("unterscheidet im Hinweis zwischen 'nicht genannt' und einem echten Fehlschlag", () => {
+    // Kein Budget genannt (score 50 für Preis) darf nicht dieselbe
+    // Formulierung wie ein tatsächlich überschrittenes Budget erhalten.
+    const a = anfrage({ budgetProM2: null, flaecheMin: null, flaecheMax: null, bezug: null, anforderungen: {} })
+    const o = objekt()
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.hinweis.toLowerCase()).not.toContain("über dem genannten budget")
+  })
+
+  it("behauptet im Hinweis nicht das Gegenteil dessen, was das Kriterium tatsächlich ergab", () => {
+    // Lage scort 60 ("teilweise") genau WEIL die Region übereinstimmt --
+    // der Hinweistext darf das nicht als Nicht-Übereinstimmung darstellen.
+    const a = anfrage({ ort: "Wasseramt", budgetProM2: null, flaecheMin: null, flaecheMax: null, bezug: null, anforderungen: {} })
+    const o = objekt({ ort: "Zuchwil" })
+    const match = berechneMatch(a, o)
+    if (match && match.hinweis.toLowerCase().includes("lage")) {
+      expect(match.hinweis.toLowerCase()).not.toContain("entspricht nicht")
+    }
   })
 })

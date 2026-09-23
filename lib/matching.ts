@@ -1,4 +1,5 @@
 import type { Anfrage, Kriterium, Match, Objekt } from "@/types"
+import { formatDatum, formatFlaeche, formatPreis } from "./format"
 
 export function punkteFlaeche(anfrage: Anfrage, objekt: Objekt): number {
   const { flaecheMin, flaecheMax } = anfrage
@@ -30,19 +31,29 @@ const REGIONEN: Record<string, string> = {
   Zuchwil: "Wasseramt", Derendingen: "Wasseramt", Biberist: "Wasseramt", Luterbach: "Wasseramt",
   Wasseramt: "Wasseramt",
 }
+// Für gross-/kleinschreibungs- und whitespace-unabhängige Lookups: dieselben
+// Regionen, aber mit normalisierten (getrimmt + kleingeschrieben) Schlüsseln.
+const REGIONEN_NORMALISIERT: Record<string, string> = Object.fromEntries(
+  Object.entries(REGIONEN).map(([ort, region]) => [ort.trim().toLowerCase(), region])
+)
 
 export function punkteLage(anfrage: Anfrage, objekt: Objekt): number {
-  if (anfrage.ort === null) return 50
-  if (anfrage.ort === objekt.ort) return 100
-  const regionAnfrage = REGIONEN[anfrage.ort] ?? anfrage.ort
-  const regionObjekt = REGIONEN[objekt.ort] ?? objekt.ort
+  // Leerstring zählt wie null als "kein Ort genannt" -- ein leeres Pflichtfeld
+  // in einem künftigen Formular darf nicht wie eine echte Ortsangabe scoren.
+  const ortAnfrage = anfrage.ort?.trim().toLowerCase() ?? ""
+  if (ortAnfrage === "") return 50
+  const ortObjekt = objekt.ort.trim().toLowerCase()
+  if (ortAnfrage === ortObjekt) return 100
+  const regionAnfrage = REGIONEN_NORMALISIERT[ortAnfrage] ?? ortAnfrage
+  const regionObjekt = REGIONEN_NORMALISIERT[ortObjekt] ?? ortObjekt
   if (regionAnfrage === regionObjekt) return 60
   return 20
 }
 
 export function punkteBezug(anfrage: Anfrage, objekt: Objekt): number {
-  if (anfrage.bezug === null) return 50
-  if (anfrage.bezug.trim().toLowerCase() === "sofort") {
+  const bezugText = anfrage.bezug?.trim().toLowerCase() ?? ""
+  if (bezugText === "") return 50
+  if (bezugText === "sofort") {
     const tage = (objekt.verfuegbarAb.getTime() - Date.now()) / 86_400_000
     if (tage <= 0) return 100
     if (tage <= 30) return 60
@@ -74,30 +85,29 @@ function statusFuer(punkte: number): Kriterium["status"] {
 function kriteriumFlaeche(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   const gesucht =
     anfrage.flaecheMin !== null && anfrage.flaecheMax !== null
-      ? `${anfrage.flaecheMin}–${anfrage.flaecheMax} m²`
+      ? `${formatFlaeche(anfrage.flaecheMin)}–${formatFlaeche(anfrage.flaecheMax)}`
       : anfrage.flaecheMin !== null
-        ? `ab ${anfrage.flaecheMin} m²`
+        ? `ab ${formatFlaeche(anfrage.flaecheMin)}`
         : anfrage.flaecheMax !== null
-          ? `bis ${anfrage.flaecheMax} m²`
+          ? `bis ${formatFlaeche(anfrage.flaecheMax)}`
           : "?"
-  return {
-    kriterium: "Fläche", gesucht, angeboten: `${objekt.flaeche} m²`,
-    status: statusFuer(punkte),
-  }
+  return { kriterium: "Fläche", gesucht, angeboten: formatFlaeche(objekt.flaeche), status: statusFuer(punkte) }
 }
 
 function kriteriumPreis(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   return {
     kriterium: "Preis",
-    gesucht: anfrage.budgetProM2 !== null ? `bis CHF ${anfrage.budgetProM2}/m²` : "?",
-    angeboten: objekt.preisProM2 !== null ? `CHF ${objekt.preisProM2}/m²` : "auf Anfrage",
+    gesucht: anfrage.budgetProM2 !== null ? `bis ${formatPreis(anfrage.budgetProM2)}` : "?",
+    angeboten: objekt.preisProM2 !== null ? formatPreis(objekt.preisProM2) : "auf Anfrage",
     status: statusFuer(punkte),
   }
 }
 
 function kriteriumLage(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   return {
-    kriterium: "Lage", gesucht: anfrage.ort ?? "?", angeboten: objekt.ort,
+    kriterium: "Lage",
+    gesucht: anfrage.ort?.trim() || "?",
+    angeboten: objekt.ort,
     status: statusFuer(punkte),
   }
 }
@@ -105,8 +115,11 @@ function kriteriumLage(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriter
 function kriteriumBezug(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   return {
     kriterium: "Bezug",
-    gesucht: anfrage.bezug ?? "?",
-    angeboten: objekt.verfuegbarAb.toISOString().slice(0, 10),
+    gesucht: anfrage.bezug?.trim() || "?",
+    // formatDatum wirft nie (im Gegensatz zu toISOString()), sondern liefert
+    // bei einem ungültigen Datum "NaN.NaN.NaN" -- deshalb hier explizit auf
+    // "?" abgefangen, statt dieses Detail nach aussen durchsickern zu lassen.
+    angeboten: Number.isNaN(objekt.verfuegbarAb.getTime()) ? "?" : formatDatum(objekt.verfuegbarAb),
     status: statusFuer(punkte),
   }
 }
@@ -122,6 +135,17 @@ function kriteriumAnforderungen(anfrage: Anfrage, punkte: number): Kriterium {
 }
 
 export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
+  // Nutzung ist ein hartes Ausschlusskriterium, kein gewichtetes: eine
+  // Produktionshalle-Anfrage gegen ein Bauland-Objekt darf niemals einen
+  // Score liefern, unabhängig davon wie gut Fläche/Preis/Lage zufällig
+  // passen. Das README-Gewichtungstable (30/25/20/15/10) listet Nutzung
+  // nicht separat auf, aber der verbindliche Prototyp (puls-cockpit-v5.html,
+  // Kriterien-Zeile "Zone") führt sie explizit als eigene Prüfung -- ohne
+  // dieses Gate schlug die Milestone-Review auf den echten Seed-Daten 13 von
+  // 20 Matches als Nutzungs-Fehlpassungen fehl (z. B. eine Lagerhalle-Anfrage,
+  // die auf ein reines Büro-Objekt "gematcht" wurde).
+  if (anfrage.nutzung !== objekt.nutzung) return null
+
   const pFlaeche = punkteFlaeche(anfrage, objekt)
   const pPreis = punktePreis(anfrage, objekt)
   const pLage = punkteLage(anfrage, objekt)
@@ -136,7 +160,11 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
       pAnforderungen * GEWICHTE.anforderungen
   )
 
-  if (score < 60) return null
+  // score < 60 schliesst NICHT automatisch NaN aus (NaN < 60 ist false in
+  // JS) -- ohne den expliziten Number.isFinite-Check würde ein NaN-Score
+  // (z. B. aus einem von der KI-Extraktion falsch geparsten Zahlenfeld in
+  // M5) das einzige Gate der Funktion umgehen und als "Match" durchrutschen.
+  if (!Number.isFinite(score) || score < 60) return null
 
   // Jede Zeile trägt ihre rohen Punkte und ihren Hinweistext direkt mit
   // (statt eines separaten Nachschlage-Records nach `kriterium`-Namen):
@@ -147,31 +175,68 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
   // schwächer ist. Zweitens vermeidet es, dass `kriterium: string` (kein
   // literal Union) den Record-Zugriff unter `noUncheckedIndexedAccess` zu
   // `string | undefined` macht.
+  //
+  // Jeder Hinweistext unterscheidet drei Fälle statt nur "gut" vs.
+  // "schlecht" -- bei der Milestone-Review fielen zwei Arten von falschen
+  // Hinweisen auf: (1) "kein Wert genannt" (score 50) wurde mit derselben
+  // Formulierung wie ein echter Fehlschlag ausgegeben ("Preis liegt spürbar
+  // über dem genannten Budget", obwohl gar kein Budget genannt war), und
+  // (2) ein echter Teilerfolg (score 60, z. B. gleiche Region/anderer Ort
+  // bei Lage) wurde mit einer Formulierung ausgegeben, die das Gegenteil
+  // behauptet ("Lage entspricht nicht der gewünschten Region", obwohl die
+  // Region sehr wohl übereinstimmt).
+  const flaecheUnbekannt = anfrage.flaecheMin === null && anfrage.flaecheMax === null
+  const lageUnbekannt = (anfrage.ort?.trim() ?? "") === ""
+  const bezugUnbekannt = (anfrage.bezug?.trim() ?? "") === ""
+  const anforderungenUnbekannt = Object.keys(anfrage.anforderungen).length === 0
+
   const bewertungen = [
     {
       kriterium: kriteriumFlaeche(anfrage, objekt, pFlaeche), punkte: pFlaeche,
-      hinweisText: "Fläche weicht von der gesuchten Spanne ab.",
+      hinweisText: flaecheUnbekannt
+        ? "Keine Flächenangabe vorhanden."
+        : pFlaeche < 50
+          ? "Fläche weicht deutlich von der gesuchten Spanne ab."
+          : "Fläche liegt nur teilweise in der gesuchten Spanne.",
     },
     {
       kriterium: kriteriumPreis(anfrage, objekt, pPreis), punkte: pPreis,
-      hinweisText: "Preis liegt spürbar über dem genannten Budget.",
+      hinweisText:
+        anfrage.budgetProM2 === null
+          ? "Kein Budget genannt."
+          : objekt.preisProM2 === null
+            ? "Preis des Objekts ist auf Anfrage, kein Vergleich möglich."
+            : pPreis < 50
+              ? "Preis liegt deutlich über dem genannten Budget."
+              : "Preis liegt leicht über dem genannten Budget.",
     },
     {
       kriterium: kriteriumLage(anfrage, objekt, pLage), punkte: pLage,
-      hinweisText: "Lage entspricht nicht der gewünschten Region.",
+      hinweisText: lageUnbekannt
+        ? "Kein Wunschort genannt."
+        : pLage < 50
+          ? "Lage entspricht nicht der gewünschten Region."
+          : "Lage entspricht der Region, aber nicht dem genauen Ort.",
     },
     {
       kriterium: kriteriumBezug(anfrage, objekt, pBezug), punkte: pBezug,
-      hinweisText: "Bezugstermin weicht deutlich vom Wunsch ab.",
+      hinweisText: bezugUnbekannt
+        ? "Kein Bezugstermin genannt."
+        : pBezug < 50
+          ? "Bezugstermin weicht deutlich vom Wunsch ab."
+          : "Bezugstermin weicht teilweise vom Wunsch ab.",
     },
     {
       kriterium: kriteriumAnforderungen(anfrage, pAnforderungen), punkte: pAnforderungen,
-      hinweisText: "Nicht alle Zusatzanforderungen sind erfüllt.",
+      hinweisText: anforderungenUnbekannt
+        ? "Keine Zusatzanforderungen genannt."
+        : pAnforderungen < 50
+          ? "Kaum Zusatzanforderungen erfüllt."
+          : "Nicht alle Zusatzanforderungen sind erfüllt.",
     },
   ]
 
   const kriterien = bewertungen.map((b) => b.kriterium)
-
   const schwaechstes = bewertungen.reduce((a, b) => (b.punkte < a.punkte ? b : a))
 
   return {
