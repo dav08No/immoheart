@@ -23,7 +23,13 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const istLoginSeite = request.nextUrl.pathname.startsWith("/login")
+  // Exakter Vergleich, kein startsWith: bei einem Präfix-Vergleich würde ein
+  // künftiger Pfad wie "/login-hilfe" fälschlich als "schon auf der
+  // Login-Seite" gelten und die Middleware nicht mehr davor schützen --
+  // gefunden bei der finalen Milestone-Review (live bestätigt: GET /loginX
+  // lieferte 404 statt eines 307-Redirects, weil die Middleware es
+  // durchliess).
+  const istLoginSeite = request.nextUrl.pathname === "/login"
 
   // NextResponse.redirect(...) baut ein komplett neues Response-Objekt --
   // ohne diesen Schritt gehen alle Cookies, die setAll oben eventuell schon
