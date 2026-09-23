@@ -921,10 +921,16 @@ alter table matches enable row level security;
 alter table nachrichten enable row level security;
 alter table regeln enable row level security;
 
+-- search_path ist Pflicht bei SECURITY DEFINER, keine Feinheit: ohne ihn
+-- könnte ein späteres Schema mit CREATE-Recht diese Funktion durch eine
+-- gleichnamige Relation kapern. Jede Rollenprüfung im System hängt an
+-- dieser einen Funktion (siehe M1 Task 11 im Ledger).
 create function current_rolle() returns rolle_enum
-language sql security definer stable as $$
+language sql security definer stable
+set search_path = public, pg_temp as $$
   select rolle from profiles where user_id = auth.uid()
 $$;
+revoke execute on function current_rolle() from anon;
 
 -- profiles: jede/r sieht das eigene Profil, admin sieht alle
 create policy "eigenes profil lesen" on profiles for select
@@ -955,8 +961,14 @@ create policy "vermittler aendert firmen" on firmen for update
 create policy "vermittler loescht firmen" on firmen for delete
   using (current_rolle() in ('admin', 'vermittler'));
 
-create policy "eingeloggt liest anfragen" on anfragen for select
-  using (auth.role() = 'authenticated');
+-- Nicht "eingeloggt liest", sondern nur admin/vermittler: die Basistabelle
+-- muss die Vertraulichkeits-Einschränkung selbst tragen, sonst liest jede/r
+-- leser sie direkt und umgeht die Maskierung von anfragen_sichtbar komplett
+-- (siehe M1 Task 11 im Ledger — als kritischer Fund erst nach dem Anwenden
+-- entdeckt, weil kein Einzel-Review Tabelle und View zusammen betrachtete).
+create policy "vermittler liest anfragen" on anfragen for select
+  to authenticated
+  using (current_rolle() in ('admin', 'vermittler'));
 create policy "vermittler schreibt anfragen" on anfragen for insert
   with check (current_rolle() in ('admin', 'vermittler'));
 create policy "vermittler aendert anfragen" on anfragen for update
@@ -999,15 +1011,21 @@ create policy "vermittler aendert regeln" on regeln for update
   using (current_rolle() in ('admin', 'vermittler'));
 
 -- Vertrauliche Anfragen: leser sieht weder firma_id noch budget_pro_m2.
--- security_invoker ist Pflicht, keine Feinheit: ohne diese Option läuft
--- die View mit den Rechten des Besitzers (postgres, umgeht RLS komplett)
--- statt mit denen der aufrufenden Session — RLS auf anfragen würde dann
--- für niemanden greifen, auch nicht für anon (siehe M1 Task 11 im Ledger).
--- Die CASE-Bedingung ist bewusst "fail closed" (maskiert ausser bei
--- explizit admin/vermittler), damit eine unbestimmte Rolle nie als
--- sicher gilt.
+-- security_invoker = false (Standard) ist hier bewusst richtig, nicht ein
+-- Rückschritt: die Basistabelle anfragen erlaubt seit der Korrektur oben nur
+-- noch admin/vermittler den direkten Zugriff, also braucht die View ihre
+-- eigene Sichtbarkeits-Wache (WHERE auth.role() = 'authenticated'), um
+-- leser überhaupt etwas zu zeigen — mit security_invoker=true würde die
+-- View sonst durch die neue Basis-Policy für leser ebenfalls leer laufen.
+-- security_barrier verhindert, dass der Planer WHERE-Bedingungen der
+-- aufrufenden Query vor die Maskierung zieht. Die CASE-Bedingung ist
+-- bewusst "fail closed" (maskiert ausser bei explizit admin/vermittler),
+-- damit eine unbestimmte Rolle nie als sicher gilt. (Siehe M1 Task 11 im
+-- Ledger: erst security_invoker=true als Fix für "View umgeht RLS", dann
+-- diese Version als Fix für "Basistabelle selbst ungeschützt" — beide
+-- Funde erst nach dem jeweiligen Anwenden entdeckt.)
 create view anfragen_sichtbar
-with (security_invoker = true)
+with (security_invoker = false, security_barrier = true)
 as
 select
   a.id,
@@ -1025,7 +1043,13 @@ select
   a.vertraulich,
   a.letzter_kontakt,
   a.created_at
-from anfragen a;
+from anfragen a
+where auth.role() = 'authenticated';
+
+-- Wertebereiche, die das README vorgibt, aber die Spaltentypen allein nicht
+-- erzwingen.
+alter table matches add constraint matches_score_range check (score between 0 and 100);
+alter table profiles add constraint profiles_freigabe_stufe_range check (freigabe_stufe between 1 and 3);
 ```
 
 - [ ] **Step 2: Anwenden**
