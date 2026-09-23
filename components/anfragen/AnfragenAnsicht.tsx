@@ -101,9 +101,26 @@ export function AnfragenAnsicht({ anfragen }: { anfragen: AnfrageMitFirma[] }) {
         <Button variante="primaer" onClick={() => setNeuOffen(true)}>Neue Anfrage</Button>
       </div>
       {detailFehler && (
-        <div className="mb-3 rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
-          Bester Treffer und Verlauf konnten nicht geladen werden. Erneut auf die Zeile klicken, um es noch einmal zu
-          versuchen.
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
+          <span>Bester Treffer und Verlauf konnten nicht geladen werden.</span>
+          <button
+            type="button"
+            onClick={() => {
+              // Erneutes Klicken auf dieselbe bereits ausgewählte Zeile würde
+              // setAusgewaehlteId mit demselben Wert aufrufen -- React bricht das
+              // dank Object.is-Bailout ohne Re-Render/Effekt ab, der Auswahl-Effekt
+              // liefe also NICHT erneut. Deshalb hier ein eigener Button, der
+              // ladeDetailDaten direkt aufruft, statt fälschlich auf einen erneuten
+              // Zeilenklick zu verweisen. ausgewaehlteId ist nicht null, solange
+              // dieser Banner sichtbar ist (siehe Auswahl-Effekt: setzt detailFehler
+              // beim Abwählen sofort zurück auf false) -- die Prüfung ist trotzdem
+              // defensiv statt mit `!` weggecastet.
+              if (ausgewaehlteId) void ladeDetailDaten(ausgewaehlteId)
+            }}
+            className="font-medium underline hover:no-underline"
+          >
+            Erneut versuchen
+          </button>
         </div>
       )}
       <AnfragenTabelle anfragen={anfragen} onZeileWahl={zeileWaehlen} />
