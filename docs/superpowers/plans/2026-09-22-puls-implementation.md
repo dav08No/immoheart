@@ -4298,6 +4298,44 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben** (der Block zeigt noch den
+ursprünglichen, ungeprüften Entwurf des Controllers):
+
+1. **`"use client"` fehlte im Code-Block** -- die Komponente nutzt `useState`
+   und Event-Handler und muss eine Client Component sein. Ergänzt.
+2. **Fehlerbehandlung**: `entwurfSenden`/`entwurfBearbeiten`/`entwurfVerwerfen`
+   (Task 39) werfen bewusst (Milestone-Konvention, siehe Task 40s
+   `MailEinfuegen` und Task 44s "Offener Punkt aus Task 39s Review" weiter
+   unten). Der Code-Block oben ruft sie als reines Fire-and-forget auf
+   (`onClick={() => entwurfSenden(nachricht.id)}` bzw. `void entwurfBearbeiten(...)`)
+   -- ein Fehler wäre nur als unbehandelte Promise-Rejection in der
+   Browser-Konsole sichtbar gewesen, nie für die Nutzerin. Umgesetzt wie in
+   `MailEinfuegen`: `senden`/`uebernehmen`/`verwerfen` sind async Funktionen mit
+   try/catch, ein `fehler`-State wird unter dem Entwurfstext in `text-crit`
+   angezeigt. Ein gemeinsamer `laufend`-State
+   (`"senden" | "uebernehmen" | "verwerfen" | null`, statt drei separater
+   `laedt`-Booleans) deaktiviert während einer laufenden Aktion ALLE
+   Aktions-Buttons inklusive der `GRUENDE`-Buttons -- verhindert, dass dieselbe
+   Nachricht gleichzeitig z.B. gesendet und verworfen wird, und beschriftet den
+   aktiven Button ("Wird gesendet…" / "Wird übernommen…").
+3. **Sync-Risiko ohne `key`**: Task 44 (siehe unten) rendert voraussichtlich
+   `<EntwurfDetail nachricht={ausgewaehlt} />` ohne `key={nachricht.id}` (wie
+   `EingangDetail`/Task 42). Ohne Gegenmassnahme bliebe beim Wechsel der
+   Auswahl in `NachrichtenListe` der lokale `body`/`bearbeiten`-State der
+   vorherigen Nachricht stehen -- im schlimmsten Fall liesse sich der
+   angepasste Text EINER Nachricht als `entwurfBearbeiten`-Aufruf für eine
+   ANDERE Nachricht absenden. Ein `useEffect`, das bei jedem Wechsel von
+   `nachricht.id` (bewusst nicht `nachricht.body`, siehe Kommentar im Code) den
+   gesamten lokalen State zurücksetzt, macht die Komponente robust
+   unabhängig davon, ob der Aufrufer später doch einen `key` setzt.
+4. **"Abbrechen" beim Bearbeiten ergänzt**: Der Code-Block hatte keine
+   Möglichkeit, den Bearbeiten-Modus ohne Speichern zu verlassen. Ergänzt,
+   analog zu `MailEinfuegen`s "Abbrechen" -- setzt `body` auf `nachricht.body`
+   zurück und schliesst den Edit-Modus.
+5. **Branding**: "Entwurf von PULS · noch nicht gesendet" -> "Entwurf von
+   immoheart · noch nicht gesendet" (siehe analoge Korrektur in
+   `EingangDetail`/Task 42, "PULS hat erkannt" -> "immoheart hat erkannt").
+
 - [ ] **Step 2: Typecheck und Commit**
 
 ```bash
