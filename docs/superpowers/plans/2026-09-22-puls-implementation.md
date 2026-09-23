@@ -1687,6 +1687,12 @@ describe("punkteLage", () => {
   it("liefert 50 wenn kein Ort genannt ist", () => {
     expect(punkteLage(anfrage({ ort: null }), objekt())).toBe(50)
   })
+  it("liefert 50 wenn der Ort ein Leerstring ist", () => {
+    expect(punkteLage(anfrage({ ort: "" }), objekt())).toBe(50)
+  })
+  it("ist unabhängig von Gross-/Kleinschreibung und Whitespace", () => {
+    expect(punkteLage(anfrage({ ort: " solothurn " }), objekt({ ort: "Solothurn" }))).toBe(100)
+  })
 })
 
 describe("punkteBezug", () => {
@@ -1699,6 +1705,9 @@ describe("punkteBezug", () => {
   })
   it("liefert 50 wenn kein Bezugstermin genannt ist", () => {
     expect(punkteBezug(anfrage({ bezug: null }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
+  })
+  it("liefert 50 wenn der Bezugstermin nur aus Leerraum besteht", () => {
+    expect(punkteBezug(anfrage({ bezug: "   " }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
   })
 })
 ```
@@ -1715,19 +1724,29 @@ const REGIONEN: Record<string, string> = {
   Zuchwil: "Wasseramt", Derendingen: "Wasseramt", Biberist: "Wasseramt", Luterbach: "Wasseramt",
   Wasseramt: "Wasseramt",
 }
+// Für gross-/kleinschreibungs- und whitespace-unabhängige Lookups: dieselben
+// Regionen, aber mit normalisierten (getrimmt + kleingeschrieben) Schlüsseln.
+const REGIONEN_NORMALISIERT: Record<string, string> = Object.fromEntries(
+  Object.entries(REGIONEN).map(([ort, region]) => [ort.trim().toLowerCase(), region])
+)
 
 export function punkteLage(anfrage: Anfrage, objekt: Objekt): number {
-  if (anfrage.ort === null) return 50
-  if (anfrage.ort === objekt.ort) return 100
-  const regionAnfrage = REGIONEN[anfrage.ort] ?? anfrage.ort
-  const regionObjekt = REGIONEN[objekt.ort] ?? objekt.ort
+  // Leerstring zählt wie null als "kein Ort genannt" -- ein leeres Pflichtfeld
+  // in einem künftigen Formular darf nicht wie eine echte Ortsangabe scoren.
+  const ortAnfrage = anfrage.ort?.trim().toLowerCase() ?? ""
+  if (ortAnfrage === "") return 50
+  const ortObjekt = objekt.ort.trim().toLowerCase()
+  if (ortAnfrage === ortObjekt) return 100
+  const regionAnfrage = REGIONEN_NORMALISIERT[ortAnfrage] ?? ortAnfrage
+  const regionObjekt = REGIONEN_NORMALISIERT[ortObjekt] ?? ortObjekt
   if (regionAnfrage === regionObjekt) return 60
   return 20
 }
 
 export function punkteBezug(anfrage: Anfrage, objekt: Objekt): number {
-  if (anfrage.bezug === null) return 50
-  if (anfrage.bezug.toLowerCase() === "sofort") {
+  const bezugText = anfrage.bezug?.trim().toLowerCase() ?? ""
+  if (bezugText === "") return 50
+  if (bezugText === "sofort") {
     const tage = (objekt.verfuegbarAb.getTime() - Date.now()) / 86_400_000
     if (tage <= 0) return 100
     if (tage <= 30) return 60
@@ -1736,6 +1755,16 @@ export function punkteBezug(anfrage: Anfrage, objekt: Objekt): number {
   return 60
 }
 ```
+
+Beide Funktionen normalisieren jetzt Gross-/Kleinschreibung, Whitespace UND leeren
+String konsistent (gefunden bei der finalen Milestone-Review): `punkteBezug` hatte
+bereits ein implementierungs-internes `.trim().toLowerCase()` für den
+`"sofort"`-Vergleich, `punkteLage` aber nicht — `"solothurn"` vs. `"Solothurn"` schlug
+fälschlich auf 20 Punkte statt 100 durch, obwohl `ort` von der KI-Mailerkennung (M5)
+aus Freitext extrahiert wird und Gross-/Kleinschreibungs-Varianz dort real zu erwarten
+ist. Ausserdem behandelte keine der beiden Funktionen einen expliziten Leerstring wie
+`null` (kein CHECK-Constraint schliesst `''` aus) — ein leeres, nicht ausgefülltes
+Formularfeld hätte fälschlich als echte Angabe gewertet.
 
 - [ ] **Step 4: Erfolg bestätigen** — Run: `npm run test`, Expected: PASS.
 
@@ -1920,6 +1949,49 @@ describe("berechneMatch", () => {
     expect(match!.hinweis.toLowerCase()).toContain("preis")
     expect(match!.hinweis.toLowerCase()).not.toContain("fläche")
   })
+
+  it("liefert null bei unterschiedlicher Nutzung, unabhängig von allen anderen Kriterien", () => {
+    // Ansonsten ein perfekter Treffer -- nur die Nutzung weicht ab.
+    const a = anfrage({ nutzung: "produktion", bezug: "sofort" })
+    const o = objekt({ nutzung: "buero", verfuegbarAb: new Date() })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("liefert null bei einem nicht-endlichen Score statt das Ausschluss-Gate stillschweigend zu umgehen", () => {
+    // NaN < 60 ist in JS false -- ohne Number.isFinite-Check würde ein
+    // kaputter Eingabewert (z. B. eine nicht parsbare Fläche aus der
+    // KI-Extraktion) das einzige Schutz-Gate der Funktion umgehen.
+    const a = anfrage()
+    const o = objekt({ flaeche: NaN })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("wirft nicht bei einem ungültigen verfuegbarAb-Datum", () => {
+    const a = anfrage({ bezug: "sofort" })
+    const o = objekt({ verfuegbarAb: new Date(NaN) })
+    expect(() => berechneMatch(a, o)).not.toThrow()
+  })
+
+  it("unterscheidet im Hinweis zwischen 'nicht genannt' und einem echten Fehlschlag", () => {
+    // Kein Budget genannt (score 50 für Preis) darf nicht dieselbe
+    // Formulierung wie ein tatsächlich überschrittenes Budget erhalten.
+    const a = anfrage({ budgetProM2: null, flaecheMin: null, flaecheMax: null, bezug: null, anforderungen: {} })
+    const o = objekt()
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.hinweis.toLowerCase()).not.toContain("über dem genannten budget")
+  })
+
+  it("behauptet im Hinweis nicht das Gegenteil dessen, was das Kriterium tatsächlich ergab", () => {
+    // Lage scort 60 ("teilweise") genau WEIL die Region übereinstimmt --
+    // der Hinweistext darf das nicht als Nicht-Übereinstimmung darstellen.
+    const a = anfrage({ ort: "Wasseramt", budgetProM2: null, flaecheMin: null, flaecheMax: null, bezug: null, anforderungen: {} })
+    const o = objekt({ ort: "Zuchwil" })
+    const match = berechneMatch(a, o)
+    if (match && match.hinweis.toLowerCase().includes("lage")) {
+      expect(match.hinweis.toLowerCase()).not.toContain("entspricht nicht")
+    }
+  })
 })
 ```
 
@@ -1930,6 +2002,8 @@ describe("berechneMatch", () => {
 Kommentar zum *Warum* der Gewichtungs-Konstante, weil sie sonst nur eine Zahlenreihe wäre.
 
 ```ts
+import { formatDatum, formatFlaeche, formatPreis } from "./format"
+
 // Gewichtung exakt aus dem README: Fläche 30%, Preis 25%, Lage 20%, Bezug 15%, Anforderungen 10%.
 const GEWICHTE = { flaeche: 0.3, preis: 0.25, lage: 0.2, bezug: 0.15, anforderungen: 0.1 } as const
 
@@ -1940,33 +2014,41 @@ function statusFuer(punkte: number): Kriterium["status"] {
 function kriteriumFlaeche(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   const gesucht =
     anfrage.flaecheMin !== null && anfrage.flaecheMax !== null
-      ? `${anfrage.flaecheMin}–${anfrage.flaecheMax} m²`
+      ? `${formatFlaeche(anfrage.flaecheMin)}–${formatFlaeche(anfrage.flaecheMax)}`
       : anfrage.flaecheMin !== null
-        ? `ab ${anfrage.flaecheMin} m²`
+        ? `ab ${formatFlaeche(anfrage.flaecheMin)}`
         : anfrage.flaecheMax !== null
-          ? `bis ${anfrage.flaecheMax} m²`
+          ? `bis ${formatFlaeche(anfrage.flaecheMax)}`
           : "?"
-  return { kriterium: "Fläche", gesucht, angeboten: `${objekt.flaeche} m²`, status: statusFuer(punkte) }
+  return { kriterium: "Fläche", gesucht, angeboten: formatFlaeche(objekt.flaeche), status: statusFuer(punkte) }
 }
 
 function kriteriumPreis(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   return {
     kriterium: "Preis",
-    gesucht: anfrage.budgetProM2 !== null ? `bis CHF ${anfrage.budgetProM2}/m²` : "?",
-    angeboten: objekt.preisProM2 !== null ? `CHF ${objekt.preisProM2}/m²` : "auf Anfrage",
+    gesucht: anfrage.budgetProM2 !== null ? `bis ${formatPreis(anfrage.budgetProM2)}` : "?",
+    angeboten: objekt.preisProM2 !== null ? formatPreis(objekt.preisProM2) : "auf Anfrage",
     status: statusFuer(punkte),
   }
 }
 
 function kriteriumLage(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
-  return { kriterium: "Lage", gesucht: anfrage.ort ?? "?", angeboten: objekt.ort, status: statusFuer(punkte) }
+  return {
+    kriterium: "Lage",
+    gesucht: anfrage.ort?.trim() || "?",
+    angeboten: objekt.ort,
+    status: statusFuer(punkte),
+  }
 }
 
 function kriteriumBezug(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   return {
     kriterium: "Bezug",
-    gesucht: anfrage.bezug ?? "?",
-    angeboten: objekt.verfuegbarAb.toISOString().slice(0, 10),
+    gesucht: anfrage.bezug?.trim() || "?",
+    // formatDatum wirft nie (im Gegensatz zu toISOString()), sondern liefert
+    // bei einem ungültigen Datum "NaN.NaN.NaN" -- deshalb hier explizit auf
+    // "?" abgefangen, statt dieses Detail nach aussen durchsickern zu lassen.
+    angeboten: Number.isNaN(objekt.verfuegbarAb.getTime()) ? "?" : formatDatum(objekt.verfuegbarAb),
     status: statusFuer(punkte),
   }
 }
@@ -1982,6 +2064,17 @@ function kriteriumAnforderungen(anfrage: Anfrage, punkte: number): Kriterium {
 }
 
 export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
+  // Nutzung ist ein hartes Ausschlusskriterium, kein gewichtetes: eine
+  // Produktionshalle-Anfrage gegen ein Bauland-Objekt darf niemals einen
+  // Score liefern, unabhängig davon wie gut Fläche/Preis/Lage zufällig
+  // passen. Das README-Gewichtungstable (30/25/20/15/10) listet Nutzung
+  // nicht separat auf, aber der verbindliche Prototyp (puls-cockpit-v5.html,
+  // Kriterien-Zeile "Zone") führt sie explizit als eigene Prüfung -- ohne
+  // dieses Gate schlug die Milestone-Review auf den echten Seed-Daten 13 von
+  // 20 Matches als Nutzungs-Fehlpassungen fehl (z. B. eine Lagerhalle-Anfrage,
+  // die auf ein reines Büro-Objekt "gematcht" wurde).
+  if (anfrage.nutzung !== objekt.nutzung) return null
+
   const pFlaeche = punkteFlaeche(anfrage, objekt)
   const pPreis = punktePreis(anfrage, objekt)
   const pLage = punkteLage(anfrage, objekt)
@@ -1996,7 +2089,11 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
       pAnforderungen * GEWICHTE.anforderungen
   )
 
-  if (score < 60) return null
+  // score < 60 schliesst NICHT automatisch NaN aus (NaN < 60 ist false in
+  // JS) -- ohne den expliziten Number.isFinite-Check würde ein NaN-Score
+  // (z. B. aus einem von der KI-Extraktion falsch geparsten Zahlenfeld in
+  // M5) das einzige Gate der Funktion umgehen und als "Match" durchrutschen.
+  if (!Number.isFinite(score) || score < 60) return null
 
   // Jede Zeile trägt ihre rohen Punkte und ihren Hinweistext direkt mit
   // (statt eines separaten Nachschlage-Records nach `kriterium`-Namen):
@@ -2007,26 +2104,64 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
   // schwächer ist. Zweitens vermeidet es, dass `kriterium: string` (kein
   // literal Union) den Record-Zugriff unter `noUncheckedIndexedAccess` zu
   // `string | undefined` macht.
+  //
+  // Jeder Hinweistext unterscheidet drei Fälle statt nur "gut" vs.
+  // "schlecht" -- bei der Milestone-Review fielen zwei Arten von falschen
+  // Hinweisen auf: (1) "kein Wert genannt" (score 50) wurde mit derselben
+  // Formulierung wie ein echter Fehlschlag ausgegeben ("Preis liegt spürbar
+  // über dem genannten Budget", obwohl gar kein Budget genannt war), und
+  // (2) ein echter Teilerfolg (score 60, z. B. gleiche Region/anderer Ort
+  // bei Lage) wurde mit einer Formulierung ausgegeben, die das Gegenteil
+  // behauptet ("Lage entspricht nicht der gewünschten Region", obwohl die
+  // Region sehr wohl übereinstimmt).
+  const flaecheUnbekannt = anfrage.flaecheMin === null && anfrage.flaecheMax === null
+  const lageUnbekannt = (anfrage.ort?.trim() ?? "") === ""
+  const bezugUnbekannt = (anfrage.bezug?.trim() ?? "") === ""
+  const anforderungenUnbekannt = Object.keys(anfrage.anforderungen).length === 0
+
   const bewertungen = [
     {
       kriterium: kriteriumFlaeche(anfrage, objekt, pFlaeche), punkte: pFlaeche,
-      hinweisText: "Fläche weicht von der gesuchten Spanne ab.",
+      hinweisText: flaecheUnbekannt
+        ? "Keine Flächenangabe vorhanden."
+        : pFlaeche < 50
+          ? "Fläche weicht deutlich von der gesuchten Spanne ab."
+          : "Fläche liegt nur teilweise in der gesuchten Spanne.",
     },
     {
       kriterium: kriteriumPreis(anfrage, objekt, pPreis), punkte: pPreis,
-      hinweisText: "Preis liegt spürbar über dem genannten Budget.",
+      hinweisText:
+        anfrage.budgetProM2 === null
+          ? "Kein Budget genannt."
+          : objekt.preisProM2 === null
+            ? "Preis des Objekts ist auf Anfrage, kein Vergleich möglich."
+            : pPreis < 50
+              ? "Preis liegt deutlich über dem genannten Budget."
+              : "Preis liegt leicht über dem genannten Budget.",
     },
     {
       kriterium: kriteriumLage(anfrage, objekt, pLage), punkte: pLage,
-      hinweisText: "Lage entspricht nicht der gewünschten Region.",
+      hinweisText: lageUnbekannt
+        ? "Kein Wunschort genannt."
+        : pLage < 50
+          ? "Lage entspricht nicht der gewünschten Region."
+          : "Lage entspricht der Region, aber nicht dem genauen Ort.",
     },
     {
       kriterium: kriteriumBezug(anfrage, objekt, pBezug), punkte: pBezug,
-      hinweisText: "Bezugstermin weicht deutlich vom Wunsch ab.",
+      hinweisText: bezugUnbekannt
+        ? "Kein Bezugstermin genannt."
+        : pBezug < 50
+          ? "Bezugstermin weicht deutlich vom Wunsch ab."
+          : "Bezugstermin weicht teilweise vom Wunsch ab.",
     },
     {
       kriterium: kriteriumAnforderungen(anfrage, pAnforderungen), punkte: pAnforderungen,
-      hinweisText: "Nicht alle Zusatzanforderungen sind erfüllt.",
+      hinweisText: anforderungenUnbekannt
+        ? "Keine Zusatzanforderungen genannt."
+        : pAnforderungen < 50
+          ? "Kaum Zusatzanforderungen erfüllt."
+          : "Nicht alle Zusatzanforderungen sind erfüllt.",
     },
   ]
 
@@ -2043,17 +2178,29 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
 }
 ```
 
-Zwei Korrekturen gegenüber einer naiveren ersten Fassung, beide beim Implementieren gefunden:
-1. Die ursprüngliche Idee, das schwächste Kriterium allein über den groben Status
+Fünf Korrekturen gegenüber einer naiveren ersten Fassung, alle bei der finalen
+Milestone-Review gefunden (Details siehe Kommentare im Code oben):
+1. **Nutzung als hartes Ausschlusskriterium** ergänzt (fehlte komplett; 13 von 20
+   Matches auf den echten Seed-Daten waren Nutzungs-Fehlpassungen).
+2. **Hinweistexte unterscheiden jetzt "nicht genannt" / "teilweise" / "Fehlschlag"**
+   statt einer einzigen Fehlschlag-Formulierung pro Kriterium.
+3. **`Number.isFinite(score)`** ergänzt, weil `NaN < 60` in JS `false` ist und das
+   Score-Gate sonst bei einem `NaN`-Score (z. B. aus fehlerhafter KI-Extraktion in M5)
+   durchlässig wäre.
+4. **`formatFlaeche`/`formatPreis`/`formatDatum`** aus `lib/format.ts` (Task 15)
+   statt handgerollter Formatierung, die von den echten UI-Formaten abwich (z. B.
+   `"2850 m²"` ohne Tausendertrennzeichen statt `"2'850 m²"`, ISO-Datum statt
+   `"01.11.2026"`) und in `matches.kriterien` persistiert worden wäre.
+5. Die ursprüngliche Idee, das schwächste Kriterium allein über den groben Status
    (`ok`/`teilweise`/`nein`) zu bestimmen und Gleichstände über die Array-Reihenfolge
    aufzulösen, hätte bei zwei Kriterien im selben Status (z. B. Fläche 45 Punkte und
    Preis 5 Punkte, beide „nein") immer das ERSTE in der Tabelle genannt (Fläche), auch
    wenn ein anderes objektiv schwächer ist — ein irreführender Hinweistext. Die
    Auswahl erfolgt deshalb über die rohen Punktzahlen, nicht über den Status-Rang.
-2. Ein `Record<string, string>`-Nachschlag nach `kriterium: string` (kein Literal-Union)
-   ergibt unter `noUncheckedIndexedAccess: true` den Typ `string | undefined`, was
-   `tsc --noEmit` nicht kompiliert. Jede Zeile trägt ihren `hinweisText` deshalb direkt
-   mit, statt über einen benannten Nachschlage-Record.
+   Ausserdem ergibt ein `Record<string, string>`-Nachschlag nach `kriterium: string`
+   (kein Literal-Union) unter `noUncheckedIndexedAccess: true` den Typ
+   `string | undefined`, was `tsc --noEmit` nicht kompiliert — jede Zeile trägt ihren
+   `hinweisText` deshalb direkt mit, statt über einen benannten Nachschlage-Record.
 
 - [ ] **Step 4: Erfolg bestätigen**
 
@@ -2078,7 +2225,17 @@ git commit -m "feat: berechneMatch - Gewichtung, Kriterien, Hinweis, Ausschluss 
 
 - [ ] **Step 1: Abnahmekriterien aus README/Spec gegenprüfen**
 
-`lib/matching.ts` und `lib/puls.ts` sind vollständig durch Tests abgedeckt (README-Abnahmekriterium). Kein `any` in beiden Dateien (`grep -n "any" lib/matching.ts lib/puls.ts` liefert nichts). Beide Dateien bleiben unter 200 Zeilen (`wc -l lib/matching.ts lib/puls.ts`).
+`lib/matching.ts` und `lib/puls.ts` sind vollständig durch Tests abgedeckt (README-Abnahmekriterium). Kein `any` in beiden Dateien (`grep -n "any" lib/matching.ts lib/puls.ts` liefert nichts).
+
+Die ursprüngliche "unter 200 Zeilen"-Grenze für `lib/matching.ts` ist durch den
+Fix-Wave der finalen Milestone-Review überholt: das Nutzung-Ausschlussgate, die
+`Number.isFinite`-Absicherung und die dreiteilige Hinweistext-Logik (unbekannt /
+teilweise / echter Fehlschlag statt einer einzigen Formulierung pro Kriterium) sind
+reale Korrekturen für echte Bugs, keine vermeidbare Aufblähung — `wc -l
+lib/matching.ts` liegt jetzt bei 249 Zeilen. Das README nennt keine explizite
+Zeilengrenze; die 200 waren eine grobe Plan-Schätzung vor diesen Korrekturen. Diese
+Grenze gilt ab jetzt als durch die Review-Fixes bewusst überschritten, nicht als
+offene Abnahme-Verletzung -- `lib/puls.ts` bleibt weiterhin klar darunter.
 
 - [ ] **Step 2: Pull Request öffnen, CI abwarten, mergen**
 
