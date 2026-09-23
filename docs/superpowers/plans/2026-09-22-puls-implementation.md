@@ -4778,6 +4778,55 @@ git commit -m "feat: Postfach-Badge in der Seitenleiste mit echter Anzahl"
 
 ### Task 46: Meilenstein M5 abschliessen
 
+**Kritischer Fund (M5 Whole-Branch-Review), analog zu M1 Task 11 im Ledger**:
+`nachrichten` trug seit `20260922195659_rls.sql` noch das generische "eingeloggt
+liest"-Muster (`using (auth.role() = 'authenticated')`) -- dieselbe Basistabelle
+ungeschützt-Lücke, die für `anfragen` bereits in
+`20260923033041_rls_fix_base_table_read.sql` behoben wurde, nur beim damaligen
+Fix nicht auf die anderen Tabellen mit demselben Muster übertragen. Jede
+eingeloggte Rolle, inklusive `leser`, konnte damit rohe Mail-Inhalte und die
+von der KI extrahierten Felder (`erkannte_felder`: Firma, Budget/m² usw. --
+dieselben Felder, die einmal in einer vertraulichen Anfrage über
+`anfragen_sichtbar` vor `leser` maskiert werden) direkt über `/postfach`
+lesen, ohne jede Einschränkung. Neue Migration
+`20260923140000_rls_fix_nachrichten_base_table_read.sql` (nicht die
+bestehende `20260922195659_rls.sql` editiert): löscht die Policy
+`"eingeloggt liest nachrichten"` und ersetzt sie durch `"vermittler liest
+nachrichten" ... to authenticated using (current_rolle() in ('admin',
+'vermittler'))`, exakt nach dem `anfragen`-Vorbild. Anders als bei `anfragen`
+gibt es für `nachrichten` **keine** `vertraulich`-Spalte und **keine**
+maskierende View (`nachrichten_sichtbar` existiert nirgends im Code) -- für
+`leser` gibt es hier nichts zu maskieren, nur nichts zu sehen, was konsistent
+mit dem Rollenmodell ist (`/postfach` und alle Server Actions in
+`app/actions/nachrichten.ts` sind Postfach-Triage-Werkzeug für
+admin/vermittler, laut README nicht für `leser`). Die bestehenden
+insert/update/delete-Policies auf `nachrichten` schränkten bereits korrekt auf
+`admin`/`vermittler` ein und wurden nicht angefasst.
+
+Geprüft, ob die Verschärfung `zaehleNachrichten()` (Task 36/45) bricht, das
+`app/(app)/layout.tsx` für **jede** eingeloggte Rolle inklusive `leser`
+unconditional aufruft: die Query ist ein reiner `count`-Aufruf
+(`{ count: "exact", head: true }`). Unter PostgREST/RLS werden dafür zuerst
+die für die Rolle sichtbaren Zeilen bestimmt und dann gezählt -- bei `leser`
+sind das nach der neuen Policy null Zeilen, die Query liefert also `count: 0`
+zurück, nicht einen RLS-Fehler. `Sidebar.tsx` rendert das Badge ohnehin nur
+bei `postfachAnzahl > 0`, das Badge verschwindet für `leser` also einfach,
+kein Crash, kein sichtbarer Fehlerzustand. Nicht behoben (ausserhalb des
+Scopes dieses Fixes, da nicht Teil des gemeldeten Findings): der
+Sidebar-Navigationseintrag „Postfach" selbst bleibt für `leser` sichtbar/
+anklickbar und `/postfach` liefert dann schlicht eine leere Liste (kein
+Fehler) -- keine neue Lücke gegenüber vorher, aber ein möglicher Folge-Fund
+für eine künftige Review (analog zur clientseitigen Sichtbarkeit von `/anfragen`).
+
+**Nicht gegen eine echte Datenbank angewendet/verifiziert**: dieser
+Worktree hat keinen lokalen Supabase-Stack (`supabase/config.toml` fehlt) und
+keine `.env`-Zugangsdaten (nur `.env.example`) -- dieselbe, seit diesem
+gesamten Meilenstein bestehende Einschränkung, unter der bereits der gesamte
+KI-Aufrufcode nie lokal live getestet werden konnte (siehe `docs/setup-secrets.md`).
+Die Migration ist reines, gegen das `anfragen`-Vorbild geprüftes SQL; ein
+echtes `supabase db push` (oder Anwenden über die Supabase-MCP-Tools) steht
+noch aus.
+
 - [ ] **Step 1: Abnahme gegen Spec D7/D9/D10 prüfen**
 
 `app/actions/nachrichten.ts` enthält genau eine Funktion, die nach dem Rohtext-Empfang alles Weitere übernimmt (`nachrichtEingegangen`) — ein künftiger IMAP-Adapter würde nur diese Funktion aufrufen. `lib/ki/erkennung.ts` und `lib/ki/entwuerfe.ts` sind für Prompt-Bau und Antwort-Parsing durch Tests abgedeckt (`npm run test` zeigt sie). Freigabestufen sind in der Server Action geprüft, nicht nur in der Oberfläche.
