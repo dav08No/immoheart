@@ -4630,6 +4630,19 @@ die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
    Nutzerinteraktion dazwischen) -- der atomare Aufruf selbst garantiert aber
    weiterhin, dass davon nur einer jemals `legeAnfrageAn` erreicht.
 
+   **Bekannter Trade-off durch die Umstellung**: Das Löschen passiert jetzt
+   VOR `legeAnfrageAn` statt danach. Sollte `legeAnfrageAn` nach erfolgreichem
+   Löschen aus einem transienten Infrastruktur-/Netzwerkgrund werfen, ginge die
+   Quelle-Nachricht verloren, ohne dass eine Anfrage entstanden ist -- ein
+   neuer, schmaler Fehlerfall, den es vorher (Löschen ganz am Ende) nicht gab.
+   In der Praxis gering riskant: `nutzung` ist die einzige NOT-NULL-Spalte im
+   `anfragen`-Insert und wird bereits vor dem Löschen geprüft (`ort`,
+   `flaeche_min`, `flaeche_max`, `budget_pro_m2`, `bezug` sind laut Schema alle
+   nullable) -- `legeAnfrageAn` hat also keinen plausiblen
+   Datenvalidierungsgrund mehr zu scheitern, nur noch echte Infrastrukturfehler,
+   die genauso gut den Lösch-Aufruf selbst treffen könnten. Nicht behoben,
+   bewusst akzeptiert.
+
 - [ ] **Step 3: Manuell end-to-end prüfen**
 
 Run: `npm run dev`, angemeldet auf `/postfach` öffnen, „Neue Mail einfügen" klicken, folgenden Text einfügen:
