@@ -14,7 +14,7 @@ const EINTRAEGE = [
   { pfad: "/zahlen", label: "Zahlen", icon: "▁" },
 ]
 
-export function Sidebar({ profil }: { profil: Profil }) {
+export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAnzahl: number }) {
   const pfad = usePathname()
   // .filter(Boolean) faengt zwei Faelle ab: mehrfache Leerzeichen im Namen
   // ("John  Doe".split(" ") enthaelt ein leeres Element) und einen leeren
@@ -53,6 +53,11 @@ export function Sidebar({ profil }: { profil: Profil }) {
             >
               <span className="w-4 text-center text-xs opacity-80">{eintrag.icon}</span>
               {eintrag.label}
+              {eintrag.pfad === "/postfach" && postfachAnzahl > 0 && (
+                <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-on-brand">
+                  {postfachAnzahl}
+                </span>
+              )}
             </Link>
           )
         })}

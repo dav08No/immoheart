@@ -3395,11 +3395,15 @@ ${text}
 Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung:
 {"firma": string|null, "flaeche_min": number|null, "flaeche_max": number|null, "ort": string|null, "budget_pro_m2": number|null, "bezug": string|null, "branche": string|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null}
 
-Werte, die im Text nicht vorkommen, werden null. Zahlen ohne Tausendertrennzeichen. "bezug" bleibt der Originaltext des Zeitpunkts (z.B. "Q1 2027", "sofort"). "nutzung" ist genau einer der sieben genannten Werte oder null, wenn unklar.`
+Werte, die im Text nicht vorkommen, werden null. Zahlen ohne Tausendertrennzeichen. "bezug" bleibt der Originaltext des Zeitpunkts (z.B. "Q1 2027", "sofort"). "nutzung" ist genau einer der sechs genannten Werte oder null, wenn unklar.`
 }
 
 export function parseErkennungsAntwort(antwort: string): ErkannteFelder {
-  const bereinigt = antwort.trim().replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "")
+  const bereinigt = antwort
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
   return {
     firma: alsString(daten.firma),
@@ -3524,12 +3528,22 @@ const AUSGABEFORMAT =
   'Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung: {"betreff": string, "body": string}. Der Ton ist knapp, sachlich, per Sie, ohne Floskeln. Unterschrift: "Freundliche Grüsse\\nespaceSOLOTHURN".'
 
 export function parseMailAntwort(antwort: string): Mailentwurf {
-  const bereinigt = antwort.trim().replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "")
+  const bereinigt = antwort
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
-  return {
-    betreff: typeof daten.betreff === "string" ? daten.betreff : "Ihre Anfrage bei espaceSOLOTHURN",
-    body: typeof daten.body === "string" ? daten.body : "",
+  // Bewusst werfen statt auf einen leeren/generischen Platzhalter
+  // auszuweichen: bei Freigabestufe 2/3 (Task 39) wird ein Entwurf ohne
+  // Klick automatisch versendet. Ein stiller Fallback auf body: "" würde
+  // in diesem Fall eine echte, leere E-Mail an eine Firma verschicken,
+  // ohne dass je ein Mensch sie gesehen hätte -- die "wird ja sowieso
+  // gegengelesen"-Annahme stimmt für Stufe 1, aber nicht generell.
+  if (typeof daten.betreff !== "string" || typeof daten.body !== "string") {
+    throw new Error("Unerwartete Antwort der KI: betreff/body fehlen oder haben falschen Typ")
   }
+  return { betreff: daten.betreff, body: daten.body }
 }
 
 async function frageKi(prompt: string): Promise<Mailentwurf> {
@@ -3542,10 +3556,22 @@ async function frageKi(prompt: string): Promise<Mailentwurf> {
   return parseMailAntwort(antwort.text)
 }
 
+// Menschenlesbare Labels statt der rohen snake_case-Schlüssel im Prompt:
+// eine KI, die aufgefordert wird, nach "budget_pro_m2" statt nach "Budget
+// pro m²" zu fragen, übernimmt den technischen Bezeichner erfahrungsgemäss
+// öfter wörtlich in den generierten Text, statt ihn zu übersetzen. Der rohe
+// Schlüssel bleibt zusätzlich im Text (nicht nur das Label), damit die
+// bestehenden toContain-Tests unverändert gültig bleiben.
+const FELD_LABELS: Record<string, string> = {
+  firma: "Firma", flaeche_min: "Fläche min.", flaeche_max: "Fläche max.",
+  ort: "Ort", budget_pro_m2: "Budget pro m²", bezug: "Bezugstermin",
+  branche: "Branche", nutzung: "Nutzungsart",
+}
+
 export function baueRueckfragePrompt(felder: ErkannteFelder): string {
   const fehlend = (Object.entries(felder) as [string, unknown][])
     .filter(([, wert]) => wert === null)
-    .map(([schluessel]) => schluessel)
+    .map(([schluessel]) => `${schluessel} (${FELD_LABELS[schluessel] ?? schluessel})`)
   return `Eine Firma hat eine Anfrage nach einer Gewerbefläche geschickt. Folgende Angaben fehlen noch: ${fehlend.join(", ")}.
 
 Schreibe eine kurze Rückfrage-Mail, die genau nach diesen fehlenden Angaben fragt. ${AUSGABEFORMAT}`
@@ -3555,6 +3581,9 @@ export function entwurfRueckfrage(felder: ErkannteFelder): Promise<Mailentwurf> 
   return frageKi(baueRueckfragePrompt(felder))
 }
 
+// anfrage wird aktuell nicht im Prompt verwendet (nur objekt/kriterien/hinweis)
+// -- bleibt Teil der Signatur für künftige Personalisierung ab M8, siehe
+// "Produces"-Zeile oben. Absichtlich nicht entfernen.
 export function baueAngebotPrompt(anfrage: Anfrage, objekt: Objekt, kriterien: Kriterium[], hinweis: string): string {
   const kriterienText = kriterien
     .map((k) => `- ${k.kriterium}: gesucht ${k.gesucht}, Objekt ${k.angeboten} (${k.status})`)
@@ -3609,7 +3638,42 @@ Implementiert Spec D7 (ein einziger Einstiegspunkt, quellenunabhängig) und D10 
 
 **Interfaces:**
 - Consumes: `erkenneFelder` (Task 37), `entwurfRueckfrage` (Task 38), `holeNachricht`/`legeNachrichtAn`/`aktualisiereNachricht` (Task 36), `legeAnfrageAn` (Task 36), `legeRegelAn`/`naechsterRegelCode` (Task 36), `holeEigenesProfil` (M3 Task 24).
-- Produces: `nachrichtEingegangen(text, von, betreff)`, `alsAnfrageSpeichern(nachrichtId)`, `entwurfSenden(nachrichtId)`, `entwurfBearbeiten(nachrichtId, body)`, `entwurfVerwerfen(nachrichtId, grund)` — verwendet von `PostfachAnsicht` (Task 44) und später von `app/actions/matches.ts` (M8, für `sendeWennFreigegeben`).
+- Produces: `nachrichtEingegangen(text, von, betreff)`, `alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung?)`, `entwurfSenden(nachrichtId)`, `entwurfBearbeiten(nachrichtId, body)`, `entwurfVerwerfen(nachrichtId, grund)` — verwendet von `PostfachAnsicht` (Task 44) und später von `app/actions/matches.ts` (M8, für `sendeWennFreigegeben`).
+
+**Nachtrag aus Task 42**: `alsAnfrageSpeichern` bekam nachträglich einen
+optionalen zweiten Parameter `nutzungUeberschreibung?: Nutzung`, damit
+`EingangDetail` (Task 42) eine von der Nutzerin manuell gewählte Nutzung
+durchreichen kann, wenn die KI-Erkennung `nutzung` nicht bestimmen konnte.
+`felder.nutzung` (die KI-Erkennung) hat dabei immer Vorrang vor der
+Überschreibung; der ursprüngliche Guard unten wirft weiterhin, wenn beide
+fehlen. Siehe Task 42s Abwägung für die Begründung dieser Design-Entscheidung.
+Der Code-Block unten ist bereits auf diesem aktuellen Stand.
+
+**Nachtrag aus Task 44s Fix-Loop Runde 2**: `alsAnfrageSpeichern` macht im
+Code-Block unten noch `holeNachricht` -> `legeAnfrageAn` -> `loescheNachricht`
+als drei getrennte, unsynchronisierte Schritte. Reviewer-Fund beim Bau von
+Task 44: zwei überlappende Aufrufe für dieselbe `nachrichtId` (z.B. Doppelklick
+auf "Als Anfrage speichern", oder Wegwechseln und Zurückkehren während ein
+Speichern noch läuft, gefolgt von erneutem Klick) konnten dadurch beide
+dieselbe, noch nicht gelöschte Zeile lesen und beide `legeAnfrageAn` aufrufen
+-- eine echte doppelte Anfrage aus einer Quelle-Nachricht, kein rein
+theoretisches Risiko, und clientseitig (siehe `PostfachAnsicht`s
+`speichernLaufend`, Task 44) nicht zuverlässig zu schliessen, solange die
+Server Action selbst nicht atomar ist. Tatsächlich umgesetzt: der
+`loescheNachricht`-Aufruf am Ende wurde durch einen atomaren
+Lösch-und-Rückgabe-Aufruf (`loescheUndGibNachrichtZurueck`, neu in
+`lib/queries/nachrichten.ts`, `DELETE ... RETURNING *` in einer Query) ersetzt,
+der unmittelbar vor `legeAnfrageAn` steht -- NICHT ganz am Anfang der Funktion
+anstelle des bestehenden `holeNachricht`-Reads, weil der `nutzung`-Check
+zwingend vor jedem Löschen passieren muss (siehe Task 42s Abwägung oben: die
+Nutzerin muss über `EingangDetail` zurückkehren und die Nutzung nachtragen
+können, was voraussetzt, dass die Quelle-Nachricht dafür noch existiert).
+Postgres serialisiert konkurrierende `DELETE`s auf dieselbe Zeile per
+Row-Level-Locking, sodass von zwei überlappenden Aufrufen garantiert nur einer
+die Zeile zurückbekommt; der andere erhält `null` und wirft ("Nachricht wurde
+bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
+anzulegen. Details und die volle Abwägung der beiden erwogenen Optionen siehe
+Task 44s Abweichungspunkt 9.
 
 `richtung` ist laut README-Enum (`eingang | entwurf | gesendet`) der **Status** einer Nachricht, nicht ihre feste Art — ein Entwurf wechselt bei echtem Versand zu `gesendet`, zusammen mit dem Zeitstempel `gesendet_am`. Eine erledigte Eingangs-Mail (gespeichert oder verworfen) wurde dagegen nie *von uns gesendet*; sie als `gesendet` umzuflaggen würde den Wert für jede spätere Auswertung (z. B. eine Versand-Erfolgsquote in M10) verfälschen. Erledigte Eingangs-Mails werden deshalb gelöscht, genau wie im Prototyp, der sie nach der Aktion aus seiner Liste entfernt.
 
@@ -3621,6 +3685,7 @@ Implementiert Spec D7 (ein einziger Einstiegspunkt, quellenunabhängig) und D10 
 import { revalidatePath } from "next/cache"
 import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
 import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
+import type { Nutzung } from "@/types"
 import {
   holeNachricht,
   legeNachrichtAn,
@@ -3642,22 +3707,32 @@ export async function sendeWennFreigegeben(nachricht: NachrichtRow, erforderlich
 }
 
 export async function nachrichtEingegangen(text: string, von: string, betreff: string): Promise<void> {
-  const felder = await erkenneFelder(text)
-
-  await legeNachrichtAn({
+  // Die Roh-Nachricht wird ZUERST und bedingungslos gespeichert, bevor
+  // erkenneFelder() überhaupt aufgerufen wird -- nicht umgekehrt. erkenneFelder
+  // (Task 37) und entwurfRueckfrage (Task 38) sind beide bewusst so gebaut,
+  // dass sie bei einer kaputten/unerwarteten KI-Antwort werfen. Würde man
+  // zuerst die KI aufrufen und erst danach speichern, ginge eine echte,
+  // gerade eingefügte Geschäftsanfrage bei jedem KI-Fehlschlag spurlos
+  // verloren -- nur ein geworfener Fehler, kein Datensatz. erkannte_felder
+  // ist im Insert-Typ nullable, genau für diesen Zwischenzustand.
+  const nachricht = await legeNachrichtAn({
     richtung: "eingang",
     typ: "anfrage",
     von,
     an: "kontakt@espaceso.ch",
     betreff,
     body: text,
-    erkannte_felder: felder,
+    erkannte_felder: null,
   })
+  revalidatePath("/postfach")
+
+  const felder = await erkenneFelder(text)
+  await aktualisiereNachricht(nachricht.id, { erkannte_felder: felder })
 
   const luecken = Object.values(felder).some((wert) => wert === null)
   if (luecken) {
     const entwurf = await entwurfRueckfrage(felder)
-    const nachricht = await legeNachrichtAn({
+    const rueckfrageNachricht = await legeNachrichtAn({
       richtung: "entwurf",
       typ: "rueckfrage",
       von: "kontakt@espaceso.ch",
@@ -3665,24 +3740,45 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
       betreff: entwurf.betreff,
       body: entwurf.body,
     })
-    await sendeWennFreigegeben(nachricht, 2)
+    await sendeWennFreigegeben(rueckfrageNachricht, 2)
   }
 
   revalidatePath("/postfach")
 }
 
-export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
+export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
   const nachricht = await holeNachricht(nachrichtId)
   if (!nachricht) throw new Error("Nachricht nicht gefunden")
 
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   if (!felder) throw new Error("Diese Nachricht hat keine erkannten Felder")
 
+  // NICHT auf einen Default wie "gewerbe" ausweichen: Task 37 hat nutzung
+  // genau deshalb als achtes KI-Feld ergänzt, "ohne KI-Schätzung sonst ein
+  // stiller Rateschritt in der Server Action nötig wäre". berechneMatch
+  // (M2) hat ein hartes, ungewichtetes Ausschlusskriterium
+  // (anfrage.nutzung !== objekt.nutzung -> null) -- ein falscher Default
+  // würde die Anfrage nicht nur falsch beschriften, sondern lautlos und
+  // dauerhaft von jedem künftigen Match ausschliessen, wenn die echte
+  // Nutzung z. B. "lager" statt "gewerbe" war.
+  //
+  // Task 42 hat EingangDetail um ein Pflicht-Auswahlfeld für nutzung ergänzt,
+  // sichtbar/Pflicht genau dann, wenn felder.nutzung null ist. Der dort von
+  // der Nutzerin gewählte Wert kommt hier als nutzungUeberschreibung an und
+  // wird NUR verwendet, wenn die KI selbst nichts erkannt hat -- felder.nutzung
+  // hat immer Vorrang. Die Überschreibung wird bewusst NICHT in
+  // erkannte_felder zurückgeschrieben (siehe Task 42): erkannte_felder bleibt
+  // die ungefilterte Aufzeichnung dessen, was die KI tatsächlich erkannt hat.
+  const nutzung = felder.nutzung ?? nutzungUeberschreibung
+  if (!nutzung) {
+    throw new Error(
+      "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
+    )
+  }
+
   await legeAnfrageAn({
     ort: felder.ort,
-    // Generischster Wert als Rückfallebene: anfragen.nutzung ist nicht nullbar,
-    // die KI liefert aber nicht immer eine eindeutige Kategorie.
-    nutzung: felder.nutzung ?? "gewerbe",
+    nutzung,
     flaeche_min: felder.flaeche_min,
     flaeche_max: felder.flaeche_max,
     budget_pro_m2: felder.budget_pro_m2,
@@ -3749,15 +3845,27 @@ export function MailEinfuegen() {
   const [betreff, setBetreff] = useState("")
   const [text, setText] = useState("")
   const [laedt, setLaedt] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
 
+  // nachrichtEingegangen (Task 39) kann werfen (erkenneFelder/entwurfRueckfrage
+  // sind bewusst so gebaut). Ohne try/catch bliebe der Button dauerhaft auf
+  // "KI liest…" hängen -- die Rohnachricht ist zwar dank Task 39 trotzdem
+  // sicher gespeichert, aber die Oberfläche sähe für die Nutzerin kaputt aus.
   async function absenden() {
     setLaedt(true)
-    await nachrichtEingegangen(text, von, betreff)
-    setLaedt(false)
-    setOffen(false)
-    setVon("")
-    setBetreff("")
-    setText("")
+    setFehler(null)
+    try {
+      await nachrichtEingegangen(text, von, betreff)
+      setLaedt(false)
+      setOffen(false)
+      setVon("")
+      setBetreff("")
+      setText("")
+    } catch (e) {
+      const meldung = e instanceof Error ? e.message : String(e)
+      setFehler(`Fehler beim Verarbeiten der Mail. Bitte erneut versuchen. ${meldung}`)
+      setLaedt(false)
+    }
   }
 
   if (!offen) {
@@ -3773,32 +3881,40 @@ export function MailEinfuegen() {
       <input
         placeholder="Absender-E-Mail"
         value={von}
-        onChange={(e) => setVon(e.target.value)}
+        onChange={(e) => { setVon(e.target.value); setFehler(null) }}
         className="rounded-lg border border-line-2 px-2.5 py-1.5 text-sm text-ink"
       />
       <input
         placeholder="Betreff"
         value={betreff}
-        onChange={(e) => setBetreff(e.target.value)}
+        onChange={(e) => { setBetreff(e.target.value); setFehler(null) }}
         className="rounded-lg border border-line-2 px-2.5 py-1.5 text-sm text-ink"
       />
       <textarea
         placeholder="Mailtext einfügen…"
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => { setText(e.target.value); setFehler(null) }}
         rows={8}
         className="rounded-lg border border-line-2 px-2.5 py-1.5 text-sm text-ink"
       />
+      {fehler && <div className="text-sm text-crit">{fehler}</div>}
       <div className="flex gap-2">
         <Button variante="primaer" onClick={absenden} disabled={laedt || !von || !text}>
           {laedt ? "KI liest…" : "Übernehmen"}
         </Button>
-        <Button onClick={() => setOffen(false)}>Abbrechen</Button>
+        {/* Auch während laedt deaktiviert: "Abbrechen" bricht die laufende
+            Server Action nicht wirklich ab (kein AbortController), sie läuft
+            im Hintergrund weiter. Ohne diese Sperre könnte ein spätes
+            Fehlschlagen/Gelingen nach dem Schliessen einen verwirrenden,
+            zeitversetzten Fehlerbanner beim nächsten Öffnen zeigen. */}
+        <Button onClick={() => setOffen(false)} disabled={laedt}>Abbrechen</Button>
       </div>
     </div>
   )
 }
 ```
+(Fehlt im ursprünglichen Entwurf: `"use client"` am Dateianfang -- die
+Komponente nutzt `useState` und Event-Handler und braucht die Direktive.)
 
 - [ ] **Step 2: Typecheck und Commit**
 
@@ -3846,6 +3962,7 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
           <button
             key={option}
             onClick={() => onFilterWechsel(option)}
+            aria-pressed={filter === option}
             className={`rounded-full border px-2.5 py-1 text-xs ${
               filter === option ? "border-navy bg-navy text-white" : "border-line text-ink-2"
             }`}
@@ -3859,16 +3976,25 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
         <button
           key={nachricht.id}
           onClick={() => onAuswahl(nachricht.id)}
+          aria-current={nachricht.id === ausgewaehlteId ? "true" : undefined}
           className={`flex w-full gap-2.5 border-b border-line p-3 text-left last:border-b-0 hover:bg-surface-2 ${
             nachricht.id === ausgewaehlteId ? "bg-brand-soft" : ""
           }`}
         >
+          {/* "gesendet" bekommt eine dritte, eigene Darstellung (nicht die
+              gleiche wie "entwurf"): unter dem "Alle"-Filter sind das sonst
+              zwei nicht unterscheidbare ↑/brand-Zeilen, obwohl eine davon
+              noch auf eine Aktion wartet und die andere bereits erledigt ist. */}
           <span
             className={`grid h-[26px] w-[26px] flex-none place-items-center rounded-lg text-sm ${
-              nachricht.richtung === "eingang" ? "bg-surface-3 text-ink-2" : "bg-brand text-on-brand"
+              nachricht.richtung === "eingang"
+                ? "bg-surface-3 text-ink-2"
+                : nachricht.richtung === "gesendet"
+                  ? "bg-good-bg text-good"
+                  : "bg-brand text-on-brand"
             }`}
           >
-            {nachricht.richtung === "eingang" ? "↓" : "↑"}
+            {nachricht.richtung === "eingang" ? "↓" : nachricht.richtung === "gesendet" ? "✓" : "↑"}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-sm font-medium text-ink">{nachricht.betreff}</span>
@@ -3892,20 +4018,85 @@ git commit -m "feat: NachrichtenListe mit Filter"
 
 ### Task 42: `EingangDetail`
 
+**Offener Punkt aus Task 39** (Server-Action-Review) -- **gelöst in dieser
+Task**: `alsAnfrageSpeichern` wirft bewusst, wenn `erkannte_felder.nutzung`
+null ist, statt lautlos auf "gewerbe" zu raten (siehe Task 39s Kommentar --
+ein falscher Default würde die Anfrage wegen `berechneMatch`s hartem
+Nutzung-Ausschlusskriterium dauerhaft und lautlos unmatchbar machen). Der
+ursprüngliche Entwurf unten hatte **keine** Korrektur-Möglichkeit für ein
+fehlendes `nutzung`-Feld -- der "Als Anfrage speichern"-Button hätte bei
+fehlender Nutzung einfach geworfen, ohne dass die Nutzerin eine Chance gehabt
+hätte, den Wert nachzutragen.
+
+Umgesetzte Lösung: Ein `<select>` für `nutzung` erscheint genau dann
+(sichtbar/Pflicht), wenn `felder.nutzung === null`. `onSpeichern` bekommt ein
+neues optionales zweites Argument, `nutzungUeberschreibung?: Nutzung`, über
+das der von der Nutzerin gewählte Wert durchgereicht wird. `alsAnfrageSpeichern`
+(Task 39, `app/actions/nachrichten.ts`) wurde entsprechend um denselben
+optionalen zweiten Parameter erweitert (`felder.nutzung ?? nutzungUeberschreibung`,
+mit KI-Wert weiterhin Vorrang) -- siehe Task 39s aktualisierten Code-Block.
+Der "Als Anfrage speichern"-Button ist `disabled`, solange der Aufruf
+garantiert werfen würde (keine `erkannte_felder`, oder `nutzung` fehlt und
+wurde noch nicht ausgewählt).
+
+Abwägung dieser Entscheidung gegenüber der Alternative, die Korrektur
+stattdessen über eine neue Server Action in `erkannte_felder` zurückzuschreiben
+und danach das bestehende parameterlose `onSpeichern` aufzurufen: Letzteres
+hätte `alsAnfrageSpeichern`s Signatur unangetastet gelassen, aber zwei
+Nachteile gehabt. Erstens würde `erkannte_felder` dann die menschliche
+Korrektur mit der tatsächlichen KI-Erkennung vermischen -- "PULS hat erkannt"
+würde für ein Feld Anerkennung beanspruchen, das die KI nie erkannt hat, und
+die "?"-Markierung in `Feld` würde fälschlich verschwinden. Zweitens bräuchte
+es einen zweiten, separaten Server-Roundtrip (erst Korrektur persistieren,
+dann speichern), mit dem Risiko eines inkonsistenten Zwischenzustands, falls
+der zweite Aufruf fehlschlägt. Die gewählte Lösung (Override-Parameter, ein
+einziger atomarer Aufruf, `erkannte_felder` bleibt unverändert die reine
+KI-Aufzeichnung) ist zwar ein Eingriff in eine bereits durchgesehene Task-39-Datei,
+aber innerhalb desselben ungemergten Feature-Branches -- mit Präzedenzfall in
+diesem Milestone (M4s `Header.tsx` wurde sowohl von seiner eigenen Task als
+auch von einer späteren Task verändert, als ein echtes cross-cutting Bedürfnis
+entstand).
+
+**Wichtig für Task 44** (noch nicht gebaut): Die Verdrahtung
+`onSpeichern={() => void alsAnfrageSpeichern(ausgewaehlt.id)}` weiter unten in
+Task 44 muss das zweite Argument durchreichen:
+`onSpeichern={(nutzungUeberschreibung) => void alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung)}`.
+Ohne diese Anpassung würde die Nutzung-Auswahl aus `EingangDetail` beim Klick
+auf "Als Anfrage speichern" stillschweigend verworfen und `alsAnfrageSpeichern`
+würde trotz Auswahl weiterhin werfen.
+
+Zusätzlich wurde die Absender-Zeile im Header korrigiert: Der ursprüngliche
+Entwurf zeigte `nachricht.von` doppelt hintereinander (einmal als reinen Text,
+einmal identisch als `mailto:`-Link) -- ein offensichtlicher Copy-Paste-Fehler.
+`NachrichtRow.an` ist bei eingehenden Mails immer die feste interne Adresse
+`kontakt@espaceso.ch` (siehe `nachrichtEingegangen`, Task 39) und daher hier
+nicht informativ genug, um sie zusätzlich anzuzeigen. Die Zeile zeigt jetzt
+einmalig "Von" gefolgt vom `mailto:`-Link auf `nachricht.von` -- spiegelbildlich
+zu `EntwurfDetail`s "An"-Zeile (Task 43), die bei ausgehenden Nachrichten den
+Empfänger zeigt.
+
 **Files:**
 - Create: `components/postfach/EingangDetail.tsx`
+- Modify: `app/actions/nachrichten.ts` (Task 39) -- `alsAnfrageSpeichern` um
+  optionalen `nutzungUeberschreibung`-Parameter erweitert, siehe Task 39s
+  aktualisierten Code-Block.
 
 **Interfaces:**
-- Consumes: `Feld` (M4 Task 30), `ErkannteFelder` (Task 37).
-- Produces: `<EingangDetail nachricht onSpeichern onRueckfrageOeffnen />`.
+- Consumes: `Feld` (M4 Task 30), `ErkannteFelder` (Task 37), `Nutzung` (`@/types`).
+- Produces: `<EingangDetail nachricht onSpeichern onRueckfrageOeffnen />`, mit
+  `onSpeichern: (nutzungUeberschreibung?: Nutzung) => void`.
 
 - [ ] **Step 1: `components/postfach/EingangDetail.tsx` anlegen**
 
 ```tsx
+"use client"
+
+import { useState } from "react"
 import { Feld } from "@/components/ui/Feld"
 import { Button } from "@/components/ui/Button"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
+import type { Nutzung } from "@/types"
 
 const LABELS: Record<keyof ErkannteFelder, string> = {
   firma: "Firma",
@@ -3918,9 +4109,22 @@ const LABELS: Record<keyof ErkannteFelder, string> = {
   nutzung: "Nutzung",
 }
 
+const NUTZUNG_OPTIONEN: { wert: Nutzung; label: string }[] = [
+  { wert: "buero", label: "Büro" },
+  { wert: "gewerbe", label: "Gewerbe" },
+  { wert: "produktion", label: "Produktion" },
+  { wert: "lager", label: "Lager" },
+  { wert: "verkauf", label: "Verkauf" },
+  { wert: "bauland", label: "Bauland" },
+]
+
 type Props = {
   nachricht: NachrichtRow
-  onSpeichern: () => void
+  // Optionales zweites Argument: von der Nutzerin manuell nachgetragene
+  // Nutzung, falls die KI-Erkennung `nutzung` nicht bestimmen konnte. Siehe
+  // Kommentar unten bei `nutzungFehlt` -- alsAnfrageSpeichern (Task 39) wirft
+  // ohne diesen Wert, statt lautlos zu raten.
+  onSpeichern: (nutzungUeberschreibung?: Nutzung) => void
   onRueckfrageOeffnen: () => void
 }
 
@@ -3928,12 +4132,33 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
 
+  // alsAnfrageSpeichern (Task 39) wirft bewusst, wenn erkannte_felder.nutzung
+  // null ist, statt still auf "gewerbe" zu raten -- ein falscher Default
+  // würde die Anfrage wegen berechneMatchs (M2) hartem
+  // Nutzung-Ausschlusskriterium dauerhaft und lautlos unmatchbar machen. Ist
+  // nutzung nicht erkannt, muss die Nutzerin hier vor dem Speichern eine
+  // Nutzung auswählen; der gewählte Wert wird als zweites Argument an
+  // onSpeichern durchgereicht (siehe Props-Kommentar), NICHT in
+  // erkannte_felder zurückgeschrieben -- so bleibt sichtbar, was die KI
+  // tatsächlich erkannt hat ("?" bleibt stehen), und was die Nutzerin manuell
+  // ergänzt hat.
+  const nutzungFehlt = felder !== null && felder.nutzung === null
+  const [nutzungAuswahl, setNutzungAuswahl] = useState<Nutzung | "">("")
+
+  // Der Button darf nicht klickbar sein, wenn der Aufruf garantiert wirft:
+  // entweder gibt es gar keine erkannten Felder, oder nutzung fehlt und wurde
+  // noch nicht manuell nachgetragen.
+  const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "")
+
   return (
     <div>
       <div className="border-b border-line p-4">
         <div className="font-display text-base font-bold text-ink">{nachricht.betreff}</div>
         <div className="mt-0.5 text-xs text-ink-3">
-          {nachricht.von} · <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">{nachricht.von}</a>
+          Von{" "}
+          <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">
+            {nachricht.von}
+          </a>
         </div>
       </div>
       <div className="p-4">
@@ -3954,10 +4179,36 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
                 />
               ))}
             </div>
+            {nutzungFehlt && (
+              <div className="mt-2.5">
+                <label htmlFor="eingang-nutzung-auswahl" className="mb-1 block text-xs text-ink-3">
+                  Nutzung nicht erkannt · bitte auswählen, um speichern zu können
+                </label>
+                <select
+                  id="eingang-nutzung-auswahl"
+                  value={nutzungAuswahl}
+                  onChange={(e) => setNutzungAuswahl(e.target.value as Nutzung)}
+                  className="w-full rounded-lg border border-warn bg-warn-bg px-3 py-2 text-sm text-ink"
+                >
+                  <option value="" disabled>
+                    Nutzung wählen …
+                  </option>
+                  {NUTZUNG_OPTIONEN.map((option) => (
+                    <option key={option.wert} value={option.wert}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </>
         )}
         <div className="mt-3.5 flex flex-wrap gap-2">
-          <Button variante="primaer" onClick={onSpeichern}>
+          <Button
+            variante="primaer"
+            disabled={!speichernMoeglich}
+            onClick={() => onSpeichern(nutzungFehlt ? (nutzungAuswahl as Nutzung) : undefined)}
+          >
             Als Anfrage speichern
           </Button>
           {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
@@ -3971,7 +4222,7 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
 - [ ] **Step 2: Typecheck und Commit**
 
 ```bash
-git add components/postfach/EingangDetail.tsx
+git add components/postfach/EingangDetail.tsx app/actions/nachrichten.ts
 git commit -m "feat: EingangDetail mit erkannten Feldern"
 ```
 
@@ -4073,6 +4324,65 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben** (der Block zeigt noch den
+ursprünglichen, ungeprüften Entwurf des Controllers):
+
+1. **`"use client"` fehlte im Code-Block** -- die Komponente nutzt `useState`
+   und Event-Handler und muss eine Client Component sein. Ergänzt.
+2. **Fehlerbehandlung**: `entwurfSenden`/`entwurfBearbeiten`/`entwurfVerwerfen`
+   (Task 39) werfen bewusst (Milestone-Konvention, siehe Task 40s
+   `MailEinfuegen` und Task 44s "Offener Punkt aus Task 39s Review" weiter
+   unten). Der Code-Block oben ruft sie als reines Fire-and-forget auf
+   (`onClick={() => entwurfSenden(nachricht.id)}` bzw. `void entwurfBearbeiten(...)`)
+   -- ein Fehler wäre nur als unbehandelte Promise-Rejection in der
+   Browser-Konsole sichtbar gewesen, nie für die Nutzerin. Umgesetzt wie in
+   `MailEinfuegen`: `senden`/`uebernehmen`/`verwerfen` sind async Funktionen mit
+   try/catch, ein `fehler`-State wird unter dem Entwurfstext in `text-crit`
+   angezeigt. Ein gemeinsamer `laufend`-State
+   (`"senden" | "uebernehmen" | "verwerfen" | null`, statt drei separater
+   `laedt`-Booleans) deaktiviert während einer laufenden Aktion ALLE
+   Aktions-Buttons inklusive der `GRUENDE`-Buttons -- verhindert, dass dieselbe
+   Nachricht gleichzeitig z.B. gesendet und verworfen wird, und beschriftet den
+   aktiven Button ("Wird gesendet…" / "Wird übernommen…"; der angeklickte
+   `GRUENDE`-Button zeigt zusätzlich "Wird verworfen…", siehe `grundAktiv`).
+3. **Sync-Risiko ohne `key`, inkl. Fix-Loop-Runde 1**: Task 44 (siehe unten)
+   rendert voraussichtlich `<EntwurfDetail nachricht={ausgewaehlt} />` ohne
+   `key={nachricht.id}` (wie `EingangDetail`/Task 42). Ohne Gegenmassnahme
+   bliebe beim Wechsel der Auswahl in `NachrichtenListe` der lokale
+   `body`/`bearbeiten`-State der vorherigen Nachricht stehen. Ein `useEffect`,
+   das bei jedem Wechsel von `nachricht.id` (bewusst nicht `nachricht.body`,
+   siehe Kommentar im Code) den gesamten lokalen State zurücksetzt, deckt den
+   Moment des Wechsels ab -- **aber nicht** eine Server-Action-Anfrage, die zu
+   diesem Zeitpunkt bereits unterwegs war: Klick auf "Senden" für Nachricht A,
+   Wechsel zu Nachricht B vor Antwort von A, dann settelt As Promise -- ohne
+   weitere Massnahme würde As `catch`/`finally` da bereits `laufend`/`fehler`
+   für die inzwischen angezeigte Nachricht B überschreiben (falsch zugeordnete
+   Fehlermeldung, oder schlimmer: As `finally` löscht Bs echten, noch
+   laufenden `laufend`-Guard und ermöglicht so einen Doppel-Submit auf B).
+   Fix-Loop-Runde 1 hat dafür einen `nachrichtIdRef`-Guard ergänzt: jede
+   Aktionsfunktion merkt sich beim Start die Ziel-`nachricht.id` und
+   vergleicht sie nach dem `await` mit `nachrichtIdRef.current`; bei
+   Abweichung werden keinerlei State-Updates mehr vorgenommen.
+   **Richtigstellung**: Der `useEffect`-Reset allein macht die Komponente
+   NICHT robust "unabhängig davon, ob der Aufrufer später einen `key` setzt"
+   (frühere, zu optimistische Formulierung dieser Notiz) -- er deckt nur den
+   Wechselmoment ab, nicht In-Flight-Antworten. Die robustere Primärverteidigung
+   ist ein `key={nachricht.id}` an der Aufrufstelle in Task 44
+   (`<EntwurfDetail key={nachricht.id} nachricht={ausgewaehlt} />`): React 18
+   unmountet die alte Instanz beim Key-Wechsel vollständig und no-opt danach
+   automatisch jedes `setState` aus noch laufenden Promises der alten Instanz.
+   Der `nachrichtIdRef`-Guard in dieser Komponente ist als Defense-in-Depth für
+   das Zeitfenster VOR einer solchen Key-Änderung gedacht, ersetzt sie aber
+   nicht. **Hinweis für Task 44**: beim Verdrahten `key={nachricht.id}` an
+   `<EntwurfDetail>` ergänzen.
+4. **"Abbrechen" beim Bearbeiten ergänzt**: Der Code-Block hatte keine
+   Möglichkeit, den Bearbeiten-Modus ohne Speichern zu verlassen. Ergänzt,
+   analog zu `MailEinfuegen`s "Abbrechen" -- setzt `body` auf `nachricht.body`
+   zurück und schliesst den Edit-Modus.
+5. **Branding**: "Entwurf von PULS · noch nicht gesendet" -> "Entwurf von
+   immoheart · noch nicht gesendet" (siehe analoge Korrektur in
+   `EingangDetail`/Task 42, "PULS hat erkannt" -> "immoheart hat erkannt").
+
 - [ ] **Step 2: Typecheck und Commit**
 
 ```bash
@@ -4083,6 +4393,29 @@ git commit -m "feat: EntwurfDetail mit Bearbeiten, Senden, Verwerfen"
 ---
 
 ### Task 44: Postfach-Seite zusammensetzen
+
+**Offener Punkt aus Task 39s Review**: `alsAnfrageSpeichern` (und die anderen
+Server Actions in `app/actions/nachrichten.ts`) können werfen (siehe Task 39,
+insbesondere der bewusste Throw bei fehlender `nutzung`). Ein reiner
+Fire-and-forget-Aufruf wie `onSpeichern={() => void alsAnfrageSpeichern(id)}`
+ohne `.catch`/try-catch liefert dem Menschen keine sichtbare Rückmeldung --
+der sorgfältig formulierte Fehlertext ("Nutzung konnte nicht erkannt werden
+...") würde nur als unbehandelte Promise-Rejection in der Browser-Konsole
+landen, nie als Toast/Inline-Hinweis in der UI. Beim Verdrahten der
+Aktions-Aufrufe in dieser Task müssen Fehler aus allen `app/actions/nachrichten.ts`-Aufrufen
+sichtbar an die Nutzerin zurückgemeldet werden, nicht nur protokolliert.
+
+**Nachtrag aus Task 42**: `EingangDetail`s `onSpeichern` hat jetzt die
+Signatur `(nutzungUeberschreibung?: Nutzung) => void` (statt `() => void`) --
+die Komponente reicht die von der Nutzerin manuell gewählte Nutzung darüber
+durch, wenn die KI-Erkennung `nutzung` nicht bestimmen konnte. Die
+Verdrahtung unten muss dieses Argument an `alsAnfrageSpeichern` weiterreichen:
+`onSpeichern={(nutzungUeberschreibung) => void alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung)}`.
+Kombiniert mit dem Fehler-Feedback-Punkt oben ergibt sich in etwa:
+`onSpeichern={(nutzungUeberschreibung) => alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung).catch((e) => zeigeFehler(e.message))}`
+(oder die jeweils gewählte Toast-/Fehler-UI dieser Task). Der Code-Block unten
+zeigt noch die alte, parameterlose Verdrahtung ohne Fehlerbehandlung und muss
+beim Implementieren dieser Task entsprechend angepasst werden.
 
 **Files:**
 - Create: `components/postfach/PostfachAnsicht.tsx`
@@ -4172,6 +4505,173 @@ export default async function PostfachPage() {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (`PostfachAnsicht.tsx`)** (der
+Block in Step 1 zeigt, wie beide Callout-Notizen oben bereits ankündigen, noch
+die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
+
+1. **Fehlerbehandlung für `alsAnfrageSpeichern`**: Wie im "Offenen Punkt aus
+   Task 39s Review" gefordert, ruft `PostfachAnsicht` `alsAnfrageSpeichern`
+   nicht mehr als Fire-and-forget auf. Eine neue async Funktion
+   `speichernAlsAnfrage(nachrichtId, nutzungUeberschreibung?)` kapselt den
+   Aufruf in try/catch; ein Fehler landet in lokalem `fehler`-State und wird
+   oben im rechten Panel in `text-crit` angezeigt -- dieselbe Konvention wie
+   in `MailEinfuegen` (Task 40) und `EntwurfDetail` (Task 43).
+2. **Argument-Weiterreichung**: `onSpeichern={(nutzungUeberschreibung) =>
+   void speichernAlsAnfrage(ausgewaehlt.id, nutzungUeberschreibung)}` reicht
+   die von `EingangDetail` (Task 42) durchgereichte manuelle
+   Nutzung-Überschreibung an `alsAnfrageSpeichern` weiter, wie im Nachtrag aus
+   Task 42 oben vorgegeben.
+3. **`key={nachricht.id}` auf `<EntwurfDetail>`**: ergänzt, wie von Task 43s
+   Review gefordert (schliesst die dort dokumentierte
+   Stale-Async-Response-Race beim Wechsel der Auswahl).
+4. **Auswahl nach erfolgreichem Speichern**: `alsAnfrageSpeichern` löscht bei
+   Erfolg die Quelle-Nachricht (`loescheNachricht`, siehe
+   `app/actions/nachrichten.ts`). `ausgewaehlt = nachrichten.find(...) ??
+   null` würde nach dem nächsten `revalidatePath`-Refresh zwar ohnehin
+   automatisch `null` ergeben (kein Crash), aber bis dahin könnte kurzzeitig
+   eine bereits gelöschte Zeile angezeigt werden. `speichernAlsAnfrage` setzt
+   deshalb bei Erfolg `ausgewaehlteId` explizit auf `null` -- die Detailansicht
+   zeigt danach sofort "Nachricht wählen.", die Liste selbst aktualisiert sich
+   sobald `revalidatePath` durchkommt.
+5. **Race-Schutz analog zu `EntwurfDetail`s `nachrichtIdRef`**: Während
+   `alsAnfrageSpeichern` läuft, ist die Liste nicht gesperrt -- die Nutzerin
+   könnte eine andere Nachricht auswählen, bevor die Antwort eintrifft. Ein
+   `ausgewaehlteIdRef`, in einem `useEffect` synchron zu `ausgewaehlteId`
+   gehalten, wird nach dem `await` mit der ursprünglichen `nachrichtId`
+   verglichen; nur bei Übereinstimmung werden `fehler`/Auswahl-Reset
+   angewendet. Verhindert, dass ein verspäteter Fehler (oder ein verspäteter
+   Erfolgs-Reset) der ALTEN Nachricht auf der inzwischen neu ausgewählten
+   Nachricht landet.
+6. **`Header`-Props stimmten bereits**: anders als bei anderen Tasks in diesem
+   Meilenstein war der `Header`-Aufruf im Code-Block (`titel`/`untertitel`)
+   deckungsgleich mit der tatsächlichen `Header.tsx`-Signatur -- keine
+   Anpassung nötig.
+7. **Fix-Loop Runde 1 -- Doppelklick-Schutz für "Als Anfrage speichern"**:
+   Reviewer-Fund (Important): `alsAnfrageSpeichern` macht `holeNachricht` ->
+   `legeAnfrageAn` -> `loescheNachricht` ohne Transaktion. Anders als
+   `MailEinfuegen`s `laedt` und `EntwurfDetail`s `laufend` gab es für den
+   Speichern-Button in `EingangDetail` keine Sperre während des Aufrufs -- ein
+   schneller Doppelklick hätte zwei überlappende Aufrufe mit derselben
+   `nachrichtId` ausgelöst, die beide die noch nicht gelöschte Zeile lesen und
+   beide `legeAnfrageAn` aufrufen (zwei doppelte Anfragen aus einer
+   Quelle-Nachricht). Behoben mit einem neuen `speichernLaufend`-State in
+   `PostfachAnsicht`, das als Pflicht-Prop an `EingangDetail` durchgereicht
+   wird; dessen Speichern-Button ist zusätzlich zu `speichernMoeglich`
+   deaktiviert, solange `speichernLaufend` true ist (Beschriftung wechselt zu
+   "Wird gespeichert…", analog zu `EntwurfDetail`). Das Flag wird beim Klick
+   unconditional gesetzt (der Klick kam garantiert von der gerade angezeigten
+   Nachricht) und beim Abschluss über denselben `ausgewaehlteIdRef`-Guard wie
+   `fehler` zurückgesetzt -- **zusätzlich** aber auch sofort und unconditional
+   in `onAuswahl` und `rueckfrageOeffnen` auf `false` gesetzt, sobald die
+   Auswahl wechselt. Ohne dieses zweite, sofortige Zurücksetzen bliebe der
+   Speichern-Button einer neu ausgewählten Nachricht fälschlich gesperrt, so
+   lange der (jetzt verwaiste) Aufruf der vorherigen Nachricht noch läuft --
+   `EingangDetail` ist anders als `EntwurfDetail` NICHT über `key` an die
+   Nachricht-ID gebunden, dieselbe Komponenteninstanz bleibt beim Wechsel
+   erhalten. Bekannte, zunächst akzeptierte Lücke: wechselt die Nutzerin
+   während eines laufenden Speicherns weg und dann wieder zurück zur selben
+   Nachricht, zeigt der Button dort wieder als nicht gesperrt an, obwohl der
+   alte Aufruf noch unterwegs sein könnte. **Korrektur nach Fix-Loop Runde
+   2**: diese Lücke wurde in der ursprünglichen Fassung dieser Notiz
+   fälschlich als "derselbe theoretische, nicht-blockierende Timing-Vorbehalt
+   wie bei Task 43s `nachrichtIdRef`" bagatellisiert. Das war zu
+   unterschätzt -- anders als bei `EntwurfDetail` (wo ein verspätetes
+   Settling höchstens eine falsch zugeordnete Fehlermeldung/einen falschen
+   State-Reset verursacht) konnte diese Lücke hier zu einem **echten
+   doppelten Datensatz** führen (zwei `anfragen`-Zeilen aus einer
+   Quelle-Nachricht), war durch gewöhnliche, wenn auch zügige
+   Nutzerinteraktion erreichbar (nicht nur ein theoretisches
+   Event-Loop-Timing-Fenster), und liess sich rein clientseitig grundsätzlich
+   nicht zuverlässig schliessen, solange `alsAnfrageSpeichern` intern nicht
+   atomar ist. Siehe Punkt 9 unten für die tatsächliche Behebung auf
+   DB-Ebene.
+8. **Minor, optional -- Erfolgsbestätigung**: Reviewer-Vorschlag umgesetzt, da
+   geringer Aufwand. Ein neuer `erfolg`-State zeigt nach erfolgreichem
+   Speichern kurz "Anfrage gespeichert." anstelle von "Nachricht wählen." im
+   rechten Panel (Farbe `text-good`, bereits an anderer Stelle im Postfach
+   verwendet), bis die Nutzerin eine neue Nachricht oder Rückfrage auswählt.
+9. **Fix-Loop Runde 2 -- `alsAnfrageSpeichern` auf DB-Ebene atomar gemacht**
+   (siehe auch aktualisierte Notiz bei Task 39 weiter oben): Der
+   `speichernLaufend`-Client-Guard aus Runde 1 schliesst nur den gewöhnlichen
+   Doppelklick-Fall. Er verhindert NICHT, dass die Nutzerin während eines
+   laufenden Speicherns wegwechselt, zur selben Nachricht zurückkehrt (der
+   Button ist dann wieder aktiv, siehe Punkt 7) und erneut klickt, während der
+   ursprüngliche Server-Aufruf noch läuft -- zwei überlappende
+   `alsAnfrageSpeichern`-Aufrufe für dieselbe `nachrichtId`, beide lesen über
+   `holeNachricht` dieselbe, noch nicht gelöschte Zeile, beide rufen
+   `legeAnfrageAn` auf: eine echte doppelte Anfrage, kein rein theoretisches
+   Risiko. Kein clientseitiger Guard kann das beim aktuellen,
+   nicht-abbrechbaren Async-Muster zuverlässig verhindern -- die eigentliche
+   Behebung gehört in die Server Action. `app/actions/nachrichten.ts` ruft
+   jetzt unmittelbar vor `legeAnfrageAn` die neue
+   `loescheUndGibNachrichtZurueck` (`lib/queries/nachrichten.ts`) auf --
+   `DELETE ... WHERE id = ... RETURNING *` in einer einzigen Query. Postgres
+   serialisiert konkurrierende `DELETE`s auf dieselbe Zeile per
+   Row-Level-Locking: von zwei überlappenden Aufrufen bekommt garantiert nur
+   EINER die Zeile zurück, der andere `null` und wirft ("Nachricht wurde
+   bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
+   anzulegen. Entscheidung zwischen den zwei erwogenen Optionen: **Option
+   (b)** gewählt -- der `nutzung`-Check bleibt VOR dem atomaren
+   Lösch-und-Rückgabe-Aufruf (auf Basis des bereits vorhandenen
+   `holeNachricht`-Reads ganz oben in der Funktion), der atomare Aufruf selbst
+   wandert an die Stelle, wo bisher `loescheNachricht` am Ende stand,
+   unmittelbar vor `legeAnfrageAn`. **Nicht** Option (a) (ein einziger
+   atomarer Lösch-Aufruf ganz am Anfang, `felder`/`nutzung` aus der
+   zurückgegebenen Zeile statt aus einem separaten `holeNachricht`): Task 39s
+   Begründung für den Throw bei fehlender `nutzung` ("Task 42 hat EingangDetail
+   um ein Pflicht-Auswahlfeld ergänzt ... damit die Nutzerin die Nutzung
+   manuell nachtragen kann") setzt voraus, dass die Quelle-Nachricht nach
+   einem gescheiterten Speichern-Versuch noch existiert. Mit Option (a) hätte
+   ausgerechnet der Fehlerfall "nutzung fehlt" die Nachricht bereits gelöscht
+   und genau die Korrekturmöglichkeit zerstört, die dieser Guard erst
+   ermöglichen soll -- ein inakzeptabler Verhaltenswechsel. Mit Option (b)
+   bleibt ein sehr kurzes Fenster zwischen `nutzung`-Check und dem atomaren
+   Aufruf (zwei directe, aufeinanderfolgende DB-Zugriffe ohne
+   Nutzerinteraktion dazwischen) -- der atomare Aufruf selbst garantiert aber
+   weiterhin, dass davon nur einer jemals `legeAnfrageAn` erreicht.
+
+   **Bekannter Trade-off durch die Umstellung**: Das Löschen passiert jetzt
+   VOR `legeAnfrageAn` statt danach. Sollte `legeAnfrageAn` nach erfolgreichem
+   Löschen aus einem transienten Infrastruktur-/Netzwerkgrund werfen, ginge die
+   Quelle-Nachricht verloren, ohne dass eine Anfrage entstanden ist -- ein
+   neuer, schmaler Fehlerfall, den es vorher (Löschen ganz am Ende) nicht gab.
+   In der Praxis gering riskant: `nutzung` ist die einzige NOT-NULL-Spalte im
+   `anfragen`-Insert und wird bereits vor dem Löschen geprüft (`ort`,
+   `flaeche_min`, `flaeche_max`, `budget_pro_m2`, `bezug` sind laut Schema alle
+   nullable) -- `legeAnfrageAn` hat also keinen plausiblen
+   Datenvalidierungsgrund mehr zu scheitern, nur noch echte Infrastrukturfehler,
+   die genauso gut den Lösch-Aufruf selbst treffen könnten. Nicht behoben,
+   bewusst akzeptiert.
+10. **Fix-Loop Runde 3 (M5 Whole-Branch-Review) -- "Rückfrage öffnen" tot ab
+    Freigabestufe 2**: Kritischer Fund, erst bei der Review des gesamten
+    Branches entdeckt (Step 5 unten testete nur, dass der Rückfrage-Entwurf
+    bei Stufe 2 als „Gesendet" markiert wird -- nicht, dass der
+    „Rückfrage öffnen"-Button in `EingangDetail` bei einer bereits gesendeten
+    Rückfrage weiterhin funktioniert). `rueckfrageOeffnen` verlangte zwingend
+    `richtung === "entwurf"`; `sendeWennFreigegeben`
+    (`app/actions/nachrichten.ts`), unconditional aus `nachrichtEingegangen`
+    aufgerufen, setzt die Rückfrage aber schon `richtung: "gesendet"`, sobald
+    `profil.freigabe_stufe >= 2` ist -- eine normale, spec-konforme
+    Konfiguration, nicht ein Rand- oder Fehlerfall. Ab Stufe 2/3 existierte die
+    Rückfrage zum Zeitpunkt des Klicks also nie mehr als `"entwurf"`, der
+    Button tat sichtbar nichts (kein Fehler, keine Navigation), blieb aber
+    dauerhaft sichtbar/klickbar. Behoben: `richtung` komplett aus dem
+    Treffer-Kriterium entfernt (`typ === "rueckfrage" && an === vonEmail`
+    reicht), Treffer-Auswahl bei mehreren Kandidaten (z.B. eine zweite,
+    spätere Rückfrage an dieselbe Adresse) jetzt explizit über den jüngsten
+    `created_at` statt implizit über die Sortierreihenfolge von
+    `nachrichten` (kein FK von der Eingang-Nachricht zu "ihrer" Rückfrage im
+    Schema vorhanden, ein exakter Verknüpfungs-Treffer war also weder vorher
+    noch jetzt möglich). `setFilter` wählt `"alle"` statt `"entwurf"`, wenn
+    der Treffer bereits gesendet ist, da `PostfachFilter` keinen eigenen
+    „gesendet"-Filter kennt und die Rückfrage sonst aus der linken Liste
+    verschwände (das Detail-Panel rechts war davon nie betroffen, da
+    `ausgewaehlt` unabhängig vom Listen-Filter über die volle `nachrichten`-
+    Liste aufgelöst wird). `EntwurfDetail` (Task 43) zeigt eine bereits
+    gesendete Nachricht über seinen eigenen `versendet =
+    nachricht.gesendet_am !== null`-Check bereits korrekt schreibgeschützt an
+    -- dort war keine Änderung nötig.
+
 - [ ] **Step 3: Manuell end-to-end prüfen**
 
 Run: `npm run dev`, angemeldet auf `/postfach` öffnen, „Neue Mail einfügen" klicken, folgenden Text einfügen:
@@ -4187,7 +4687,7 @@ B. Frei
 
 Absender-E-Mail `b.frei@thermo-kunststoff.ch`, Betreff „Suche Produktionsfläche", „Übernehmen" klicken.
 
-Expected: Eine neue Eingang-Nachricht erscheint, „PULS hat erkannt" zeigt Fläche/Ort/Bezug korrekt, Budget/Firma/Branche als **?** (Firma stand nicht im Beispieltext). Unter „Entwürfe" erscheint automatisch eine vorbereitete Rückfrage-Mail an `b.frei@thermo-kunststoff.ch`, die genau nach den fehlenden Angaben fragt.
+Expected: Eine neue Eingang-Nachricht erscheint, „immoheart hat erkannt" zeigt Fläche/Ort/Bezug korrekt, Budget/Firma/Branche als **?** (Firma stand nicht im Beispieltext). Unter „Entwürfe" erscheint automatisch eine vorbereitete Rückfrage-Mail an `b.frei@thermo-kunststoff.ch`, die genau nach den fehlenden Angaben fragt.
 
 - [ ] **Step 4: Freigabestufe 1 prüfen**
 
@@ -4258,9 +4758,74 @@ git add components/layout/Sidebar.tsx "app/(app)/layout.tsx"
 git commit -m "feat: Postfach-Badge in der Seitenleiste mit echter Anzahl"
 ```
 
+**Umgesetzte Abweichungen:**
+
+1. **`zaehleNachrichten` (Task 36) zusätzlich um `.in("richtung", ["eingang", "entwurf"])` ergänzt**,
+   statt es unverändert zu übernehmen. Der bestehende Stand zählte ausnahmslos alle Zeilen der
+   `nachrichten`-Tabelle -- inklusive `richtung: "gesendet"`. Keine der bisherigen M5-Aktionen
+   löscht je eine `gesendet`-Zeile (`loescheNachricht`/`loescheUndGibNachrichtZurueck` laufen nur
+   für die Quelle-Nachricht beim Speichern als Anfrage, deren `richtung` zu diesem Zeitpunkt
+   `eingang` ist, s. Task 39/44); `gesendet`-Zeilen bleiben also dauerhaft in der Tabelle. Ein
+   Badge, das ungefiltert zählt, würde mit der Zeit unbegrenzt wachsen und dabei grösstenteils
+   längst erledigte, gesendete Mails mitzählen -- semantisch falsch für ein Element, das laut
+   Aufgabenbeschreibung anzeigen soll, was „Aufmerksamkeit braucht" (analog zu den Tabs „Eingang"/
+   „Entwürfe" in `NachrichtenListe`, die `gesendet` ebenfalls ausklammern; nur der Tab „Alle" zeigt
+   sie). `zaehleNachrichten` hatte vor diesem Task genau null Aufrufer ausserhalb dieses einen
+   geplanten Badge-Konsumenten (geprüft per Suche im ganzen Repo) -- die Änderung der Semantik
+   bricht daher nichts Bestehendes.
+
 ---
 
 ### Task 46: Meilenstein M5 abschliessen
+
+**Kritischer Fund (M5 Whole-Branch-Review), analog zu M1 Task 11 im Ledger**:
+`nachrichten` trug seit `20260922195659_rls.sql` noch das generische "eingeloggt
+liest"-Muster (`using (auth.role() = 'authenticated')`) -- dieselbe Basistabelle
+ungeschützt-Lücke, die für `anfragen` bereits in
+`20260923033041_rls_fix_base_table_read.sql` behoben wurde, nur beim damaligen
+Fix nicht auf die anderen Tabellen mit demselben Muster übertragen. Jede
+eingeloggte Rolle, inklusive `leser`, konnte damit rohe Mail-Inhalte und die
+von der KI extrahierten Felder (`erkannte_felder`: Firma, Budget/m² usw. --
+dieselben Felder, die einmal in einer vertraulichen Anfrage über
+`anfragen_sichtbar` vor `leser` maskiert werden) direkt über `/postfach`
+lesen, ohne jede Einschränkung. Neue Migration
+`20260923140000_rls_fix_nachrichten_base_table_read.sql` (nicht die
+bestehende `20260922195659_rls.sql` editiert): löscht die Policy
+`"eingeloggt liest nachrichten"` und ersetzt sie durch `"vermittler liest
+nachrichten" ... to authenticated using (current_rolle() in ('admin',
+'vermittler'))`, exakt nach dem `anfragen`-Vorbild. Anders als bei `anfragen`
+gibt es für `nachrichten` **keine** `vertraulich`-Spalte und **keine**
+maskierende View (`nachrichten_sichtbar` existiert nirgends im Code) -- für
+`leser` gibt es hier nichts zu maskieren, nur nichts zu sehen, was konsistent
+mit dem Rollenmodell ist (`/postfach` und alle Server Actions in
+`app/actions/nachrichten.ts` sind Postfach-Triage-Werkzeug für
+admin/vermittler, laut README nicht für `leser`). Die bestehenden
+insert/update/delete-Policies auf `nachrichten` schränkten bereits korrekt auf
+`admin`/`vermittler` ein und wurden nicht angefasst.
+
+Geprüft, ob die Verschärfung `zaehleNachrichten()` (Task 36/45) bricht, das
+`app/(app)/layout.tsx` für **jede** eingeloggte Rolle inklusive `leser`
+unconditional aufruft: die Query ist ein reiner `count`-Aufruf
+(`{ count: "exact", head: true }`). Unter PostgREST/RLS werden dafür zuerst
+die für die Rolle sichtbaren Zeilen bestimmt und dann gezählt -- bei `leser`
+sind das nach der neuen Policy null Zeilen, die Query liefert also `count: 0`
+zurück, nicht einen RLS-Fehler. `Sidebar.tsx` rendert das Badge ohnehin nur
+bei `postfachAnzahl > 0`, das Badge verschwindet für `leser` also einfach,
+kein Crash, kein sichtbarer Fehlerzustand. Nicht behoben (ausserhalb des
+Scopes dieses Fixes, da nicht Teil des gemeldeten Findings): der
+Sidebar-Navigationseintrag „Postfach" selbst bleibt für `leser` sichtbar/
+anklickbar und `/postfach` liefert dann schlicht eine leere Liste (kein
+Fehler) -- keine neue Lücke gegenüber vorher, aber ein möglicher Folge-Fund
+für eine künftige Review (analog zur clientseitigen Sichtbarkeit von `/anfragen`).
+
+**Nicht gegen eine echte Datenbank angewendet/verifiziert**: dieser
+Worktree hat keinen lokalen Supabase-Stack (`supabase/config.toml` fehlt) und
+keine `.env`-Zugangsdaten (nur `.env.example`) -- dieselbe, seit diesem
+gesamten Meilenstein bestehende Einschränkung, unter der bereits der gesamte
+KI-Aufrufcode nie lokal live getestet werden konnte (siehe `docs/setup-secrets.md`).
+Die Migration ist reines, gegen das `anfragen`-Vorbild geprüftes SQL; ein
+echtes `supabase db push` (oder Anwenden über die Supabase-MCP-Tools) steht
+noch aus.
 
 - [ ] **Step 1: Abnahme gegen Spec D7/D9/D10 prüfen**
 
