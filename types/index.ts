@@ -1,5 +1,9 @@
+import type { Database } from "./database"
+
 export type Nutzung = "buero" | "gewerbe" | "produktion" | "lager" | "verkauf" | "bauland"
 export type KriteriumStatus = "ok" | "teilweise" | "nein"
+
+export type Profil = Database["public"]["Tables"]["profiles"]["Row"]
 
 export type Anfrage = {
   id: string
