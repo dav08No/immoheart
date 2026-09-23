@@ -1878,6 +1878,48 @@ describe("berechneMatch", () => {
     const o = objekt({ flaeche: 100, preisProM2: 900, ort: "Zuchwil", verfuegbarAb: new Date(Date.now() + 200 * 86_400_000) })
     expect(berechneMatch(a, o)).toBeNull()
   })
+
+  it("lässt einen Score von genau 60 zu (Ausschluss gilt nur unter 60)", () => {
+    // Jedes Einzelkriterium liefert exakt 60 Punkte, damit auch der gewichtete
+    // Gesamtscore unabhängig von der Gewichtsverteilung bei genau 60 landet:
+    // Fläche 40% über der Obergrenze (260→364), Preis 32% über Budget,
+    // Lage gleiche Region/anderer Ort, Bezug 21 Tage Abweichung, 3 von 5
+    // Anforderungen erfüllt.
+    const a = anfrage({
+      flaecheMin: null, flaecheMax: 260, ort: "Wasseramt", budgetProM2: 200, bezug: "sofort",
+      anforderungen: { r1: true, r2: true, r3: true, r4: true, r5: true },
+    })
+    const o = objekt({
+      flaeche: 364, ort: "Zuchwil", preisProM2: 264,
+      verfuegbarAb: new Date(Date.now() + 21 * 86_400_000),
+      eigenschaften: { r1: true, r2: true, r3: true },
+    })
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.score).toBe(60)
+  })
+
+  it("nennt bei mehreren schwachen Kriterien im selben Status das mit den wenigsten Punkten, nicht das erste in der Tabelle", () => {
+    // Fläche (45 Punkte) und Preis (5 Punkte) liegen beide im "nein"-Bucket
+    // (< 50), Preis ist aber der eindeutig schwächere Wert. Eine reine
+    // Status-basierte Auswahl (ok=3/teilweise=2/nein=1) mit Array-Reihenfolge
+    // als Tie-Breaker würde hier fälschlich "Fläche" nennen, nur weil es zuerst
+    // in der Kriterien-Tabelle steht.
+    const a = anfrage({
+      flaecheMin: null, flaecheMax: 200, ort: "Solothurn", budgetProM2: 200, bezug: "sofort",
+      anforderungen: {},
+    })
+    const o = objekt({
+      flaeche: 310, // Fläche: 45 Punkte (55% über der Obergrenze)
+      preisProM2: 319, // Preis: 5 Punkte (59.5% über Budget)
+      ort: "Solothurn",
+      verfuegbarAb: new Date(),
+    })
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.hinweis.toLowerCase()).toContain("preis")
+    expect(match!.hinweis.toLowerCase()).not.toContain("fläche")
+  })
 })
 ```
 
@@ -1891,6 +1933,10 @@ Kommentar zum *Warum* der Gewichtungs-Konstante, weil sie sonst nur eine Zahlenr
 // Gewichtung exakt aus dem README: Fläche 30%, Preis 25%, Lage 20%, Bezug 15%, Anforderungen 10%.
 const GEWICHTE = { flaeche: 0.3, preis: 0.25, lage: 0.2, bezug: 0.15, anforderungen: 0.1 } as const
 
+function statusFuer(punkte: number): Kriterium["status"] {
+  return punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein"
+}
+
 function kriteriumFlaeche(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
   const gesucht =
     anfrage.flaecheMin !== null && anfrage.flaecheMax !== null
@@ -1900,10 +1946,7 @@ function kriteriumFlaeche(anfrage: Anfrage, objekt: Objekt, punkte: number): Kri
         : anfrage.flaecheMax !== null
           ? `bis ${anfrage.flaecheMax} m²`
           : "?"
-  return {
-    kriterium: "Fläche", gesucht, angeboten: `${objekt.flaeche} m²`,
-    status: punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein",
-  }
+  return { kriterium: "Fläche", gesucht, angeboten: `${objekt.flaeche} m²`, status: statusFuer(punkte) }
 }
 
 function kriteriumPreis(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
@@ -1911,15 +1954,12 @@ function kriteriumPreis(anfrage: Anfrage, objekt: Objekt, punkte: number): Krite
     kriterium: "Preis",
     gesucht: anfrage.budgetProM2 !== null ? `bis CHF ${anfrage.budgetProM2}/m²` : "?",
     angeboten: objekt.preisProM2 !== null ? `CHF ${objekt.preisProM2}/m²` : "auf Anfrage",
-    status: punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein",
+    status: statusFuer(punkte),
   }
 }
 
 function kriteriumLage(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
-  return {
-    kriterium: "Lage", gesucht: anfrage.ort ?? "?", angeboten: objekt.ort,
-    status: punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein",
-  }
+  return { kriterium: "Lage", gesucht: anfrage.ort ?? "?", angeboten: objekt.ort, status: statusFuer(punkte) }
 }
 
 function kriteriumBezug(anfrage: Anfrage, objekt: Objekt, punkte: number): Kriterium {
@@ -1927,7 +1967,7 @@ function kriteriumBezug(anfrage: Anfrage, objekt: Objekt, punkte: number): Krite
     kriterium: "Bezug",
     gesucht: anfrage.bezug ?? "?",
     angeboten: objekt.verfuegbarAb.toISOString().slice(0, 10),
-    status: punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein",
+    status: statusFuer(punkte),
   }
 }
 
@@ -1937,7 +1977,7 @@ function kriteriumAnforderungen(anfrage: Anfrage, punkte: number): Kriterium {
     kriterium: "Anforderungen",
     gesucht: anzahl > 0 ? `${anzahl} Anforderung(en)` : "keine",
     angeboten: `${punkte}% erfüllt`,
-    status: punkte >= 90 ? "ok" : punkte >= 50 ? "teilweise" : "nein",
+    status: statusFuer(punkte),
   }
 }
 
@@ -1958,37 +1998,62 @@ export function berechneMatch(anfrage: Anfrage, objekt: Objekt): Match | null {
 
   if (score < 60) return null
 
-  const kriterien = [
-    kriteriumFlaeche(anfrage, objekt, pFlaeche),
-    kriteriumPreis(anfrage, objekt, pPreis),
-    kriteriumLage(anfrage, objekt, pLage),
-    kriteriumBezug(anfrage, objekt, pBezug),
-    kriteriumAnforderungen(anfrage, pAnforderungen),
+  // Jede Zeile trägt ihre rohen Punkte und ihren Hinweistext direkt mit
+  // (statt eines separaten Nachschlage-Records nach `kriterium`-Namen):
+  // Erstens bestimmt das den schwächsten Punkt anhand des tatsächlichen
+  // Werts statt nur anhand des groben Status ("ok"/"teilweise"/"nein") — bei
+  // zwei Kriterien im selben Status würde die reine Status-Auswahl sonst
+  // immer das erste in der Tabelle nennen, auch wenn ein anderes objektiv
+  // schwächer ist. Zweitens vermeidet es, dass `kriterium: string` (kein
+  // literal Union) den Record-Zugriff unter `noUncheckedIndexedAccess` zu
+  // `string | undefined` macht.
+  const bewertungen = [
+    {
+      kriterium: kriteriumFlaeche(anfrage, objekt, pFlaeche), punkte: pFlaeche,
+      hinweisText: "Fläche weicht von der gesuchten Spanne ab.",
+    },
+    {
+      kriterium: kriteriumPreis(anfrage, objekt, pPreis), punkte: pPreis,
+      hinweisText: "Preis liegt spürbar über dem genannten Budget.",
+    },
+    {
+      kriterium: kriteriumLage(anfrage, objekt, pLage), punkte: pLage,
+      hinweisText: "Lage entspricht nicht der gewünschten Region.",
+    },
+    {
+      kriterium: kriteriumBezug(anfrage, objekt, pBezug), punkte: pBezug,
+      hinweisText: "Bezugstermin weicht deutlich vom Wunsch ab.",
+    },
+    {
+      kriterium: kriteriumAnforderungen(anfrage, pAnforderungen), punkte: pAnforderungen,
+      hinweisText: "Nicht alle Zusatzanforderungen sind erfüllt.",
+    },
   ]
 
-  const schwaechstes = kriterien.reduce((a, b) => {
-    const punkteA = { ok: 3, teilweise: 2, nein: 1 }[a.status]
-    const punkteB = { ok: 3, teilweise: 2, nein: 1 }[b.status]
-    return punkteB < punkteA ? b : a
-  })
-
-  const hinweisText: Record<string, string> = {
-    Fläche: "Fläche weicht von der gesuchten Spanne ab.",
-    Preis: "Preis liegt spürbar über dem genannten Budget.",
-    Lage: "Lage entspricht nicht der gewünschten Region.",
-    Bezug: "Bezugstermin weicht deutlich vom Wunsch ab.",
-    Anforderungen: "Nicht alle Zusatzanforderungen sind erfüllt.",
-  }
+  const kriterien = bewertungen.map((b) => b.kriterium)
+  const schwaechstes = bewertungen.reduce((a, b) => (b.punkte < a.punkte ? b : a))
 
   return {
     anfrageId: anfrage.id,
     objektId: objekt.id,
     score,
     kriterien,
-    hinweis: schwaechstes.status === "ok" ? "Alle Kriterien passen gut." : hinweisText[schwaechstes.kriterium],
+    hinweis: schwaechstes.kriterium.status === "ok" ? "Alle Kriterien passen gut." : schwaechstes.hinweisText,
   }
 }
 ```
+
+Zwei Korrekturen gegenüber einer naiveren ersten Fassung, beide beim Implementieren gefunden:
+1. Die ursprüngliche Idee, das schwächste Kriterium allein über den groben Status
+   (`ok`/`teilweise`/`nein`) zu bestimmen und Gleichstände über die Array-Reihenfolge
+   aufzulösen, hätte bei zwei Kriterien im selben Status (z. B. Fläche 45 Punkte und
+   Preis 5 Punkte, beide „nein") immer das ERSTE in der Tabelle genannt (Fläche), auch
+   wenn ein anderes objektiv schwächer ist — ein irreführender Hinweistext. Die
+   Auswahl erfolgt deshalb über die rohen Punktzahlen, nicht über den Status-Rang.
+2. Ein `Record<string, string>`-Nachschlag nach `kriterium: string` (kein Literal-Union)
+   ergibt unter `noUncheckedIndexedAccess: true` den Typ `string | undefined`, was
+   `tsc --noEmit` nicht kompiliert. Jede Zeile trägt ihren `hinweisText` deshalb direkt
+   mit, statt über einen benannten Nachschlage-Record.
 
 - [ ] **Step 4: Erfolg bestätigen**
 
