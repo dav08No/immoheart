@@ -2462,6 +2462,13 @@ export default function LoginPage() {
 
   async function anmelden(ereignis: FormEvent) {
     ereignis.preventDefault()
+    // Re-Entrancy-Guard: ein async Handler wird nicht automatisch gegen
+    // eine zweite Auslösung geschützt, bevor React den disabled-Zustand des
+    // Buttons ins DOM übernommen hat (z. B. bei einem sehr beschäftigten
+    // Hauptthread, Maus-Klick + Enter-Kombination oder programmatischem
+    // form.requestSubmit()). Ohne diese Zeile könnten zwei parallele
+    // signInWithPassword-Aufrufe losgehen.
+    if (laedt) return
     setLaedt(true)
     setFehler(null)
     const supabase = erstelleBrowserClient()
@@ -2485,6 +2492,7 @@ export default function LoginPage() {
         <input
           type="email"
           required
+          autoComplete="email"
           placeholder="E-Mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -2493,6 +2501,7 @@ export default function LoginPage() {
         <input
           type="password"
           required
+          autoComplete="current-password"
           placeholder="Passwort"
           value={passwort}
           onChange={(e) => setPasswort(e.target.value)}
