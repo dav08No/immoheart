@@ -1532,6 +1532,11 @@ describe("punkteFlaeche", () => {
   it("liefert 50 wenn beide Grenzen fehlen", () => {
     expect(punkteFlaeche(anfrage({ flaecheMin: null, flaecheMax: null }), objekt({ flaeche: 500 }))).toBe(50)
   })
+  it("liefert 0 statt fälschlich 100 bei einer expliziten Obergrenze von 0", () => {
+    // flaecheMax: 0 ist kein null (kein DB-CHECK-Constraint schliesst es aus)
+    // und bedeutet damit explizit "0 m² max", nicht "keine Obergrenze".
+    expect(punkteFlaeche(anfrage({ flaecheMin: null, flaecheMax: 0 }), objekt({ flaeche: 5000 }))).toBe(0)
+  })
 })
 ```
 
@@ -1554,11 +1559,21 @@ export function punkteFlaeche(anfrage: Anfrage, objekt: Objekt): number {
   if (objekt.flaeche >= min && objekt.flaeche <= max) return 100
 
   const referenz = objekt.flaeche < min ? min : max
-  if (!Number.isFinite(referenz) || referenz === 0) return 100
   const abweichung = Math.abs(objekt.flaeche - referenz) / referenz
   return Math.max(0, Math.round(100 - abweichung * 100))
 }
 ```
+
+Bewusst KEIN Sonderfall für `referenz === 0` (z. B. `flaecheMax: 0`, ein zulässiger,
+nicht durch CHECK-Constraint ausgeschlossener DB-Wert): IEEE-754-Division
+`positiv / 0` liefert `Infinity`, nicht `NaN`, wodurch `100 - Infinity * 100`
+zu `-Infinity` wird und `Math.max(0, ...)` das korrekt auf `0` klemmt — ein
+Objekt, das eine Flächenobergrenze von 0 grotesk überschreitet, verdient 0
+Punkte, nicht die frühere fälschliche Sonderfall-Rückgabe von 100. Ein
+`!Number.isFinite(referenz)`-Zweig ist ebenfalls unnötig: `referenz` wird nur
+dann zu `max`, wenn die Fläche `max` bereits überschreitet (sonst hätte der
+Bereichs-Check oben schon 100 zurückgegeben) — bei `max === Infinity` ist das
+nie der Fall, `referenz` ist an dieser Stelle also immer endlich.
 
 - [ ] **Step 5: Erfolg bestätigen**
 
