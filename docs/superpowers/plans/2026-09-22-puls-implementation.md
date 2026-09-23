@@ -5386,6 +5386,53 @@ git add components/anfragen/AnfrageDetail.tsx
 git commit -m "feat: AnfrageDetail mit Inline-Bearbeitung, bestem Treffer und Verlauf"
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben:**
+
+1. **`speichern()` läuft durch try/catch statt ungeschützt zu awaiten**, mit einem sichtbaren
+   `fehler`-Zustand (`text-crit`, gleiche Konvention wie `MailEinfuegen`/`EntwurfDetail`/
+   `PostfachAnsicht`) statt einer stillschweigend verschluckten Exception. `anfrageAktualisieren`
+   (Task 48) wirft bewusst; ohne try/catch hier bliebe die Nutzerin bei z.B. einem RLS- oder
+   Netzwerkfehler im Bearbeiten-Modus hängen, ohne zu erfahren, dass nichts gespeichert wurde --
+   exakt die Lücke, die in jeder bisherigen M5/M6-UI-Aufgabe mit Server-Action-Aufruf geschlossen
+   wurde.
+2. **Zusätzlicher `laufend`-Zustand** (Analog zu `EntwurfDetail`s `laufend`): deaktiviert
+   Speichern/Abbrechen/alle Eingabefelder während des Speicherns und beschriftet den
+   Speichern-Button mit "Wird gespeichert…", statt einen Doppelklick während eines bereits
+   laufenden Requests zuzulassen.
+3. **`anfrageIdRef` + Reset-`useEffect` auf `anfrage.id`** ergänzt (Analog zu `EntwurfDetail`s
+   `nachrichtIdRef`): `AnfragenAnsicht` (Task 52) rendert diese Komponente voraussichtlich ohne
+   `key={anfrage.id}`, sodass dieselbe Instanz bei einem Zeilenwechsel im Drawer ein neues
+   `anfrage`-Prop bekommt, statt neu zu mounten. Ohne Reset bliebe lokaler Bearbeiten-State
+   (Eingaben, Fehler, laufend) von der vorher ausgewählten Anfrage kleben; ohne den Ref-Vergleich
+   könnte eine spät auflösende `speichern()`-Antwort für Anfrage A fälschlich den bereits für
+   Anfrage B sichtbaren State überschreiben.
+4. **Nullguard für `anfrage.id`/`anfrage.letzter_kontakt`** (gleiche `anfragen_sichtbar`-
+   Nullability-Drift wie in `AnfragenTabelle`), hier aber als Fehlermeldung im Drawer statt als
+   übersprungene Tabellenzeile, weil diese Komponente eine einzelne Anfrage statt einer Liste
+   bekommt -- es gibt kein "einfach nicht rendern", ohne dass der Drawer bei `offen=true`
+   verwirrend leer bliebe. In der Praxis sollte der Fall nicht eintreten: der einzige geplante
+   Aufrufer (`AnfragenAnsicht`, Task 52) wählt die ID über `AnfragenTabelle`, die Zeilen mit
+   fehlender `id`/`letzter_kontakt` bereits herausfiltert. Der Guard ist Verteidigung gegen
+   künftige Aufrufer, kein erwarteter Alltagsfall -- deshalb auch hier `console.error` statt
+   eines stillen Fallbacks.
+5. **`besterMatch`-Anzeige nach erfolgreichem Speichern als veraltet markiert**, statt weiterhin
+   Score/Kriterien aus dem beim Öffnen geladenen Prop als aktuell auszugeben. `anfrageAktualisieren`
+   löst bei genau den fünf Feldern, die dieses Formular schreibt (`flaeche_min`, `flaeche_max`,
+   `ort`, `budget_pro_m2`, `bezug` -- alle in `MATCH_RELEVANTE_FELDER`), serverseitig ein
+   Rematching aus (`berechneUndSpeichereMatchesFuerAnfrage`). `besterMatch` kommt hier aber nicht
+   aus einer Server-Component-Prop-Kette, die durch `revalidatePath` automatisch aktualisiert
+   würde, sondern aus einem separaten `fetch` auf `/api/anfragen/[id]/detail` in einem
+   `useEffect`, der nur auf `ausgewaehlteId` reagiert (Task 52-Entwurf) -- ein Speichern bei
+   gleichbleibender Auswahl löst diesen Effekt nicht erneut aus. Ohne Markierung würde der Drawer
+   nach dem Speichern einen Score/Kriterien zeigen, die serverseitig bereits überholt sind. Die
+   Komponente kann den Neu-Fetch nicht selbst auslösen (kein Zugriff auf den Fetch-State der
+   Elternkomponente), zeigt aber sichtbar an, dass die Werte neu berechnet wurden und ein
+   Schliessen/erneutes Öffnen des Drawers die aktuellen liefert. Zusätzlich ein optionaler,
+   in der Plan-Signatur nicht vorgesehener Callback-Prop `onAenderungGespeichert` ergänzt: wird
+   nach erfolgreichem Speichern aufgerufen, damit `AnfragenAnsicht` (Task 52) ihn bei Bedarf an
+   ihren Fetch-Effekt anschliessen und `besterMatch`/`verlauf` aktiv neu laden kann. Ohne
+   Verdrahtung durch Task 52 ändert der optionale Prop nichts am bisherigen Verhalten.
+
 ---
 
 ### Task 51: `AnfrageFormular`
