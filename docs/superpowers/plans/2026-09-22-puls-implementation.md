@@ -3638,7 +3638,16 @@ Implementiert Spec D7 (ein einziger Einstiegspunkt, quellenunabhängig) und D10 
 
 **Interfaces:**
 - Consumes: `erkenneFelder` (Task 37), `entwurfRueckfrage` (Task 38), `holeNachricht`/`legeNachrichtAn`/`aktualisiereNachricht` (Task 36), `legeAnfrageAn` (Task 36), `legeRegelAn`/`naechsterRegelCode` (Task 36), `holeEigenesProfil` (M3 Task 24).
-- Produces: `nachrichtEingegangen(text, von, betreff)`, `alsAnfrageSpeichern(nachrichtId)`, `entwurfSenden(nachrichtId)`, `entwurfBearbeiten(nachrichtId, body)`, `entwurfVerwerfen(nachrichtId, grund)` — verwendet von `PostfachAnsicht` (Task 44) und später von `app/actions/matches.ts` (M8, für `sendeWennFreigegeben`).
+- Produces: `nachrichtEingegangen(text, von, betreff)`, `alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung?)`, `entwurfSenden(nachrichtId)`, `entwurfBearbeiten(nachrichtId, body)`, `entwurfVerwerfen(nachrichtId, grund)` — verwendet von `PostfachAnsicht` (Task 44) und später von `app/actions/matches.ts` (M8, für `sendeWennFreigegeben`).
+
+**Nachtrag aus Task 42**: `alsAnfrageSpeichern` bekam nachträglich einen
+optionalen zweiten Parameter `nutzungUeberschreibung?: Nutzung`, damit
+`EingangDetail` (Task 42) eine von der Nutzerin manuell gewählte Nutzung
+durchreichen kann, wenn die KI-Erkennung `nutzung` nicht bestimmen konnte.
+`felder.nutzung` (die KI-Erkennung) hat dabei immer Vorrang vor der
+Überschreibung; der ursprüngliche Guard unten wirft weiterhin, wenn beide
+fehlen. Siehe Task 42s Abwägung für die Begründung dieser Design-Entscheidung.
+Der Code-Block unten ist bereits auf diesem aktuellen Stand.
 
 `richtung` ist laut README-Enum (`eingang | entwurf | gesendet`) der **Status** einer Nachricht, nicht ihre feste Art — ein Entwurf wechselt bei echtem Versand zu `gesendet`, zusammen mit dem Zeitstempel `gesendet_am`. Eine erledigte Eingangs-Mail (gespeichert oder verworfen) wurde dagegen nie *von uns gesendet*; sie als `gesendet` umzuflaggen würde den Wert für jede spätere Auswertung (z. B. eine Versand-Erfolgsquote in M10) verfälschen. Erledigte Eingangs-Mails werden deshalb gelöscht, genau wie im Prototyp, der sie nach der Aktion aus seiner Liste entfernt.
 
@@ -3650,6 +3659,7 @@ Implementiert Spec D7 (ein einziger Einstiegspunkt, quellenunabhängig) und D10 
 import { revalidatePath } from "next/cache"
 import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
 import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
+import type { Nutzung } from "@/types"
 import {
   holeNachricht,
   legeNachrichtAn,
@@ -3710,7 +3720,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
   revalidatePath("/postfach")
 }
 
-export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
+export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
   const nachricht = await holeNachricht(nachrichtId)
   if (!nachricht) throw new Error("Nachricht nicht gefunden")
 
@@ -3725,7 +3735,16 @@ export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
   // würde die Anfrage nicht nur falsch beschriften, sondern lautlos und
   // dauerhaft von jedem künftigen Match ausschliessen, wenn die echte
   // Nutzung z. B. "lager" statt "gewerbe" war.
-  if (!felder.nutzung) {
+  //
+  // Task 42 hat EingangDetail um ein Pflicht-Auswahlfeld für nutzung ergänzt,
+  // sichtbar/Pflicht genau dann, wenn felder.nutzung null ist. Der dort von
+  // der Nutzerin gewählte Wert kommt hier als nutzungUeberschreibung an und
+  // wird NUR verwendet, wenn die KI selbst nichts erkannt hat -- felder.nutzung
+  // hat immer Vorrang. Die Überschreibung wird bewusst NICHT in
+  // erkannte_felder zurückgeschrieben (siehe Task 42): erkannte_felder bleibt
+  // die ungefilterte Aufzeichnung dessen, was die KI tatsächlich erkannt hat.
+  const nutzung = felder.nutzung ?? nutzungUeberschreibung
+  if (!nutzung) {
     throw new Error(
       "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
     )
@@ -3733,7 +3752,7 @@ export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
 
   await legeAnfrageAn({
     ort: felder.ort,
-    nutzung: felder.nutzung,
+    nutzung,
     flaeche_min: felder.flaeche_min,
     flaeche_max: felder.flaeche_max,
     budget_pro_m2: felder.budget_pro_m2,
@@ -3917,6 +3936,7 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
           <button
             key={option}
             onClick={() => onFilterWechsel(option)}
+            aria-pressed={filter === option}
             className={`rounded-full border px-2.5 py-1 text-xs ${
               filter === option ? "border-navy bg-navy text-white" : "border-line text-ink-2"
             }`}
@@ -3930,16 +3950,25 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
         <button
           key={nachricht.id}
           onClick={() => onAuswahl(nachricht.id)}
+          aria-current={nachricht.id === ausgewaehlteId ? "true" : undefined}
           className={`flex w-full gap-2.5 border-b border-line p-3 text-left last:border-b-0 hover:bg-surface-2 ${
             nachricht.id === ausgewaehlteId ? "bg-brand-soft" : ""
           }`}
         >
+          {/* "gesendet" bekommt eine dritte, eigene Darstellung (nicht die
+              gleiche wie "entwurf"): unter dem "Alle"-Filter sind das sonst
+              zwei nicht unterscheidbare ↑/brand-Zeilen, obwohl eine davon
+              noch auf eine Aktion wartet und die andere bereits erledigt ist. */}
           <span
             className={`grid h-[26px] w-[26px] flex-none place-items-center rounded-lg text-sm ${
-              nachricht.richtung === "eingang" ? "bg-surface-3 text-ink-2" : "bg-brand text-on-brand"
+              nachricht.richtung === "eingang"
+                ? "bg-surface-3 text-ink-2"
+                : nachricht.richtung === "gesendet"
+                  ? "bg-good-bg text-good"
+                  : "bg-brand text-on-brand"
             }`}
           >
-            {nachricht.richtung === "eingang" ? "↓" : "↑"}
+            {nachricht.richtung === "eingang" ? "↓" : nachricht.richtung === "gesendet" ? "✓" : "↑"}
           </span>
           <span className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-sm font-medium text-ink">{nachricht.betreff}</span>
@@ -3963,33 +3992,85 @@ git commit -m "feat: NachrichtenListe mit Filter"
 
 ### Task 42: `EingangDetail`
 
-**Offener Punkt aus Task 39** (Server-Action-Review): `alsAnfrageSpeichern` wirft
-jetzt bewusst, wenn `erkannte_felder.nutzung` null ist, statt lautlos auf
-"gewerbe" zu raten (siehe Task 39s Kommentar -- ein falscher Default würde die
-Anfrage wegen `berechneMatch`s hartem Nutzung-Ausschlusskriterium dauerhaft
-und lautlos unmatchbar machen). Diese Komponente hat aktuell **keine**
-Korrektur-Möglichkeit für ein fehlendes `nutzung`-Feld -- der
-"Als Anfrage speichern"-Button würde bei fehlender Nutzung einfach werfen,
-ohne dass die Nutzerin eine Chance hätte, den Wert nachzutragen. Beim
-Implementieren dieser Task muss ein Auswahlfeld für `nutzung` ergänzt werden
-(sichtbar/Pflicht, wenn `erkannte_felder.nutzung` null ist), das den Wert vor
-dem Speichern-Aufruf ergänzt -- nicht nur der reine Anzeige-Zustand aus dem
-ursprünglichen Entwurf unten.
+**Offener Punkt aus Task 39** (Server-Action-Review) -- **gelöst in dieser
+Task**: `alsAnfrageSpeichern` wirft bewusst, wenn `erkannte_felder.nutzung`
+null ist, statt lautlos auf "gewerbe" zu raten (siehe Task 39s Kommentar --
+ein falscher Default würde die Anfrage wegen `berechneMatch`s hartem
+Nutzung-Ausschlusskriterium dauerhaft und lautlos unmatchbar machen). Der
+ursprüngliche Entwurf unten hatte **keine** Korrektur-Möglichkeit für ein
+fehlendes `nutzung`-Feld -- der "Als Anfrage speichern"-Button hätte bei
+fehlender Nutzung einfach geworfen, ohne dass die Nutzerin eine Chance gehabt
+hätte, den Wert nachzutragen.
+
+Umgesetzte Lösung: Ein `<select>` für `nutzung` erscheint genau dann
+(sichtbar/Pflicht), wenn `felder.nutzung === null`. `onSpeichern` bekommt ein
+neues optionales zweites Argument, `nutzungUeberschreibung?: Nutzung`, über
+das der von der Nutzerin gewählte Wert durchgereicht wird. `alsAnfrageSpeichern`
+(Task 39, `app/actions/nachrichten.ts`) wurde entsprechend um denselben
+optionalen zweiten Parameter erweitert (`felder.nutzung ?? nutzungUeberschreibung`,
+mit KI-Wert weiterhin Vorrang) -- siehe Task 39s aktualisierten Code-Block.
+Der "Als Anfrage speichern"-Button ist `disabled`, solange der Aufruf
+garantiert werfen würde (keine `erkannte_felder`, oder `nutzung` fehlt und
+wurde noch nicht ausgewählt).
+
+Abwägung dieser Entscheidung gegenüber der Alternative, die Korrektur
+stattdessen über eine neue Server Action in `erkannte_felder` zurückzuschreiben
+und danach das bestehende parameterlose `onSpeichern` aufzurufen: Letzteres
+hätte `alsAnfrageSpeichern`s Signatur unangetastet gelassen, aber zwei
+Nachteile gehabt. Erstens würde `erkannte_felder` dann die menschliche
+Korrektur mit der tatsächlichen KI-Erkennung vermischen -- "PULS hat erkannt"
+würde für ein Feld Anerkennung beanspruchen, das die KI nie erkannt hat, und
+die "?"-Markierung in `Feld` würde fälschlich verschwinden. Zweitens bräuchte
+es einen zweiten, separaten Server-Roundtrip (erst Korrektur persistieren,
+dann speichern), mit dem Risiko eines inkonsistenten Zwischenzustands, falls
+der zweite Aufruf fehlschlägt. Die gewählte Lösung (Override-Parameter, ein
+einziger atomarer Aufruf, `erkannte_felder` bleibt unverändert die reine
+KI-Aufzeichnung) ist zwar ein Eingriff in eine bereits durchgesehene Task-39-Datei,
+aber innerhalb desselben ungemergten Feature-Branches -- mit Präzedenzfall in
+diesem Milestone (M4s `Header.tsx` wurde sowohl von seiner eigenen Task als
+auch von einer späteren Task verändert, als ein echtes cross-cutting Bedürfnis
+entstand).
+
+**Wichtig für Task 44** (noch nicht gebaut): Die Verdrahtung
+`onSpeichern={() => void alsAnfrageSpeichern(ausgewaehlt.id)}` weiter unten in
+Task 44 muss das zweite Argument durchreichen:
+`onSpeichern={(nutzungUeberschreibung) => void alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung)}`.
+Ohne diese Anpassung würde die Nutzung-Auswahl aus `EingangDetail` beim Klick
+auf "Als Anfrage speichern" stillschweigend verworfen und `alsAnfrageSpeichern`
+würde trotz Auswahl weiterhin werfen.
+
+Zusätzlich wurde die Absender-Zeile im Header korrigiert: Der ursprüngliche
+Entwurf zeigte `nachricht.von` doppelt hintereinander (einmal als reinen Text,
+einmal identisch als `mailto:`-Link) -- ein offensichtlicher Copy-Paste-Fehler.
+`NachrichtRow.an` ist bei eingehenden Mails immer die feste interne Adresse
+`kontakt@espaceso.ch` (siehe `nachrichtEingegangen`, Task 39) und daher hier
+nicht informativ genug, um sie zusätzlich anzuzeigen. Die Zeile zeigt jetzt
+einmalig "Von" gefolgt vom `mailto:`-Link auf `nachricht.von` -- spiegelbildlich
+zu `EntwurfDetail`s "An"-Zeile (Task 43), die bei ausgehenden Nachrichten den
+Empfänger zeigt.
 
 **Files:**
 - Create: `components/postfach/EingangDetail.tsx`
+- Modify: `app/actions/nachrichten.ts` (Task 39) -- `alsAnfrageSpeichern` um
+  optionalen `nutzungUeberschreibung`-Parameter erweitert, siehe Task 39s
+  aktualisierten Code-Block.
 
 **Interfaces:**
-- Consumes: `Feld` (M4 Task 30), `ErkannteFelder` (Task 37).
-- Produces: `<EingangDetail nachricht onSpeichern onRueckfrageOeffnen />`.
+- Consumes: `Feld` (M4 Task 30), `ErkannteFelder` (Task 37), `Nutzung` (`@/types`).
+- Produces: `<EingangDetail nachricht onSpeichern onRueckfrageOeffnen />`, mit
+  `onSpeichern: (nutzungUeberschreibung?: Nutzung) => void`.
 
 - [ ] **Step 1: `components/postfach/EingangDetail.tsx` anlegen**
 
 ```tsx
+"use client"
+
+import { useState } from "react"
 import { Feld } from "@/components/ui/Feld"
 import { Button } from "@/components/ui/Button"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
+import type { Nutzung } from "@/types"
 
 const LABELS: Record<keyof ErkannteFelder, string> = {
   firma: "Firma",
@@ -4002,9 +4083,22 @@ const LABELS: Record<keyof ErkannteFelder, string> = {
   nutzung: "Nutzung",
 }
 
+const NUTZUNG_OPTIONEN: { wert: Nutzung; label: string }[] = [
+  { wert: "buero", label: "Büro" },
+  { wert: "gewerbe", label: "Gewerbe" },
+  { wert: "produktion", label: "Produktion" },
+  { wert: "lager", label: "Lager" },
+  { wert: "verkauf", label: "Verkauf" },
+  { wert: "bauland", label: "Bauland" },
+]
+
 type Props = {
   nachricht: NachrichtRow
-  onSpeichern: () => void
+  // Optionales zweites Argument: von der Nutzerin manuell nachgetragene
+  // Nutzung, falls die KI-Erkennung `nutzung` nicht bestimmen konnte. Siehe
+  // Kommentar unten bei `nutzungFehlt` -- alsAnfrageSpeichern (Task 39) wirft
+  // ohne diesen Wert, statt lautlos zu raten.
+  onSpeichern: (nutzungUeberschreibung?: Nutzung) => void
   onRueckfrageOeffnen: () => void
 }
 
@@ -4012,12 +4106,33 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
 
+  // alsAnfrageSpeichern (Task 39) wirft bewusst, wenn erkannte_felder.nutzung
+  // null ist, statt still auf "gewerbe" zu raten -- ein falscher Default
+  // würde die Anfrage wegen berechneMatchs (M2) hartem
+  // Nutzung-Ausschlusskriterium dauerhaft und lautlos unmatchbar machen. Ist
+  // nutzung nicht erkannt, muss die Nutzerin hier vor dem Speichern eine
+  // Nutzung auswählen; der gewählte Wert wird als zweites Argument an
+  // onSpeichern durchgereicht (siehe Props-Kommentar), NICHT in
+  // erkannte_felder zurückgeschrieben -- so bleibt sichtbar, was die KI
+  // tatsächlich erkannt hat ("?" bleibt stehen), und was die Nutzerin manuell
+  // ergänzt hat.
+  const nutzungFehlt = felder !== null && felder.nutzung === null
+  const [nutzungAuswahl, setNutzungAuswahl] = useState<Nutzung | "">("")
+
+  // Der Button darf nicht klickbar sein, wenn der Aufruf garantiert wirft:
+  // entweder gibt es gar keine erkannten Felder, oder nutzung fehlt und wurde
+  // noch nicht manuell nachgetragen.
+  const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "")
+
   return (
     <div>
       <div className="border-b border-line p-4">
         <div className="font-display text-base font-bold text-ink">{nachricht.betreff}</div>
         <div className="mt-0.5 text-xs text-ink-3">
-          {nachricht.von} · <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">{nachricht.von}</a>
+          Von{" "}
+          <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">
+            {nachricht.von}
+          </a>
         </div>
       </div>
       <div className="p-4">
@@ -4038,10 +4153,36 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
                 />
               ))}
             </div>
+            {nutzungFehlt && (
+              <div className="mt-2.5">
+                <label htmlFor="eingang-nutzung-auswahl" className="mb-1 block text-xs text-ink-3">
+                  Nutzung nicht erkannt · bitte auswählen, um speichern zu können
+                </label>
+                <select
+                  id="eingang-nutzung-auswahl"
+                  value={nutzungAuswahl}
+                  onChange={(e) => setNutzungAuswahl(e.target.value as Nutzung)}
+                  className="w-full rounded-lg border border-warn bg-warn-bg px-3 py-2 text-sm text-ink"
+                >
+                  <option value="" disabled>
+                    Nutzung wählen …
+                  </option>
+                  {NUTZUNG_OPTIONEN.map((option) => (
+                    <option key={option.wert} value={option.wert}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </>
         )}
         <div className="mt-3.5 flex flex-wrap gap-2">
-          <Button variante="primaer" onClick={onSpeichern}>
+          <Button
+            variante="primaer"
+            disabled={!speichernMoeglich}
+            onClick={() => onSpeichern(nutzungFehlt ? (nutzungAuswahl as Nutzung) : undefined)}
+          >
             Als Anfrage speichern
           </Button>
           {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
@@ -4055,7 +4196,7 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
 - [ ] **Step 2: Typecheck und Commit**
 
 ```bash
-git add components/postfach/EingangDetail.tsx
+git add components/postfach/EingangDetail.tsx app/actions/nachrichten.ts
 git commit -m "feat: EingangDetail mit erkannten Feldern"
 ```
 
@@ -4178,6 +4319,18 @@ der sorgfältig formulierte Fehlertext ("Nutzung konnte nicht erkannt werden
 landen, nie als Toast/Inline-Hinweis in der UI. Beim Verdrahten der
 Aktions-Aufrufe in dieser Task müssen Fehler aus allen `app/actions/nachrichten.ts`-Aufrufen
 sichtbar an die Nutzerin zurückgemeldet werden, nicht nur protokolliert.
+
+**Nachtrag aus Task 42**: `EingangDetail`s `onSpeichern` hat jetzt die
+Signatur `(nutzungUeberschreibung?: Nutzung) => void` (statt `() => void`) --
+die Komponente reicht die von der Nutzerin manuell gewählte Nutzung darüber
+durch, wenn die KI-Erkennung `nutzung` nicht bestimmen konnte. Die
+Verdrahtung unten muss dieses Argument an `alsAnfrageSpeichern` weiterreichen:
+`onSpeichern={(nutzungUeberschreibung) => void alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung)}`.
+Kombiniert mit dem Fehler-Feedback-Punkt oben ergibt sich in etwa:
+`onSpeichern={(nutzungUeberschreibung) => alsAnfrageSpeichern(ausgewaehlt.id, nutzungUeberschreibung).catch((e) => zeigeFehler(e.message))}`
+(oder die jeweils gewählte Toast-/Fehler-UI dieser Task). Der Code-Block unten
+zeigt noch die alte, parameterlose Verdrahtung ohne Fehlerbehandlung und muss
+beim Implementieren dieser Task entsprechend angepasst werden.
 
 **Files:**
 - Create: `components/postfach/PostfachAnsicht.tsx`
