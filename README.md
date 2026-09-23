@@ -164,7 +164,7 @@ Der Prompt, mit dem die Umsetzung gestartet wurde. Unverändert lassen, damit na
 
 ---
 
-Du baust **immoheart**, eine interne Webapp zur Vermittlung von Gewerbeimmobilien für die Geschäftsstelle **espaceSOLOTHURN** (Kanton Solothurn).
+Du baust **PULS**, eine interne Webapp zur Vermittlung von Gewerbeimmobilien für die Geschäftsstelle **espaceSOLOTHURN** (Kanton Solothurn).
 
 Es gibt einen funktionsfähigen HTML-Prototyp. **Bau ihn als echte Anwendung nach** — gleiche Ansichten, gleiche Abläufe, gleiche Gestaltung. Erfinde keine zusätzlichen Funktionen.
 
@@ -362,7 +362,7 @@ Alle sechs exakt wie im Prototyp.
 
 Zweispaltig: links die Liste, rechts das Detail.
 
-- **Eingang und Entwurf müssen auf einen Blick unterscheidbar sein.** Eingang: ↓ auf neutralem Grau. Entwurf: ↑ auf Markenblau. Dazu ein Etikett pro Zeile: „Anfrage", „Anfrage · unvollständig", „Entwurf von immoheart".
+- **Eingang und Entwurf müssen auf einen Blick unterscheidbar sein.** Eingang: ↓ auf neutralem Grau. Entwurf: ↑ auf Markenblau. Dazu ein Etikett pro Zeile: „Anfrage", „Anfrage · unvollständig", „Entwurf von PULS".
 - Filter: Alle / Eingang / Entwürfe.
 - **Eingang-Detail**: Originaltext, darunter die erkannten Felder als Kacheln. Fehlende Angaben als orange Kachel mit grossem **?**. Aktionen: *Als Anfrage speichern*, *Rückfrage öffnen*.
 - **Entwurf-Detail**: An / Betreff / Anhang / Body, im Textfeld bearbeitbar. Aktionen: *Senden*, *Bearbeiten*, *Verwerfen*.
@@ -393,7 +393,7 @@ Vier Kennzahlkacheln, ein Liniendiagramm zur Erfolgsquote über die Monate, ein 
 
 Umschalter in der Seitenleiste, gespeichert in `profiles.freigabe_stufe`:
 
-1. **Alles bestätigen** — immoheart bereitet vor, versendet nichts ohne Klick
+1. **Alles bestätigen** — PULS bereitet vor, versendet nichts ohne Klick
 2. **Nachfragen automatisch** — Rückfragen bei fehlenden Angaben gehen automatisch raus, Angebote nur nach Freigabe
 3. **Voll autonom** — auch Angebote werden automatisch versendet
 
@@ -423,7 +423,7 @@ Ein Arbeitswerkzeug, keine Produktwerbung. Klar und ruhig.
 
 **Dunkelmodus** auf Basis `#161A33` / `#1E2447`, umschaltbar.
 
-**Textregel — die wichtigste:** So wenig Text wie möglich. Statt „Budget nicht genannt — immoheart würde direkt nachfragen." steht schlicht **„Budget?"**. Keine Sätze darüber, was die Software alles kann. Der Prototyp zeigt das Niveau; bleib darunter, nicht darüber.
+**Textregel — die wichtigste:** So wenig Text wie möglich. Statt „Budget nicht genannt — PULS würde direkt nachfragen." steht schlicht **„Budget?"**. Keine Sätze darüber, was die Software alles kann. Der Prototyp zeigt das Niveau; bleib darunter, nicht darüber.
 
 **Echte Verknüpfungen** — Kartenlinks auf Google Maps mit der tatsächlichen Adresse, Firmenlinks auf die Website, Mailadressen als `mailto:`.
 
