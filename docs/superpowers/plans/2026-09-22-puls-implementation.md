@@ -3671,22 +3671,32 @@ export async function sendeWennFreigegeben(nachricht: NachrichtRow, erforderlich
 }
 
 export async function nachrichtEingegangen(text: string, von: string, betreff: string): Promise<void> {
-  const felder = await erkenneFelder(text)
-
-  await legeNachrichtAn({
+  // Die Roh-Nachricht wird ZUERST und bedingungslos gespeichert, bevor
+  // erkenneFelder() überhaupt aufgerufen wird -- nicht umgekehrt. erkenneFelder
+  // (Task 37) und entwurfRueckfrage (Task 38) sind beide bewusst so gebaut,
+  // dass sie bei einer kaputten/unerwarteten KI-Antwort werfen. Würde man
+  // zuerst die KI aufrufen und erst danach speichern, ginge eine echte,
+  // gerade eingefügte Geschäftsanfrage bei jedem KI-Fehlschlag spurlos
+  // verloren -- nur ein geworfener Fehler, kein Datensatz. erkannte_felder
+  // ist im Insert-Typ nullable, genau für diesen Zwischenzustand.
+  const nachricht = await legeNachrichtAn({
     richtung: "eingang",
     typ: "anfrage",
     von,
     an: "kontakt@espaceso.ch",
     betreff,
     body: text,
-    erkannte_felder: felder,
+    erkannte_felder: null,
   })
+  revalidatePath("/postfach")
+
+  const felder = await erkenneFelder(text)
+  await aktualisiereNachricht(nachricht.id, { erkannte_felder: felder })
 
   const luecken = Object.values(felder).some((wert) => wert === null)
   if (luecken) {
     const entwurf = await entwurfRueckfrage(felder)
-    const nachricht = await legeNachrichtAn({
+    const rueckfrageNachricht = await legeNachrichtAn({
       richtung: "entwurf",
       typ: "rueckfrage",
       von: "kontakt@espaceso.ch",
@@ -3694,7 +3704,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
       betreff: entwurf.betreff,
       body: entwurf.body,
     })
-    await sendeWennFreigegeben(nachricht, 2)
+    await sendeWennFreigegeben(rueckfrageNachricht, 2)
   }
 
   revalidatePath("/postfach")
@@ -3707,11 +3717,23 @@ export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   if (!felder) throw new Error("Diese Nachricht hat keine erkannten Felder")
 
+  // NICHT auf einen Default wie "gewerbe" ausweichen: Task 37 hat nutzung
+  // genau deshalb als achtes KI-Feld ergänzt, "ohne KI-Schätzung sonst ein
+  // stiller Rateschritt in der Server Action nötig wäre". berechneMatch
+  // (M2) hat ein hartes, ungewichtetes Ausschlusskriterium
+  // (anfrage.nutzung !== objekt.nutzung -> null) -- ein falscher Default
+  // würde die Anfrage nicht nur falsch beschriften, sondern lautlos und
+  // dauerhaft von jedem künftigen Match ausschliessen, wenn die echte
+  // Nutzung z. B. "lager" statt "gewerbe" war.
+  if (!felder.nutzung) {
+    throw new Error(
+      "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
+    )
+  }
+
   await legeAnfrageAn({
     ort: felder.ort,
-    // Generischster Wert als Rückfallebene: anfragen.nutzung ist nicht nullbar,
-    // die KI liefert aber nicht immer eine eindeutige Kategorie.
-    nutzung: felder.nutzung ?? "gewerbe",
+    nutzung: felder.nutzung,
     flaeche_min: felder.flaeche_min,
     flaeche_max: felder.flaeche_max,
     budget_pro_m2: felder.budget_pro_m2,
@@ -3921,6 +3943,19 @@ git commit -m "feat: NachrichtenListe mit Filter"
 
 ### Task 42: `EingangDetail`
 
+**Offener Punkt aus Task 39** (Server-Action-Review): `alsAnfrageSpeichern` wirft
+jetzt bewusst, wenn `erkannte_felder.nutzung` null ist, statt lautlos auf
+"gewerbe" zu raten (siehe Task 39s Kommentar -- ein falscher Default würde die
+Anfrage wegen `berechneMatch`s hartem Nutzung-Ausschlusskriterium dauerhaft
+und lautlos unmatchbar machen). Diese Komponente hat aktuell **keine**
+Korrektur-Möglichkeit für ein fehlendes `nutzung`-Feld -- der
+"Als Anfrage speichern"-Button würde bei fehlender Nutzung einfach werfen,
+ohne dass die Nutzerin eine Chance hätte, den Wert nachzutragen. Beim
+Implementieren dieser Task muss ein Auswahlfeld für `nutzung` ergänzt werden
+(sichtbar/Pflicht, wenn `erkannte_felder.nutzung` null ist), das den Wert vor
+dem Speichern-Aufruf ergänzt -- nicht nur der reine Anzeige-Zustand aus dem
+ursprünglichen Entwurf unten.
+
 **Files:**
 - Create: `components/postfach/EingangDetail.tsx`
 
@@ -4112,6 +4147,17 @@ git commit -m "feat: EntwurfDetail mit Bearbeiten, Senden, Verwerfen"
 ---
 
 ### Task 44: Postfach-Seite zusammensetzen
+
+**Offener Punkt aus Task 39s Review**: `alsAnfrageSpeichern` (und die anderen
+Server Actions in `app/actions/nachrichten.ts`) können werfen (siehe Task 39,
+insbesondere der bewusste Throw bei fehlender `nutzung`). Ein reiner
+Fire-and-forget-Aufruf wie `onSpeichern={() => void alsAnfrageSpeichern(id)}`
+ohne `.catch`/try-catch liefert dem Menschen keine sichtbare Rückmeldung --
+der sorgfältig formulierte Fehlertext ("Nutzung konnte nicht erkannt werden
+...") würde nur als unbehandelte Promise-Rejection in der Browser-Konsole
+landen, nie als Toast/Inline-Hinweis in der UI. Beim Verdrahten der
+Aktions-Aufrufe in dieser Task müssen Fehler aus allen `app/actions/nachrichten.ts`-Aufrufen
+sichtbar an die Nutzerin zurückgemeldet werden, nicht nur protokolliert.
 
 **Files:**
 - Create: `components/postfach/PostfachAnsicht.tsx`
