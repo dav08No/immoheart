@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { punkteBezug, punkteFlaeche, punkteLage, punktePreis } from "./matching"
+import { punkteAnforderungen, punkteBezug, punkteFlaeche, punkteLage, punktePreis } from "./matching"
 import type { Anfrage, Objekt } from "@/types"
 
 function anfrage(teil: Partial<Anfrage> = {}): Anfrage {
@@ -97,5 +97,31 @@ describe("punkteBezug", () => {
   })
   it("liefert 50 wenn kein Bezugstermin genannt ist", () => {
     expect(punkteBezug(anfrage({ bezug: null }), objekt({ verfuegbarAb: new Date() }))).toBe(50)
+  })
+})
+
+describe("punkteAnforderungen", () => {
+  it("liefert 100 wenn keine Anforderungen gestellt sind", () => {
+    expect(punkteAnforderungen(anfrage({ anforderungen: {} }), objekt())).toBe(100)
+  })
+  it("liefert 100 wenn alle Anforderungen erfüllt sind", () => {
+    const a = anfrage({ anforderungen: { rampe: true } })
+    const o = objekt({ eigenschaften: { rampe: true } })
+    expect(punkteAnforderungen(a, o)).toBe(100)
+  })
+  it("liefert den Anteil erfüllter Anforderungen", () => {
+    const a = anfrage({ anforderungen: { rampe: true, kran_tonnen: 16 } })
+    const o = objekt({ eigenschaften: { rampe: true, kran_tonnen: 10 } })
+    expect(punkteAnforderungen(a, o)).toBe(50)
+  })
+  it("liefert 0 wenn nichts erfüllt ist", () => {
+    const a = anfrage({ anforderungen: { rampe: true } })
+    const o = objekt({ eigenschaften: {} })
+    expect(punkteAnforderungen(a, o)).toBe(0)
+  })
+  it("vergleicht Text-Anforderungen exakt", () => {
+    const a = anfrage({ anforderungen: { zugang: "24/7" } })
+    const o = objekt({ eigenschaften: { zugang: "24/7" } })
+    expect(punkteAnforderungen(a, o)).toBe(100)
   })
 })

@@ -50,3 +50,16 @@ export function punkteBezug(anfrage: Anfrage, objekt: Objekt): number {
   }
   return 60
 }
+
+export function punkteAnforderungen(anfrage: Anfrage, objekt: Objekt): number {
+  const eintraege = Object.entries(anfrage.anforderungen)
+  if (eintraege.length === 0) return 100
+
+  const erfuellt = eintraege.filter(([schluessel, wert]) => {
+    const angebotswert = objekt.eigenschaften[schluessel]
+    if (typeof wert === "number") return typeof angebotswert === "number" && angebotswert >= wert
+    return angebotswert === wert
+  }).length
+
+  return Math.round((erfuellt / eintraege.length) * 100)
+}
