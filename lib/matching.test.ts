@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { punkteFlaeche } from "./matching"
+import { punkteFlaeche, punktePreis } from "./matching"
 import type { Anfrage, Objekt } from "@/types"
 
 function anfrage(teil: Partial<Anfrage> = {}): Anfrage {
@@ -40,5 +40,34 @@ describe("punkteFlaeche", () => {
     // flaecheMax: 0 ist kein null (kein DB-CHECK-Constraint schliesst es aus)
     // und bedeutet damit explizit "0 m² max", nicht "keine Obergrenze".
     expect(punkteFlaeche(anfrage({ flaecheMin: null, flaecheMax: 0 }), objekt({ flaeche: 5000 }))).toBe(0)
+  })
+})
+
+describe("punktePreis", () => {
+  it("gibt volle Punktzahl bei exaktem Budget", () => {
+    expect(punktePreis(anfrage({ budgetProM2: 250 }), objekt({ preisProM2: 250 }))).toBe(100)
+  })
+  it("gibt volle Punktzahl bei Unterschreitung", () => {
+    expect(punktePreis(anfrage({ budgetProM2: 250 }), objekt({ preisProM2: 200 }))).toBe(100)
+  })
+  it("gibt noch volle Punktzahl bis 12% über Budget", () => {
+    expect(punktePreis(anfrage({ budgetProM2: 200 }), objekt({ preisProM2: 224 }))).toBe(100)
+  })
+  it("nimmt danach steil ab", () => {
+    const punkte = punktePreis(anfrage({ budgetProM2: 200 }), objekt({ preisProM2: 240 }))
+    expect(punkte).toBeLessThan(100)
+    expect(punkte).toBeGreaterThanOrEqual(0)
+  })
+  it("liefert 50 wenn kein Budget genannt ist", () => {
+    expect(punktePreis(anfrage({ budgetProM2: null }), objekt({ preisProM2: 200 }))).toBe(50)
+  })
+  it("liefert 50 wenn das Objekt keinen Preis hat (auf Anfrage)", () => {
+    expect(punktePreis(anfrage({ budgetProM2: 200 }), objekt({ preisProM2: null }))).toBe(50)
+  })
+  it("liefert 0 statt fälschlich 100 bei einem expliziten Budget von 0", () => {
+    // budgetProM2: 0 ist kein null (kein DB-CHECK-Constraint schliesst es aus)
+    // und bedeutet damit explizit "0 CHF/m² Budget". Ohne Sonderfall-Guard
+    // sorgt IEEE-754 (positive/0 = Infinity) dafür, dass Math.max(0, ...) korrekt 0 liefert.
+    expect(punktePreis(anfrage({ budgetProM2: 0 }), objekt({ preisProM2: 200 }))).toBe(0)
   })
 })
