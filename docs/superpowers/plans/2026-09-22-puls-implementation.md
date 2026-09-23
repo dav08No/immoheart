@@ -4729,6 +4729,22 @@ git add components/layout/Sidebar.tsx "app/(app)/layout.tsx"
 git commit -m "feat: Postfach-Badge in der Seitenleiste mit echter Anzahl"
 ```
 
+**Umgesetzte Abweichungen:**
+
+1. **`zaehleNachrichten` (Task 36) zusätzlich um `.in("richtung", ["eingang", "entwurf"])` ergänzt**,
+   statt es unverändert zu übernehmen. Der bestehende Stand zählte ausnahmslos alle Zeilen der
+   `nachrichten`-Tabelle -- inklusive `richtung: "gesendet"`. Keine der bisherigen M5-Aktionen
+   löscht je eine `gesendet`-Zeile (`loescheNachricht`/`loescheUndGibNachrichtZurueck` laufen nur
+   für die Quelle-Nachricht beim Speichern als Anfrage, deren `richtung` zu diesem Zeitpunkt
+   `eingang` ist, s. Task 39/44); `gesendet`-Zeilen bleiben also dauerhaft in der Tabelle. Ein
+   Badge, das ungefiltert zählt, würde mit der Zeit unbegrenzt wachsen und dabei grösstenteils
+   längst erledigte, gesendete Mails mitzählen -- semantisch falsch für ein Element, das laut
+   Aufgabenbeschreibung anzeigen soll, was „Aufmerksamkeit braucht" (analog zu den Tabs „Eingang"/
+   „Entwürfe" in `NachrichtenListe`, die `gesendet` ebenfalls ausklammern; nur der Tab „Alle" zeigt
+   sie). `zaehleNachrichten` hatte vor diesem Task genau null Aufrufer ausserhalb dieses einen
+   geplanten Badge-Konsumenten (geprüft per Suche im ganzen Repo) -- die Änderung der Semantik
+   bricht daher nichts Bestehendes.
+
 ---
 
 ### Task 46: Meilenstein M5 abschliessen
