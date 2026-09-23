@@ -1207,13 +1207,32 @@ Diese drei Dateien sind laut README die einzige Logik mit automatisierten Tests.
 - Create: `lib/format.ts`
 
 **Interfaces:**
-- Produces: `formatFlaeche(m2: number): string`, `formatPreis(chfM2: number): string`, `formatDatum(datum: Date): string` — verwendet von jeder Anzeige-Komponente ab M4.
+- Produces: `formatFlaeche(m2: number): string`, `formatPreis(chfM2: number): string`, `formatDatum(datum: Date): string`, `formatZeitpunkt(zeitpunkt: Date): string` — verwendet von jeder Anzeige-Komponente ab M4.
+
+`formatDatum` und `formatZeitpunkt` haben unterschiedliche Verträge und dürfen nicht
+verwechselt werden: `formatDatum` ist NUR für reine Kalenderdaten ohne Uhrzeit
+(z. B. `objekte.verfuegbar_ab`) und liest via UTC-Getter — `new Date("2026-08-25")`
+liegt auf UTC-Mitternacht, UTC-Getter sind also zeitzonenunabhängig korrekt.
+`formatZeitpunkt` ist für echte Zeitstempel (z. B. `created_at`, `gesendet_am`, `new
+Date()`) und muss den Schweizer Kalendertag (Europe/Zurich) zeigen — NICHT via
+lokale (`this.get*`) Getter, denn die laufen in Produktion auf einer Vercel
+Serverless-Function mit `TZ=UTC`, nicht `TZ=Europe/Zurich`; "lokal" wäre auf dem
+Server also identisch mit UTC und der Bug bliebe live unbemerkt bestehen, obwohl er
+lokal auf einer Schweizer Entwicklermaschine unsichtbar wäre. Stattdessen explizit
+`Intl.DateTimeFormat(..., { timeZone: "Europe/Zurich" }).formatToParts(...)` und nur
+die numerischen Teile (day/month/year) auslesen und selbst zusammensetzen — das
+liest die IANA-Zeitzonendatenbank (in jeder Node-Version seit 13 standardmässig via
+full-icu vorhanden, unabhängig vom Prozess-`TZ`) und ist deshalb unabhängig davon,
+wo der Code läuft. Die einzelnen Zahlenwerte sind ICU-versionsunabhängig eindeutig;
+das ist nicht dasselbe Risiko wie das Trennzeichen-Glyphenproblem, das
+`Intl.NumberFormat` oben ausschliesst, weil hier kein von ICU generiertes
+Trennzeichen übernommen wird, sondern nur einzelne Zahlenfelder.
 
 - [ ] **Step 1: Fehlschlagende Tests schreiben**
 
 ```ts
 import { describe, expect, it } from "vitest"
-import { formatDatum, formatFlaeche, formatPreis } from "./format"
+import { formatDatum, formatFlaeche, formatPreis, formatZeitpunkt } from "./format"
 
 describe("formatFlaeche", () => {
   it("formatiert mit Tausendertrennzeichen und Einheit", () => {
@@ -1221,6 +1240,9 @@ describe("formatFlaeche", () => {
   })
   it("lässt kleine Zahlen unverändert", () => {
     expect(formatFlaeche(240)).toBe("240 m²")
+  })
+  it("setzt mehrere Tausendertrennzeichen bei grossen Zahlen", () => {
+    expect(formatFlaeche(1234567)).toBe("1'234'567 m²")
   })
 })
 
@@ -1236,6 +1258,25 @@ describe("formatPreis", () => {
 describe("formatDatum", () => {
   it("formatiert als Tag.Monat.Jahr", () => {
     expect(formatDatum(new Date("2026-08-25"))).toBe("25.08.2026")
+  })
+  it("füllt auch den Tag mit führender Null", () => {
+    expect(formatDatum(new Date("2026-08-05"))).toBe("05.08.2026")
+  })
+})
+
+describe("formatZeitpunkt", () => {
+  it("formatiert einen echten Zeitstempel im Schweizer Kalendertag (Europe/Zurich), nicht UTC", () => {
+    // 2026-09-23T22:30:00Z ist in Zurich (UTC+2, Sommerzeit im September)
+    // bereits 2026-09-24, 00:30 -- ein fester, umgebungsunabhängiger Fixpunkt.
+    // Ein Test, der stattdessen `datum.getDate()` (lokale Getter des
+    // Testrunners) zur Erwartung heranzöge, wäre je nach TZ der
+    // ausführenden Maschine (Windows-Dev vs. Ubuntu-CI, beide i. d. R. nicht
+    // auf Europe/Zurich gesetzt) unterschiedlich scharf -- deshalb hier ein
+    // hart codierter erwarteter String.
+    expect(formatZeitpunkt(new Date("2026-09-23T22:30:00.000Z"))).toBe("24.09.2026")
+  })
+  it("stimmt mit formatDatum überein, wenn der Zeitstempel weit vom Tageswechsel entfernt liegt", () => {
+    expect(formatZeitpunkt(new Date("2026-08-25T12:00:00.000Z"))).toBe("25.08.2026")
   })
 })
 ```
@@ -1273,6 +1314,25 @@ export function formatDatum(datum: Date): string {
   const monat = String(datum.getUTCMonth() + 1).padStart(2, "0")
   const jahr = datum.getUTCFullYear()
   return `${tag}.${monat}.${jahr}`
+}
+
+export function formatZeitpunkt(zeitpunkt: Date): string {
+  // Für echte Zeitstempel (created_at, gesendet_am, new Date()) -- NICHT
+  // formatDatum verwenden, dessen UTC-Getter für Zeitstempel den falschen
+  // Tag liefern würden. Explizite IANA-Zeitzone statt lokaler Getter, weil
+  // die App in Produktion auf einer Vercel Serverless-Function mit TZ=UTC
+  // läuft: "lokal" wäre dort identisch mit UTC, der Bug bliebe live
+  // unbemerkt. formatToParts liest nur einzelne Zahlenfelder aus, nicht das
+  // von ICU zusammengesetzte Trennzeichen -- deshalb kein Analogon zum
+  // Intl.NumberFormat-Risiko oben.
+  const teile = new Intl.DateTimeFormat("de-CH", {
+    timeZone: "Europe/Zurich",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(zeitpunkt)
+  const teilWert = (typ: string): string => teile.find((t) => t.type === typ)?.value ?? ""
+  return `${teilWert("day")}.${teilWert("month")}.${teilWert("year")}`
 }
 ```
 
@@ -4222,7 +4282,7 @@ git commit -m "feat: AnfragenTabelle mit Lücken als ?"
 - Create: `components/anfragen/AnfrageDetail.tsx`
 
 **Interfaces:**
-- Consumes: `Drawer` (M4 Task 33), `anfrageAktualisieren` (Task 48), `holeBesterMatchFuerAnfrage`/`holeVerlaufFuerAnfrage` (Task 47), `puls`/`pulsFarbe` (M2 Task 16), `formatDatum` (M2 Task 15).
+- Consumes: `Drawer` (M4 Task 33), `anfrageAktualisieren` (Task 48), `holeBesterMatchFuerAnfrage`/`holeVerlaufFuerAnfrage` (Task 47), `puls`/`pulsFarbe` (M2 Task 16), `formatZeitpunkt` (M2 Task 15).
 - Produces: `<AnfrageDetail anfrage besterMatch verlauf offen sofortBearbeiten onSchliessen />`.
 
 - [ ] **Step 1: `components/anfragen/AnfrageDetail.tsx` anlegen**
@@ -4233,7 +4293,7 @@ import { Drawer } from "@/components/layout/Drawer"
 import { Button } from "@/components/ui/Button"
 import { anfrageAktualisieren } from "@/app/actions/anfragen"
 import { puls, pulsFarbe } from "@/lib/puls"
-import { formatDatum } from "@/lib/format"
+import { formatZeitpunkt } from "@/lib/format"
 import type { AnfrageMitFirma, VerlaufEintrag } from "@/lib/queries/anfragen"
 import type { Kriterium } from "@/types"
 
@@ -4349,7 +4409,7 @@ export function AnfrageDetail({
         <ul>
           {verlauf.map((eintrag, i) => (
             <li key={i} className="grid grid-cols-[74px_1fr] gap-2.5 border-b border-line py-1.5 text-xs text-ink-2 last:border-b-0">
-              <time className="text-ink-3">{formatDatum(new Date(eintrag.zeitpunkt))}</time>
+              <time className="text-ink-3">{formatZeitpunkt(new Date(eintrag.zeitpunkt))}</time>
               <span>{eintrag.text}</span>
             </li>
           ))}
@@ -5663,7 +5723,7 @@ import { MatchesAnsicht } from "@/components/matches/MatchesAnsicht"
 import { holeNeueMatches, type NeuerMatch } from "@/lib/queries/matches"
 import { holeOffenePulsWerte, holeAnfragen } from "@/lib/queries/anfragen"
 import { holeObjekte } from "@/lib/queries/objekte"
-import { formatDatum } from "@/lib/format"
+import { formatZeitpunkt } from "@/lib/format"
 
 export default async function MatchesPage() {
   const [matches, letzteKontakte, anfragen, objekte] = await Promise.all([
@@ -5676,7 +5736,7 @@ export default async function MatchesPage() {
 
   return (
     <>
-      <Header titel="Matches" untertitel={formatDatum(new Date())} />
+      <Header titel="Matches" untertitel={formatZeitpunkt(new Date())} />
       <main className="flex-1 overflow-y-auto p-5">
         <MatchesAnsicht
           matches={matches satisfies NeuerMatch[]}
