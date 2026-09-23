@@ -18,6 +18,19 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
   // (Offener Punkt aus Task 39s Review, s. Plan). Milestone-Konvention (MailEinfuegen/
   // Task 40, EntwurfDetail/Task 43): lokaler fehler-State, gerendert in text-crit.
   const [fehler, setFehler] = useState<string | null>(null)
+  // Reviewer-Feedback Fix-Loop Runde 1: alsAnfrageSpeichern (app/actions/nachrichten.ts)
+  // macht holeNachricht -> legeAnfrageAn -> loescheNachricht ohne Transaktion. Ohne
+  // Sperre könnte ein schneller Doppelklick auf "Als Anfrage speichern" zwei
+  // überlappende Aufrufe für dieselbe nachrichtId auslösen, die beide die noch nicht
+  // gelöschte Zeile lesen und beide legeAnfrageAn aufrufen -- zwei doppelte Anfragen
+  // aus einer Quelle-Nachricht (derselbe Race wie bereits in MailEinfuegen/Task 40 und
+  // EntwurfDetail/Task 43 durch laedt/laufend verhindert). speichernLaufend wird an
+  // EingangDetail durchgereicht, das seinen Speichern-Button damit sperrt.
+  const [speichernLaufend, setSpeichernLaufend] = useState(false)
+  // Kurze, optionale Erfolgsbestätigung nach dem Speichern (Reviewer-Vorschlag,
+  // Minor) -- ersetzt den "Nachricht wählen."-Platzhalter einmalig, bis die Nutzerin
+  // eine neue Nachricht (oder Rückfrage) auswählt.
+  const [erfolg, setErfolg] = useState<string | null>(null)
 
   // Analog zu EntwurfDetails nachrichtIdRef (Task 43): während alsAnfrageSpeichern
   // läuft, könnte die Nutzerin in NachrichtenListe bereits eine andere Nachricht
@@ -41,6 +54,12 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
       setFilter("entwurf")
       setAusgewaehlteId(treffer.id)
       setFehler(null)
+      setErfolg(null)
+      // Reset unabhängig vom Staleness-Ref-Guard in speichernAlsAnfrage: verhindert,
+      // dass ein noch laufender Speichern-Aufruf für die VORHERIGE Nachricht den
+      // Speichern-Button der jetzt neu ausgewählten Nachricht gesperrt lässt (siehe
+      // Kommentar bei speichernLaufend oben).
+      setSpeichernLaufend(false)
     }
   }
 
@@ -56,11 +75,25 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
   // sichtbar veraltete Daten).
   async function speichernAlsAnfrage(nachrichtId: string, nutzungUeberschreibung?: Nutzung) {
     setFehler(null)
+    setErfolg(null)
+    // Wird beim Klick unconditional gesetzt -- nachrichtId ist zu diesem Zeitpunkt
+    // garantiert die gerade angezeigte Nachricht (der Klick kam von deren Button).
+    setSpeichernLaufend(true)
     try {
       await alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung)
-      if (ausgewaehlteIdRef.current === nachrichtId) setAusgewaehlteId(null)
+      if (ausgewaehlteIdRef.current === nachrichtId) {
+        setAusgewaehlteId(null)
+        setErfolg("Anfrage gespeichert.")
+      }
     } catch (e) {
       if (ausgewaehlteIdRef.current === nachrichtId) setFehler(e instanceof Error ? e.message : String(e))
+    } finally {
+      // Nur zurücksetzen, wenn nachrichtId noch die aktuell ausgewählte ist -- wurde
+      // in der Zwischenzeit weggewechselt, hat der onAuswahl-Handler speichernLaufend
+      // bereits synchron auf false gesetzt (siehe dort); ein verspätetes Zurücksetzen
+      // hier dürfte NICHT den Zustand einer inzwischen anders ausgewählten Nachricht
+      // überschreiben (analog zum fehler-Guard oben).
+      if (ausgewaehlteIdRef.current === nachrichtId) setSpeichernLaufend(false)
     }
   }
 
@@ -76,12 +109,23 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
           onAuswahl={(id) => {
             setAusgewaehlteId(id)
             setFehler(null)
+            setErfolg(null)
+            // Siehe Kommentar in rueckfrageOeffnen: sofortiges Zurücksetzen,
+            // unabhängig vom Ref-Guard in speichernAlsAnfrage, damit der
+            // Speichern-Button der neu ausgewählten Nachricht nicht durch einen noch
+            // laufenden Aufruf der VORHERIGEN Nachricht gesperrt bleibt.
+            setSpeichernLaufend(false)
           }}
         />
       </div>
       <div className="rounded-card border border-line bg-surface">
         {fehler && <div className="border-b border-line p-3 text-sm text-crit">{fehler}</div>}
-        {!ausgewaehlt && <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>}
+        {!ausgewaehlt &&
+          (erfolg ? (
+            <p className="p-10 text-center text-sm text-good">{erfolg}</p>
+          ) : (
+            <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>
+          ))}
         {ausgewaehlt?.richtung === "eingang" && (
           <EingangDetail
             nachricht={ausgewaehlt}
@@ -89,6 +133,7 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
               void speichernAlsAnfrage(ausgewaehlt.id, nutzungUeberschreibung)
             }
             onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt.von)}
+            speichernLaufend={speichernLaufend}
           />
         )}
         {ausgewaehlt && ausgewaehlt.richtung !== "eingang" && (

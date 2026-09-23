@@ -35,9 +35,18 @@ type Props = {
   // ohne diesen Wert, statt lautlos zu raten.
   onSpeichern: (nutzungUeberschreibung?: Nutzung) => void
   onRueckfrageOeffnen: () => void
+  // Von PostfachAnsicht (Task 44) gesetzt, während der alsAnfrageSpeichern-Aufruf
+  // läuft, den onSpeichern ausgelöst hat. alsAnfrageSpeichern macht
+  // holeNachricht -> legeAnfrageAn -> loescheNachricht ohne Transaktion; ohne diese
+  // Sperre würde ein schneller Doppelklick zwei überlappende Aufrufe für dieselbe
+  // nachrichtId auslösen, die beide die noch nicht gelöschte Zeile lesen und beide
+  // legeAnfrageAn aufrufen -- zwei doppelte Anfragen aus einer Quelle-Nachricht
+  // (derselbe Race wie bereits in MailEinfuegen/Task 40 und EntwurfDetail/Task 43
+  // durch laedt/laufend verhindert).
+  speichernLaufend: boolean
 }
 
-export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: Props) {
+export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen, speichernLaufend }: Props) {
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
 
@@ -56,8 +65,9 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
 
   // Der Button darf nicht klickbar sein, wenn der Aufruf garantiert wirft:
   // entweder gibt es gar keine erkannten Felder, oder nutzung fehlt und wurde
-  // noch nicht manuell nachgetragen.
-  const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "")
+  // noch nicht manuell nachgetragen. speichernLaufend sperrt zusätzlich während
+  // ein Aufruf bereits unterwegs ist (siehe Props-Kommentar zu speichernLaufend).
+  const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "") && !speichernLaufend
 
   return (
     <div>
@@ -118,7 +128,7 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
             disabled={!speichernMoeglich}
             onClick={() => onSpeichern(nutzungFehlt ? (nutzungAuswahl as Nutzung) : undefined)}
           >
-            Als Anfrage speichern
+            {speichernLaufend ? "Wird gespeichert…" : "Als Anfrage speichern"}
           </Button>
           {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
         </div>

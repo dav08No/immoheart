@@ -4520,6 +4520,39 @@ die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
    Meilenstein war der `Header`-Aufruf im Code-Block (`titel`/`untertitel`)
    deckungsgleich mit der tatsächlichen `Header.tsx`-Signatur -- keine
    Anpassung nötig.
+7. **Fix-Loop Runde 1 -- Doppelklick-Schutz für "Als Anfrage speichern"**:
+   Reviewer-Fund (Important): `alsAnfrageSpeichern` macht `holeNachricht` ->
+   `legeAnfrageAn` -> `loescheNachricht` ohne Transaktion. Anders als
+   `MailEinfuegen`s `laedt` und `EntwurfDetail`s `laufend` gab es für den
+   Speichern-Button in `EingangDetail` keine Sperre während des Aufrufs -- ein
+   schneller Doppelklick hätte zwei überlappende Aufrufe mit derselben
+   `nachrichtId` ausgelöst, die beide die noch nicht gelöschte Zeile lesen und
+   beide `legeAnfrageAn` aufrufen (zwei doppelte Anfragen aus einer
+   Quelle-Nachricht). Behoben mit einem neuen `speichernLaufend`-State in
+   `PostfachAnsicht`, das als Pflicht-Prop an `EingangDetail` durchgereicht
+   wird; dessen Speichern-Button ist zusätzlich zu `speichernMoeglich`
+   deaktiviert, solange `speichernLaufend` true ist (Beschriftung wechselt zu
+   "Wird gespeichert…", analog zu `EntwurfDetail`). Das Flag wird beim Klick
+   unconditional gesetzt (der Klick kam garantiert von der gerade angezeigten
+   Nachricht) und beim Abschluss über denselben `ausgewaehlteIdRef`-Guard wie
+   `fehler` zurückgesetzt -- **zusätzlich** aber auch sofort und unconditional
+   in `onAuswahl` und `rueckfrageOeffnen` auf `false` gesetzt, sobald die
+   Auswahl wechselt. Ohne dieses zweite, sofortige Zurücksetzen bliebe der
+   Speichern-Button einer neu ausgewählten Nachricht fälschlich gesperrt, so
+   lange der (jetzt verwaiste) Aufruf der vorherigen Nachricht noch läuft --
+   `EingangDetail` ist anders als `EntwurfDetail` NICHT über `key` an die
+   Nachricht-ID gebunden, dieselbe Komponenteninstanz bleibt beim Wechsel
+   erhalten. Bekannte, bewusst akzeptierte Lücke (derselbe theoretische,
+   nicht-blockierende Timing-Vorbehalt, den bereits Task 43s Review für
+   `nachrichtIdRef` akzeptiert hat): wechselt die Nutzerin während eines
+   laufenden Speicherns weg und dann wieder zurück zur selben Nachricht, zeigt
+   der Button dort wieder als nicht gesperrt an, obwohl der alte Aufruf
+   theoretisch noch unterwegs sein könnte.
+8. **Minor, optional -- Erfolgsbestätigung**: Reviewer-Vorschlag umgesetzt, da
+   geringer Aufwand. Ein neuer `erfolg`-State zeigt nach erfolgreichem
+   Speichern kurz "Anfrage gespeichert." anstelle von "Nachricht wählen." im
+   rechten Panel (Farbe `text-good`, bereits an anderer Stelle im Postfach
+   verwendet), bis die Nutzerin eine neue Nachricht oder Rückfrage auswählt.
 
 - [ ] **Step 3: Manuell end-to-end prüfen**
 
