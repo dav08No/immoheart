@@ -3649,6 +3649,32 @@ durchreichen kann, wenn die KI-Erkennung `nutzung` nicht bestimmen konnte.
 fehlen. Siehe Task 42s Abwägung für die Begründung dieser Design-Entscheidung.
 Der Code-Block unten ist bereits auf diesem aktuellen Stand.
 
+**Nachtrag aus Task 44s Fix-Loop Runde 2**: `alsAnfrageSpeichern` macht im
+Code-Block unten noch `holeNachricht` -> `legeAnfrageAn` -> `loescheNachricht`
+als drei getrennte, unsynchronisierte Schritte. Reviewer-Fund beim Bau von
+Task 44: zwei überlappende Aufrufe für dieselbe `nachrichtId` (z.B. Doppelklick
+auf "Als Anfrage speichern", oder Wegwechseln und Zurückkehren während ein
+Speichern noch läuft, gefolgt von erneutem Klick) konnten dadurch beide
+dieselbe, noch nicht gelöschte Zeile lesen und beide `legeAnfrageAn` aufrufen
+-- eine echte doppelte Anfrage aus einer Quelle-Nachricht, kein rein
+theoretisches Risiko, und clientseitig (siehe `PostfachAnsicht`s
+`speichernLaufend`, Task 44) nicht zuverlässig zu schliessen, solange die
+Server Action selbst nicht atomar ist. Tatsächlich umgesetzt: der
+`loescheNachricht`-Aufruf am Ende wurde durch einen atomaren
+Lösch-und-Rückgabe-Aufruf (`loescheUndGibNachrichtZurueck`, neu in
+`lib/queries/nachrichten.ts`, `DELETE ... RETURNING *` in einer Query) ersetzt,
+der unmittelbar vor `legeAnfrageAn` steht -- NICHT ganz am Anfang der Funktion
+anstelle des bestehenden `holeNachricht`-Reads, weil der `nutzung`-Check
+zwingend vor jedem Löschen passieren muss (siehe Task 42s Abwägung oben: die
+Nutzerin muss über `EingangDetail` zurückkehren und die Nutzung nachtragen
+können, was voraussetzt, dass die Quelle-Nachricht dafür noch existiert).
+Postgres serialisiert konkurrierende `DELETE`s auf dieselbe Zeile per
+Row-Level-Locking, sodass von zwei überlappenden Aufrufen garantiert nur einer
+die Zeile zurückbekommt; der andere erhält `null` und wirft ("Nachricht wurde
+bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
+anzulegen. Details und die volle Abwägung der beiden erwogenen Optionen siehe
+Task 44s Abweichungspunkt 9.
+
 `richtung` ist laut README-Enum (`eingang | entwurf | gesendet`) der **Status** einer Nachricht, nicht ihre feste Art — ein Entwurf wechselt bei echtem Versand zu `gesendet`, zusammen mit dem Zeitstempel `gesendet_am`. Eine erledigte Eingangs-Mail (gespeichert oder verworfen) wurde dagegen nie *von uns gesendet*; sie als `gesendet` umzuflaggen würde den Wert für jede spätere Auswertung (z. B. eine Versand-Erfolgsquote in M10) verfälschen. Erledigte Eingangs-Mails werden deshalb gelöscht, genau wie im Prototyp, der sie nach der Aktion aus seiner Liste entfernt.
 
 - [ ] **Step 1: `app/actions/nachrichten.ts` anlegen**
