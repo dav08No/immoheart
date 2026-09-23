@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { punkteAnforderungen, punkteBezug, punkteFlaeche, punkteLage, punktePreis } from "./matching"
+import { berechneMatch, punkteAnforderungen, punkteBezug, punkteFlaeche, punkteLage, punktePreis } from "./matching"
 import type { Anfrage, Objekt } from "@/types"
 
 function anfrage(teil: Partial<Anfrage> = {}): Anfrage {
@@ -123,5 +123,94 @@ describe("punkteAnforderungen", () => {
     const a = anfrage({ anforderungen: { zugang: "24/7" } })
     const o = objekt({ eigenschaften: { zugang: "24/7" } })
     expect(punkteAnforderungen(a, o)).toBe(100)
+  })
+})
+
+describe("berechneMatch", () => {
+  it("liefert null unter Score 60", () => {
+    const a = anfrage({ flaecheMin: 5000, flaecheMax: 6000, budgetProM2: 50 })
+    const o = objekt({ flaeche: 100, preisProM2: 500 })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("berechnet den gewichteten Score bei vollem Treffer", () => {
+    // bezug:"sofort" statt des Default-Freitexts "Q4 2026", damit auch das
+    // Bezugskriterium bei sofortiger Verfügbarkeit volle 100 Punkte gibt.
+    const a = anfrage({ bezug: "sofort" })
+    const o = objekt({ verfuegbarAb: new Date() })
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.score).toBe(100)
+  })
+
+  it("gewichtet Fläche 30%, Preis 25%, Lage 20%, Bezug 15%, Anforderungen 10%", () => {
+    // Nur die Fläche weicht ab (auf 0 Punkte), alles andere ist perfekt.
+    const a = anfrage({ flaecheMin: 180, flaecheMax: 260, ort: "Solothurn", budgetProM2: 250, bezug: null })
+    const o = objekt({ flaeche: 5000, ort: "Solothurn", preisProM2: 250 })
+    const match = berechneMatch(a, o)
+    // 0*0.30 + 100*0.25 + 100*0.20 + 50*0.15 (bezug=null->50) + 100*0.10 = 62.5 -> 63
+    expect(match!.score).toBe(63)
+  })
+
+  it("füllt die Kriterien-Tabelle mit gesucht/angeboten/status je Zeile", () => {
+    const match = berechneMatch(anfrage(), objekt())
+    expect(match!.kriterien).toContainEqual(
+      expect.objectContaining({ kriterium: "Fläche", status: "ok" })
+    )
+  })
+
+  it("setzt den Hinweis auf den schwächsten Punkt", () => {
+    const a = anfrage({ budgetProM2: 200 })
+    const o = objekt({ preisProM2: 400, flaeche: 240, ort: "Solothurn" })
+    const match = berechneMatch(a, o)
+    expect(match!.hinweis.toLowerCase()).toContain("preis")
+  })
+
+  it("liefert null bei durchgehend schwachen Werten in allen Kriterien", () => {
+    const a = anfrage({ flaecheMin: 9000, flaecheMax: 9500, budgetProM2: 10, ort: "Bettlach", bezug: "sofort" })
+    const o = objekt({ flaeche: 100, preisProM2: 900, ort: "Zuchwil", verfuegbarAb: new Date(Date.now() + 200 * 86_400_000) })
+    expect(berechneMatch(a, o)).toBeNull()
+  })
+
+  it("lässt einen Score von genau 60 zu (Ausschluss gilt nur unter 60)", () => {
+    // Jedes Einzelkriterium liefert exakt 60 Punkte, damit auch der gewichtete
+    // Gesamtscore unabhängig von der Gewichtsverteilung bei genau 60 landet:
+    // Fläche 40% über der Obergrenze (260→364), Preis 32% über Budget,
+    // Lage gleiche Region/anderer Ort, Bezug 21 Tage Abweichung, 3 von 5
+    // Anforderungen erfüllt.
+    const a = anfrage({
+      flaecheMin: null, flaecheMax: 260, ort: "Wasseramt", budgetProM2: 200, bezug: "sofort",
+      anforderungen: { r1: true, r2: true, r3: true, r4: true, r5: true },
+    })
+    const o = objekt({
+      flaeche: 364, ort: "Zuchwil", preisProM2: 264,
+      verfuegbarAb: new Date(Date.now() + 21 * 86_400_000),
+      eigenschaften: { r1: true, r2: true, r3: true },
+    })
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.score).toBe(60)
+  })
+
+  it("nennt bei mehreren schwachen Kriterien im selben Status das mit den wenigsten Punkten, nicht das erste in der Tabelle", () => {
+    // Fläche (45 Punkte) und Preis (5 Punkte) liegen beide im "nein"-Bucket
+    // (< 50), Preis ist aber der eindeutig schwächere Wert. Eine reine
+    // Status-basierte Auswahl (ok=3/teilweise=2/nein=1) mit Array-Reihenfolge
+    // als Tie-Breaker würde hier fälschlich "Fläche" nennen, nur weil es zuerst
+    // in der Kriterien-Tabelle steht.
+    const a = anfrage({
+      flaecheMin: null, flaecheMax: 200, ort: "Solothurn", budgetProM2: 200, bezug: "sofort",
+      anforderungen: {},
+    })
+    const o = objekt({
+      flaeche: 310, // Fläche: 45 Punkte (55% über der Obergrenze)
+      preisProM2: 319, // Preis: 5 Punkte (59.5% über Budget)
+      ort: "Solothurn",
+      verfuegbarAb: new Date(),
+    })
+    const match = berechneMatch(a, o)
+    expect(match).not.toBeNull()
+    expect(match!.hinweis.toLowerCase()).toContain("preis")
+    expect(match!.hinweis.toLowerCase()).not.toContain("fläche")
   })
 })
