@@ -9,6 +9,7 @@ import {
   legeNachrichtAn,
   aktualisiereNachricht,
   loescheNachricht,
+  loescheUndGibNachrichtZurueck,
   type NachrichtRow,
 } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn } from "@/lib/queries/anfragen"
@@ -100,6 +101,37 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     )
   }
 
+  // Fix-Loop Runde 2 (Task 44): holeNachricht oben + legeAnfrageAn + loescheNachricht
+  // GETRENNT bedeutete, dass zwei überlappende Aufrufe für dieselbe nachrichtId
+  // (z.B. ein Doppelklick, der die clientseitige speichernLaufend-Sperre in
+  // PostfachAnsicht umgeht, weil zwischen den beiden Klicks kurz weg- und wieder
+  // hinnavigiert wurde) beide dieselbe, noch nicht gelöschte Zeile lesen und beide
+  // legeAnfrageAn aufrufen konnten -- zwei doppelte Anfragen aus einer
+  // Quelle-Nachricht. Der Lösch-Schritt ist deshalb JETZT ein atomarer
+  // Lösch-und-Rückgabe-Aufruf (loescheUndGibNachrichtZurueck): Postgres
+  // serialisiert konkurrierende DELETEs auf dieselbe Zeile, nur EINER der beiden
+  // Aufrufe bekommt die Zeile zurück, der andere erhält `null` und wirft --
+  // statt einer zweiten, doppelten Anfrage.
+  //
+  // WICHTIG: dieser Aufruf steht bewusst HIER, unmittelbar vor legeAnfrageAn, NICHT
+  // am Anfang der Funktion anstelle von holeNachricht oben. Der nutzung-Check
+  // darüber muss zwingend VOR jedem Löschen passieren -- der ganze Sinn des Throws
+  // bei fehlender nutzung ist es, dass die Nutzerin über die EingangDetail-UI
+  // (Task 42) zurückkehren und die Nutzung manuell nachtragen kann, was voraussetzt,
+  // dass die Quelle-Nachricht dafür noch existiert. Würde zuerst gelöscht und erst
+  // danach auf nutzung geprüft, würde ausgerechnet ein fehlschlagender
+  // Speichern-Versuch (mangels nutzung) die einzige Möglichkeit zerstören, ihn zu
+  // korrigieren. Das lässt ein sehr kurzes Fenster zwischen dem nutzung-Check oben
+  // und diesem Aufruf offen (zwei schnelle, aufeinanderfolgende DB-Zugriffe ohne
+  // Nutzerinteraktion dazwischen) -- deutlich enger als das ursprüngliche Fenster
+  // über den gesamten Funktionsverlauf, und der atomare Lösch-und-Rückgabe-Aufruf
+  // selbst garantiert weiterhin, dass nur EIN Aufruf jemals legeAnfrageAn erreichen
+  // kann.
+  const geloescht = await loescheUndGibNachrichtZurueck(nachrichtId)
+  if (!geloescht) {
+    throw new Error("Nachricht wurde bereits verarbeitet oder existiert nicht mehr")
+  }
+
   await legeAnfrageAn({
     ort: felder.ort,
     nutzung,
@@ -109,7 +141,6 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     bezug: felder.bezug,
   })
 
-  await loescheNachricht(nachrichtId)
   revalidatePath("/postfach")
   revalidatePath("/anfragen")
 }

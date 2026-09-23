@@ -4542,17 +4542,67 @@ die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
    lange der (jetzt verwaiste) Aufruf der vorherigen Nachricht noch läuft --
    `EingangDetail` ist anders als `EntwurfDetail` NICHT über `key` an die
    Nachricht-ID gebunden, dieselbe Komponenteninstanz bleibt beim Wechsel
-   erhalten. Bekannte, bewusst akzeptierte Lücke (derselbe theoretische,
-   nicht-blockierende Timing-Vorbehalt, den bereits Task 43s Review für
-   `nachrichtIdRef` akzeptiert hat): wechselt die Nutzerin während eines
-   laufenden Speicherns weg und dann wieder zurück zur selben Nachricht, zeigt
-   der Button dort wieder als nicht gesperrt an, obwohl der alte Aufruf
-   theoretisch noch unterwegs sein könnte.
+   erhalten. Bekannte, zunächst akzeptierte Lücke: wechselt die Nutzerin
+   während eines laufenden Speicherns weg und dann wieder zurück zur selben
+   Nachricht, zeigt der Button dort wieder als nicht gesperrt an, obwohl der
+   alte Aufruf noch unterwegs sein könnte. **Korrektur nach Fix-Loop Runde
+   2**: diese Lücke wurde in der ursprünglichen Fassung dieser Notiz
+   fälschlich als "derselbe theoretische, nicht-blockierende Timing-Vorbehalt
+   wie bei Task 43s `nachrichtIdRef`" bagatellisiert. Das war zu
+   unterschätzt -- anders als bei `EntwurfDetail` (wo ein verspätetes
+   Settling höchstens eine falsch zugeordnete Fehlermeldung/einen falschen
+   State-Reset verursacht) konnte diese Lücke hier zu einem **echten
+   doppelten Datensatz** führen (zwei `anfragen`-Zeilen aus einer
+   Quelle-Nachricht), war durch gewöhnliche, wenn auch zügige
+   Nutzerinteraktion erreichbar (nicht nur ein theoretisches
+   Event-Loop-Timing-Fenster), und liess sich rein clientseitig grundsätzlich
+   nicht zuverlässig schliessen, solange `alsAnfrageSpeichern` intern nicht
+   atomar ist. Siehe Punkt 9 unten für die tatsächliche Behebung auf
+   DB-Ebene.
 8. **Minor, optional -- Erfolgsbestätigung**: Reviewer-Vorschlag umgesetzt, da
    geringer Aufwand. Ein neuer `erfolg`-State zeigt nach erfolgreichem
    Speichern kurz "Anfrage gespeichert." anstelle von "Nachricht wählen." im
    rechten Panel (Farbe `text-good`, bereits an anderer Stelle im Postfach
    verwendet), bis die Nutzerin eine neue Nachricht oder Rückfrage auswählt.
+9. **Fix-Loop Runde 2 -- `alsAnfrageSpeichern` auf DB-Ebene atomar gemacht**
+   (siehe auch aktualisierte Notiz bei Task 39 weiter oben): Der
+   `speichernLaufend`-Client-Guard aus Runde 1 schliesst nur den gewöhnlichen
+   Doppelklick-Fall. Er verhindert NICHT, dass die Nutzerin während eines
+   laufenden Speicherns wegwechselt, zur selben Nachricht zurückkehrt (der
+   Button ist dann wieder aktiv, siehe Punkt 7) und erneut klickt, während der
+   ursprüngliche Server-Aufruf noch läuft -- zwei überlappende
+   `alsAnfrageSpeichern`-Aufrufe für dieselbe `nachrichtId`, beide lesen über
+   `holeNachricht` dieselbe, noch nicht gelöschte Zeile, beide rufen
+   `legeAnfrageAn` auf: eine echte doppelte Anfrage, kein rein theoretisches
+   Risiko. Kein clientseitiger Guard kann das beim aktuellen,
+   nicht-abbrechbaren Async-Muster zuverlässig verhindern -- die eigentliche
+   Behebung gehört in die Server Action. `app/actions/nachrichten.ts` ruft
+   jetzt unmittelbar vor `legeAnfrageAn` die neue
+   `loescheUndGibNachrichtZurueck` (`lib/queries/nachrichten.ts`) auf --
+   `DELETE ... WHERE id = ... RETURNING *` in einer einzigen Query. Postgres
+   serialisiert konkurrierende `DELETE`s auf dieselbe Zeile per
+   Row-Level-Locking: von zwei überlappenden Aufrufen bekommt garantiert nur
+   EINER die Zeile zurück, der andere `null` und wirft ("Nachricht wurde
+   bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
+   anzulegen. Entscheidung zwischen den zwei erwogenen Optionen: **Option
+   (b)** gewählt -- der `nutzung`-Check bleibt VOR dem atomaren
+   Lösch-und-Rückgabe-Aufruf (auf Basis des bereits vorhandenen
+   `holeNachricht`-Reads ganz oben in der Funktion), der atomare Aufruf selbst
+   wandert an die Stelle, wo bisher `loescheNachricht` am Ende stand,
+   unmittelbar vor `legeAnfrageAn`. **Nicht** Option (a) (ein einziger
+   atomarer Lösch-Aufruf ganz am Anfang, `felder`/`nutzung` aus der
+   zurückgegebenen Zeile statt aus einem separaten `holeNachricht`): Task 39s
+   Begründung für den Throw bei fehlender `nutzung` ("Task 42 hat EingangDetail
+   um ein Pflicht-Auswahlfeld ergänzt ... damit die Nutzerin die Nutzung
+   manuell nachtragen kann") setzt voraus, dass die Quelle-Nachricht nach
+   einem gescheiterten Speichern-Versuch noch existiert. Mit Option (a) hätte
+   ausgerechnet der Fehlerfall "nutzung fehlt" die Nachricht bereits gelöscht
+   und genau die Korrekturmöglichkeit zerstört, die dieser Guard erst
+   ermöglichen soll -- ein inakzeptabler Verhaltenswechsel. Mit Option (b)
+   bleibt ein sehr kurzes Fenster zwischen `nutzung`-Check und dem atomaren
+   Aufruf (zwei directe, aufeinanderfolgende DB-Zugriffe ohne
+   Nutzerinteraktion dazwischen) -- der atomare Aufruf selbst garantiert aber
+   weiterhin, dass davon nur einer jemals `legeAnfrageAn` erreicht.
 
 - [ ] **Step 3: Manuell end-to-end prüfen**
 
