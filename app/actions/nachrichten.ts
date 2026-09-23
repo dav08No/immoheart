@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
 import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
+import type { Nutzung } from "@/types"
 import {
   holeNachricht,
   legeNachrichtAn,
@@ -67,7 +68,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
   revalidatePath("/postfach")
 }
 
-export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
+export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
   const nachricht = await holeNachricht(nachrichtId)
   if (!nachricht) throw new Error("Nachricht nicht gefunden")
 
@@ -81,10 +82,19 @@ export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
   // deshalb als achtes KI-Feld ergänzt, um diesen stillen Rateschritt in der Server
   // Action zu vermeiden ("... ohne KI-Schätzung sonst ein stiller Rateschritt in der
   // Server Action nötig wäre"). Ein Default wie "gewerbe" würde genau das wieder
-  // einführen und eine echte Anfrage unauffindbar machen. Die Oberfläche (Task 42/44)
-  // bietet aktuell keine Korrektur-Möglichkeit für nutzung -- das ist ein offener
-  // Punkt für diese Tasks, kein Grund, hier zu raten.
-  if (!felder.nutzung) {
+  // einführen und eine echte Anfrage unauffindbar machen.
+  //
+  // Task 42 hat EingangDetail um ein Pflicht-Auswahlfeld für nutzung ergänzt,
+  // sichtbar/Pflicht genau dann, wenn felder.nutzung null ist. Der dort von der
+  // Nutzerin gewählte Wert kommt hier als nutzungUeberschreibung an und wird NUR
+  // verwendet, wenn die KI selbst nichts erkannt hat -- felder.nutzung hat immer
+  // Vorrang. Die Überschreibung wird bewusst NICHT in erkannte_felder
+  // zurückgeschrieben: erkannte_felder bleibt die ungefilterte Aufzeichnung dessen,
+  // was die KI tatsächlich erkannt hat (die Oberfläche zeigt fehlende Werte weiterhin
+  // korrekt als "?"), während die menschliche Korrektur nur in die neu angelegte
+  // Anfrage einfliesst.
+  const nutzung = felder.nutzung ?? nutzungUeberschreibung
+  if (!nutzung) {
     throw new Error(
       "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
     )
@@ -92,7 +102,7 @@ export async function alsAnfrageSpeichern(nachrichtId: string): Promise<void> {
 
   await legeAnfrageAn({
     ort: felder.ort,
-    nutzung: felder.nutzung,
+    nutzung,
     flaeche_min: felder.flaeche_min,
     flaeche_max: felder.flaeche_max,
     budget_pro_m2: felder.budget_pro_m2,
