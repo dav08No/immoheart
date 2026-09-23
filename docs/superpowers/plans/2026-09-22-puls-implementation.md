@@ -4642,6 +4642,35 @@ die alte parameterlose Verdrahtung ohne Fehlerbehandlung):
    Datenvalidierungsgrund mehr zu scheitern, nur noch echte Infrastrukturfehler,
    die genauso gut den Lösch-Aufruf selbst treffen könnten. Nicht behoben,
    bewusst akzeptiert.
+10. **Fix-Loop Runde 3 (M5 Whole-Branch-Review) -- "Rückfrage öffnen" tot ab
+    Freigabestufe 2**: Kritischer Fund, erst bei der Review des gesamten
+    Branches entdeckt (Step 5 unten testete nur, dass der Rückfrage-Entwurf
+    bei Stufe 2 als „Gesendet" markiert wird -- nicht, dass der
+    „Rückfrage öffnen"-Button in `EingangDetail` bei einer bereits gesendeten
+    Rückfrage weiterhin funktioniert). `rueckfrageOeffnen` verlangte zwingend
+    `richtung === "entwurf"`; `sendeWennFreigegeben`
+    (`app/actions/nachrichten.ts`), unconditional aus `nachrichtEingegangen`
+    aufgerufen, setzt die Rückfrage aber schon `richtung: "gesendet"`, sobald
+    `profil.freigabe_stufe >= 2` ist -- eine normale, spec-konforme
+    Konfiguration, nicht ein Rand- oder Fehlerfall. Ab Stufe 2/3 existierte die
+    Rückfrage zum Zeitpunkt des Klicks also nie mehr als `"entwurf"`, der
+    Button tat sichtbar nichts (kein Fehler, keine Navigation), blieb aber
+    dauerhaft sichtbar/klickbar. Behoben: `richtung` komplett aus dem
+    Treffer-Kriterium entfernt (`typ === "rueckfrage" && an === vonEmail`
+    reicht), Treffer-Auswahl bei mehreren Kandidaten (z.B. eine zweite,
+    spätere Rückfrage an dieselbe Adresse) jetzt explizit über den jüngsten
+    `created_at` statt implizit über die Sortierreihenfolge von
+    `nachrichten` (kein FK von der Eingang-Nachricht zu "ihrer" Rückfrage im
+    Schema vorhanden, ein exakter Verknüpfungs-Treffer war also weder vorher
+    noch jetzt möglich). `setFilter` wählt `"alle"` statt `"entwurf"`, wenn
+    der Treffer bereits gesendet ist, da `PostfachFilter` keinen eigenen
+    „gesendet"-Filter kennt und die Rückfrage sonst aus der linken Liste
+    verschwände (das Detail-Panel rechts war davon nie betroffen, da
+    `ausgewaehlt` unabhängig vom Listen-Filter über die volle `nachrichten`-
+    Liste aufgelöst wird). `EntwurfDetail` (Task 43) zeigt eine bereits
+    gesendete Nachricht über seinen eigenen `versendet =
+    nachricht.gesendet_am !== null`-Check bereits korrekt schreibgeschützt an
+    -- dort war keine Änderung nötig.
 
 - [ ] **Step 3: Manuell end-to-end prüfen**
 

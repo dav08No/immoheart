@@ -46,12 +46,40 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
 
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
 
+  // Fix-Loop Runde 3 (Whole-Branch-Review, Finding 1): sendeWennFreigegeben
+  // (app/actions/nachrichten.ts), unconditional aus nachrichtEingegangen aufgerufen,
+  // setzt die frisch angelegte Rückfrage-Nachricht sofort auf richtung: "gesendet",
+  // sobald profil.freigabe_stufe >= 2 ist (eine normale, spec-konforme Konfiguration).
+  // Der ursprüngliche Treffer-Filter verlangte zwingend richtung === "entwurf" -- ab
+  // Freigabestufe 2/3 existierte die Rückfrage zum Zeitpunkt des Klicks also nie mehr
+  // als "entwurf", `treffer` war immer undefined und der Button tat sichtbar nichts.
+  // richtung wird deshalb hier komplett aus dem Treffer-Kriterium entfernt.
+  //
+  // Es gibt in nachrichten kein Fremdschlüsselfeld, das eine eingehende Anfrage
+  // eindeutig mit "ihrer" Rückfrage verknüpft (Schema: nur anfrage_id/match_id, kein
+  // "ausgeloest_von"). Der Treffer läuft deshalb weiterhin nur über typ+an -- wie
+  // zuvor schon. Das öffnet ein Randfall-Risiko: sendet dieselbe Absenderin später
+  // eine ZWEITE Anfrage, die erneut eine Rückfrage auslöst, existieren zwei Zeilen mit
+  // typ === "rueckfrage" && an === vonEmail. Ein simples `.find()` (ohne richtung-
+  // Filter) griffe dann implizit auf die Array-Reihenfolge zurück -- korrekt nur,
+  // WEIL `nachrichten` aus holeNachrichten() bereits nach created_at absteigend
+  // sortiert reinkommt (Zufall aus Sicht dieser Funktion, keine hier sichtbare
+  // Garantie). Um nicht von dieser impliziten Sortierung abhängig zu sein, wird
+  // explizit nach created_at sortiert und der JÜNGSTE Treffer gewählt -- die aktuell
+  // relevante, offene Rückfrage, nicht eine ältere, bereits erledigte.
   function rueckfrageOeffnen(vonEmail: string) {
-    const treffer = nachrichten.find(
-      (n) => n.richtung === "entwurf" && n.typ === "rueckfrage" && n.an === vonEmail
-    )
+    const treffer = nachrichten
+      .filter((n) => n.typ === "rueckfrage" && n.an === vonEmail)
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
     if (treffer) {
-      setFilter("entwurf")
+      // Es gibt keinen eigenen Listen-Filter für richtung === "gesendet" (siehe
+      // PostfachFilter in NachrichtenListe.tsx: nur "alle" | "eingang" | "entwurf").
+      // Bei einer bereits gesendeten Rückfrage auf "entwurf" zu filtern würde sie aus
+      // der linken Liste verschwinden lassen (das Detail rechts bliebe trotzdem
+      // korrekt, da `ausgewaehlt` unabhängig vom Listen-Filter über die volle
+      // `nachrichten`-Liste aufgelöst wird) -- "alle" zeigt sie stattdessen sichtbar
+      // markiert in der Liste.
+      setFilter(treffer.richtung === "entwurf" ? "entwurf" : "alle")
       setAusgewaehlteId(treffer.id)
       setFehler(null)
       setErfolg(null)
