@@ -29,10 +29,16 @@ export function AnfragenTabelle({
           {anfragen.map((a) => {
             // anfragen_sichtbar ist eine View: PostgREST/supabase-gen typisiert alle
             // Spalten als nullable, obwohl id/letzter_kontakt/vertraulich in der
-            // Basistabelle NOT NULL sind (siehe supabase/migrations/20260922195659_rls.sql).
-            // Eine Zeile ohne id oder letzter_kontakt kann es also praktisch nicht geben --
-            // wir überspringen sie defensiv statt sie mit `!`/`as` wegzucasten.
-            if (a.id === null || a.letzter_kontakt === null) return null
+            // Basistabelle NOT NULL sind (siehe supabase/migrations/20260923033041_rls_fix_base_table_read.sql,
+            // der aktuellen Fassung der View). Eine Zeile ohne id oder letzter_kontakt kann
+            // es also praktisch nicht geben -- wir überspringen sie defensiv statt sie mit
+            // `!`/`as` wegzucasten. Sollte es doch je passieren, wäre eine Zeile, die
+            // stillschweigend aus einer admin-genutzten Anfragenliste verschwindet, ein
+            // schlechter Fehlermodus -- deshalb laut loggen statt nur stumm zu überspringen.
+            if (a.id === null || a.letzter_kontakt === null) {
+              console.error("AnfragenTabelle: Zeile ohne id oder letzter_kontakt übersprungen", a)
+              return null
+            }
             const id = a.id
             const letzterKontakt = a.letzter_kontakt
             const tage = Math.floor((Date.now() - new Date(letzterKontakt).getTime()) / 86_400_000)
