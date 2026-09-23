@@ -4317,17 +4317,38 @@ ursprünglichen, ungeprüften Entwurf des Controllers):
    `laedt`-Booleans) deaktiviert während einer laufenden Aktion ALLE
    Aktions-Buttons inklusive der `GRUENDE`-Buttons -- verhindert, dass dieselbe
    Nachricht gleichzeitig z.B. gesendet und verworfen wird, und beschriftet den
-   aktiven Button ("Wird gesendet…" / "Wird übernommen…").
-3. **Sync-Risiko ohne `key`**: Task 44 (siehe unten) rendert voraussichtlich
-   `<EntwurfDetail nachricht={ausgewaehlt} />` ohne `key={nachricht.id}` (wie
-   `EingangDetail`/Task 42). Ohne Gegenmassnahme bliebe beim Wechsel der
-   Auswahl in `NachrichtenListe` der lokale `body`/`bearbeiten`-State der
-   vorherigen Nachricht stehen -- im schlimmsten Fall liesse sich der
-   angepasste Text EINER Nachricht als `entwurfBearbeiten`-Aufruf für eine
-   ANDERE Nachricht absenden. Ein `useEffect`, das bei jedem Wechsel von
-   `nachricht.id` (bewusst nicht `nachricht.body`, siehe Kommentar im Code) den
-   gesamten lokalen State zurücksetzt, macht die Komponente robust
-   unabhängig davon, ob der Aufrufer später doch einen `key` setzt.
+   aktiven Button ("Wird gesendet…" / "Wird übernommen…"; der angeklickte
+   `GRUENDE`-Button zeigt zusätzlich "Wird verworfen…", siehe `grundAktiv`).
+3. **Sync-Risiko ohne `key`, inkl. Fix-Loop-Runde 1**: Task 44 (siehe unten)
+   rendert voraussichtlich `<EntwurfDetail nachricht={ausgewaehlt} />` ohne
+   `key={nachricht.id}` (wie `EingangDetail`/Task 42). Ohne Gegenmassnahme
+   bliebe beim Wechsel der Auswahl in `NachrichtenListe` der lokale
+   `body`/`bearbeiten`-State der vorherigen Nachricht stehen. Ein `useEffect`,
+   das bei jedem Wechsel von `nachricht.id` (bewusst nicht `nachricht.body`,
+   siehe Kommentar im Code) den gesamten lokalen State zurücksetzt, deckt den
+   Moment des Wechsels ab -- **aber nicht** eine Server-Action-Anfrage, die zu
+   diesem Zeitpunkt bereits unterwegs war: Klick auf "Senden" für Nachricht A,
+   Wechsel zu Nachricht B vor Antwort von A, dann settelt As Promise -- ohne
+   weitere Massnahme würde As `catch`/`finally` da bereits `laufend`/`fehler`
+   für die inzwischen angezeigte Nachricht B überschreiben (falsch zugeordnete
+   Fehlermeldung, oder schlimmer: As `finally` löscht Bs echten, noch
+   laufenden `laufend`-Guard und ermöglicht so einen Doppel-Submit auf B).
+   Fix-Loop-Runde 1 hat dafür einen `nachrichtIdRef`-Guard ergänzt: jede
+   Aktionsfunktion merkt sich beim Start die Ziel-`nachricht.id` und
+   vergleicht sie nach dem `await` mit `nachrichtIdRef.current`; bei
+   Abweichung werden keinerlei State-Updates mehr vorgenommen.
+   **Richtigstellung**: Der `useEffect`-Reset allein macht die Komponente
+   NICHT robust "unabhängig davon, ob der Aufrufer später einen `key` setzt"
+   (frühere, zu optimistische Formulierung dieser Notiz) -- er deckt nur den
+   Wechselmoment ab, nicht In-Flight-Antworten. Die robustere Primärverteidigung
+   ist ein `key={nachricht.id}` an der Aufrufstelle in Task 44
+   (`<EntwurfDetail key={nachricht.id} nachricht={ausgewaehlt} />`): React 18
+   unmountet die alte Instanz beim Key-Wechsel vollständig und no-opt danach
+   automatisch jedes `setState` aus noch laufenden Promises der alten Instanz.
+   Der `nachrichtIdRef`-Guard in dieser Komponente ist als Defense-in-Depth für
+   das Zeitfenster VOR einer solchen Key-Änderung gedacht, ersetzt sie aber
+   nicht. **Hinweis für Task 44**: beim Verdrahten `key={nachricht.id}` an
+   `<EntwurfDetail>` ergänzen.
 4. **"Abbrechen" beim Bearbeiten ergänzt**: Der Code-Block hatte keine
    Möglichkeit, den Bearbeiten-Modus ohne Speichern zu verlassen. Ergänzt,
    analog zu `MailEinfuegen`s "Abbrechen" -- setzt `body` auf `nachricht.body`

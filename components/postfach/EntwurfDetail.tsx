@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { entwurfSenden, entwurfBearbeiten, entwurfVerwerfen } from "@/app/actions/nachrichten"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
@@ -18,6 +18,10 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
   // gleichzeitig gesendet und verworfen werden.
   const [laufend, setLaufend] = useState<"senden" | "uebernehmen" | "verwerfen" | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
+  // Welcher GRUENDE-Grund gerade an entwurfVerwerfen übergeben wird -- nur für die
+  // Beschriftung des angeklickten Buttons (siehe Reviewer-Feedback Minor 1); die
+  // Deaktivierung ALLER Grund-Buttons läuft weiterhin über `laufend`.
+  const [grundAktiv, setGrundAktiv] = useState<string | null>(null)
 
   // PostfachAnsicht (Task 44, noch nicht gebaut) rendert `<EntwurfDetail nachricht={ausgewaehlt} />`
   // voraussichtlich OHNE `key={nachricht.id}` (siehe EingangDetail/Task 42, das denselben
@@ -28,12 +32,24 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
   // kleben bleiben -- im schlimmsten Fall liesse sich der angepasste Text EINER
   // Nachricht als Übernehmen-Aufruf für eine ANDERE Nachricht absenden. Deshalb wird
   // bei jedem Wechsel der Nachricht-ID der gesamte lokale State zurückgesetzt.
+  //
+  // Das deckt aber nur den Moment des Wechsels selbst ab, nicht eine Anfrage, die zu
+  // diesem Zeitpunkt bereits unterwegs war (siehe Reviewer-Feedback: Klick auf "Senden"
+  // für Nachricht A, dann Wechsel zu Nachricht B vor Antwort von A -- der Effekt
+  // resettet sauber für B, aber wenn As Promise danach settelt, würde ihr
+  // catch/finally sonst Bs frisch gesetzten State überschreiben). Dafür hält
+  // `nachrichtIdRef` die jeweils aktuell angezeigte Nachricht-ID, von den
+  // Aktions-Funktionen unten per Ref (nicht per Prop-Closure) gelesen, um veraltete
+  // Antworten zu erkennen und deren State-Updates zu verwerfen.
+  const nachrichtIdRef = useRef(nachricht.id)
   useEffect(() => {
+    nachrichtIdRef.current = nachricht.id
     setBody(nachricht.body)
     setBearbeiten(false)
     setVerwerfenOffen(false)
     setFehler(null)
     setLaufend(null)
+    setGrundAktiv(null)
     // Bewusst nur an nachricht.id gekoppelt, nicht an nachricht.body: dieser Effekt
     // soll ausschliesslich beim Wechsel der ausgewählten Nachricht greifen. Würde
     // nachricht.body mit aufgenommen, liefe der Reset auch nach jedem erfolgreichen
@@ -49,41 +65,55 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
   // Fehler stillschweigend zu verschlucken (Milestone-Konvention, siehe MailEinfuegen/
   // Task 40). Jeder Aufruf hier läuft deshalb durch try/catch, der Fehler landet
   // sichtbar in `fehler` statt nur in der Konsole.
+  //
+  // Jede Funktion merkt sich beim Start die Nachricht-ID, für die sie ausgelöst wurde
+  // (`zielId`), und vergleicht sie nach dem `await` mit `nachrichtIdRef.current`.
+  // Stimmen sie nicht mehr überein, wurde in der Zwischenzeit zu einer anderen
+  // Nachricht gewechselt -- dann werden KEINE State-Updates mehr vorgenommen, weder
+  // Erfolg noch Fehler, weil sie sonst fälschlich auf die inzwischen angezeigte
+  // Nachricht bezogen würden (siehe Kommentar oben bei `nachrichtIdRef`).
   async function senden() {
+    const zielId = nachricht.id
     setLaufend("senden")
     setFehler(null)
     try {
       await entwurfSenden(nachricht.id)
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : String(e))
+      if (nachrichtIdRef.current === zielId) setFehler(e instanceof Error ? e.message : String(e))
     } finally {
-      setLaufend(null)
+      if (nachrichtIdRef.current === zielId) setLaufend(null)
     }
   }
 
   async function uebernehmen() {
+    const zielId = nachricht.id
     setLaufend("uebernehmen")
     setFehler(null)
     try {
       await entwurfBearbeiten(nachricht.id, body)
-      setBearbeiten(false)
+      if (nachrichtIdRef.current === zielId) setBearbeiten(false)
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : String(e))
+      if (nachrichtIdRef.current === zielId) setFehler(e instanceof Error ? e.message : String(e))
     } finally {
-      setLaufend(null)
+      if (nachrichtIdRef.current === zielId) setLaufend(null)
     }
   }
 
   async function verwerfen(grund: string) {
+    const zielId = nachricht.id
     setLaufend("verwerfen")
+    setGrundAktiv(grund)
     setFehler(null)
     try {
       await entwurfVerwerfen(nachricht.id, grund)
-      setVerwerfenOffen(false)
+      if (nachrichtIdRef.current === zielId) setVerwerfenOffen(false)
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : String(e))
+      if (nachrichtIdRef.current === zielId) setFehler(e instanceof Error ? e.message : String(e))
     } finally {
-      setLaufend(null)
+      if (nachrichtIdRef.current === zielId) {
+        setLaufend(null)
+        setGrundAktiv(null)
+      }
     }
   }
 
@@ -160,7 +190,7 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
                 disabled={laufend !== null}
                 className="rounded-full border border-line-2 px-2.5 py-1 text-xs text-ink-2 hover:border-brand hover:text-brand disabled:opacity-60"
               >
-                {grund}
+                {grundAktiv === grund ? "Wird verworfen…" : grund}
               </button>
             ))}
           </div>
