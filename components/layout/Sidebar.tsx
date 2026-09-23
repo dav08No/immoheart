@@ -36,7 +36,7 @@ export function Sidebar({ profil }: { profil: Profil }) {
   return (
     <aside className="flex h-screen w-[206px] flex-none flex-col border-r border-line bg-surface">
       <div className="flex items-center gap-2 px-4 pb-3.5 pt-4">
-        <span className="font-display text-lg font-bold text-ink">PULS</span>
+        <span className="font-display text-lg font-bold text-ink">immoheart</span>
       </div>
       <span className="border-b border-line px-4 pb-3.5 text-xs text-ink-3">espaceSOLOTHURN</span>
 

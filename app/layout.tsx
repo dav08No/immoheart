@@ -6,13 +6,13 @@ import "./globals.css"
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" })
 
 export const metadata: Metadata = {
-  title: "PULS",
+  title: "immoheart",
   description: "Vermittlung von Gewerbeimmobilien für espaceSOLOTHURN",
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
-  const theme = cookieStore.get("puls-theme")?.value === "dark" ? "dark" : "light"
+  const theme = cookieStore.get("immoheart-theme")?.value === "dark" ? "dark" : "light"
 
   return (
     <html lang="de" data-theme={theme}>

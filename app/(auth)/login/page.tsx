@@ -39,7 +39,7 @@ export default function LoginPage() {
         onSubmit={anmelden}
         className="flex w-full max-w-sm flex-col gap-3 rounded-card border border-line bg-surface p-6"
       >
-        <h1 className="font-display text-xl font-bold text-ink">PULS</h1>
+        <h1 className="font-display text-xl font-bold text-ink">immoheart</h1>
         <input
           type="email"
           required

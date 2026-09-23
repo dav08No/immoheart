@@ -1,10 +1,10 @@
-# PULS
+# immoheart
 
 Interne Webapp zur Vermittlung von Gewerbeimmobilien für die Geschäftsstelle **espaceSOLOTHURN** (Kanton Solothurn).
 
 Anfragen nach Gewerbeflächen treffen unstrukturiert per E-Mail ein und werden heute von Hand in Trello erfasst. Das kostet Zeit, und ältere Anfragen geraten in Vergessenheit — wenn Monate später das passende Objekt frei wird, denkt niemand mehr daran.
 
-PULS erfasst Anfragen und Objekte strukturiert und gleicht sie **in beide Richtungen** ab: jede neue Anfrage gegen den Objektbestand, und jedes neue Objekt gegen **alle** offenen Anfragen, auch Monate alte. Jeder Vorschlag wird Kriterium für Kriterium begründet. Versendet wird erst nach Freigabe durch einen Menschen.
+immoheart erfasst Anfragen und Objekte strukturiert und gleicht sie **in beide Richtungen** ab: jede neue Anfrage gegen den Objektbestand, und jedes neue Objekt gegen **alle** offenen Anfragen, auch Monate alte. Jeder Vorschlag wird Kriterium für Kriterium begründet. Versendet wird erst nach Freigabe durch einen Menschen.
 
 ---
 
@@ -144,7 +144,7 @@ Zusätzlich gibt es drei **Freigabe-Stufen** pro Nutzer, die steuern, was ohne K
 
 Ein Arbeitswerkzeug, keine Produktwerbung. Überschriften und Zahlen in Cambria, alles andere in Outfit. Farbtokens in `app/globals.css`, eingebunden über `tailwind.config.ts`.
 
-Wichtigste Regel: **so wenig Text wie möglich**. Statt „Budget nicht genannt — PULS würde direkt nachfragen." steht schlicht „Budget?". Der Prototyp zeigt das Niveau.
+Wichtigste Regel: **so wenig Text wie möglich**. Statt „Budget nicht genannt — immoheart würde direkt nachfragen." steht schlicht „Budget?". Der Prototyp zeigt das Niveau.
 
 ---
 
@@ -164,7 +164,7 @@ Der Prompt, mit dem die Umsetzung gestartet wurde. Unverändert lassen, damit na
 
 ---
 
-Du baust **PULS**, eine interne Webapp zur Vermittlung von Gewerbeimmobilien für die Geschäftsstelle **espaceSOLOTHURN** (Kanton Solothurn).
+Du baust **immoheart**, eine interne Webapp zur Vermittlung von Gewerbeimmobilien für die Geschäftsstelle **espaceSOLOTHURN** (Kanton Solothurn).
 
 Es gibt einen funktionsfähigen HTML-Prototyp. **Bau ihn als echte Anwendung nach** — gleiche Ansichten, gleiche Abläufe, gleiche Gestaltung. Erfinde keine zusätzlichen Funktionen.
 
@@ -223,7 +223,7 @@ Das hier ist eine kleine Anwendung für ein kleines Team. Sie soll in einem Jahr
 app/
   (auth)/login/page.tsx
   (app)/
-    layout.tsx              Seitenleiste + Kopfzeile
+    layout.tsx              Seitenleiste
     page.tsx                Matches (Startseite)
     postfach/page.tsx
     anfragen/page.tsx
@@ -362,7 +362,7 @@ Alle sechs exakt wie im Prototyp.
 
 Zweispaltig: links die Liste, rechts das Detail.
 
-- **Eingang und Entwurf müssen auf einen Blick unterscheidbar sein.** Eingang: ↓ auf neutralem Grau. Entwurf: ↑ auf Markenblau. Dazu ein Etikett pro Zeile: „Anfrage", „Anfrage · unvollständig", „Entwurf von PULS".
+- **Eingang und Entwurf müssen auf einen Blick unterscheidbar sein.** Eingang: ↓ auf neutralem Grau. Entwurf: ↑ auf Markenblau. Dazu ein Etikett pro Zeile: „Anfrage", „Anfrage · unvollständig", „Entwurf von immoheart".
 - Filter: Alle / Eingang / Entwürfe.
 - **Eingang-Detail**: Originaltext, darunter die erkannten Felder als Kacheln. Fehlende Angaben als orange Kachel mit grossem **?**. Aktionen: *Als Anfrage speichern*, *Rückfrage öffnen*.
 - **Entwurf-Detail**: An / Betreff / Anhang / Body, im Textfeld bearbeitbar. Aktionen: *Senden*, *Bearbeiten*, *Verwerfen*.
@@ -393,7 +393,7 @@ Vier Kennzahlkacheln, ein Liniendiagramm zur Erfolgsquote über die Monate, ein 
 
 Umschalter in der Seitenleiste, gespeichert in `profiles.freigabe_stufe`:
 
-1. **Alles bestätigen** — PULS bereitet vor, versendet nichts ohne Klick
+1. **Alles bestätigen** — immoheart bereitet vor, versendet nichts ohne Klick
 2. **Nachfragen automatisch** — Rückfragen bei fehlenden Angaben gehen automatisch raus, Angebote nur nach Freigabe
 3. **Voll autonom** — auch Angebote werden automatisch versendet
 
@@ -423,7 +423,7 @@ Ein Arbeitswerkzeug, keine Produktwerbung. Klar und ruhig.
 
 **Dunkelmodus** auf Basis `#161A33` / `#1E2447`, umschaltbar.
 
-**Textregel — die wichtigste:** So wenig Text wie möglich. Statt „Budget nicht genannt — PULS würde direkt nachfragen." steht schlicht **„Budget?"**. Keine Sätze darüber, was die Software alles kann. Der Prototyp zeigt das Niveau; bleib darunter, nicht darüber.
+**Textregel — die wichtigste:** So wenig Text wie möglich. Statt „Budget nicht genannt — immoheart würde direkt nachfragen." steht schlicht **„Budget?"**. Keine Sätze darüber, was die Software alles kann. Der Prototyp zeigt das Niveau; bleib darunter, nicht darüber.
 
 **Echte Verknüpfungen** — Kartenlinks auf Google Maps mit der tatsächlichen Adresse, Firmenlinks auf die Website, Mailadressen als `mailto:`.
 
