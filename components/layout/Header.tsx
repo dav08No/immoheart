@@ -18,6 +18,7 @@ export function Header({ titel, untertitel }: { titel: string; untertitel: strin
     setDunkel(neu)
     document.documentElement.setAttribute("data-theme", neu ? "dark" : "light")
     localStorage.setItem("puls-theme", neu ? "dark" : "light")
+    document.cookie = `puls-theme=${neu ? "dark" : "light"}; path=/; max-age=31536000; samesite=lax`
   }
 
   return (
