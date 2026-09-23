@@ -3675,6 +3675,23 @@ bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
 anzulegen. Details und die volle Abwägung der beiden erwogenen Optionen siehe
 Task 44s Abweichungspunkt 9.
 
+**Nachtrag aus Task 48s Fix-Loop Runde 1**: `alsAnfrageSpeichern` ruft im
+Code-Block unten `legeAnfrageAn` noch ohne anschliessenden Match-Durchlauf
+auf. Reviewer-Fund beim Bau von Task 48: `AnfrageDetail` (Task 50) berechnet
+Matches nicht selbst bei jedem Aufruf, sondern liest ausschliesslich
+vorab gespeicherte Zeilen über `holeBesterMatchFuerAnfrage`. War die
+KI-Erkennung bereits vollständig (keine `?`-Lücken, die eine Vermittlerin
+erst im Formular schliessen und damit über `anfrageAktualisieren`
+(Task 48) ein Rematching auslösen müsste), gab es vor dieser Korrektur nie
+einen Auslöser für den ersten Match-Durchlauf einer aus einer Mail
+angelegten Anfrage -- der Bereich "Bester Treffer" wäre für sie dauerhaft
+leer geblieben. Tatsächlich umgesetzt: die Rückgabe von `legeAnfrageAn`
+wird jetzt in `neue` festgehalten, unmittelbar gefolgt von
+`await berechneUndSpeichereMatchesFuerAnfrage(neue.id)` (aus
+`lib/queries/matches.ts`, Task 47), noch vor den beiden
+`revalidatePath`-Aufrufen. Der Code-Block unten ist NICHT auf diesem
+aktuellen Stand.
+
 `richtung` ist laut README-Enum (`eingang | entwurf | gesendet`) der **Status** einer Nachricht, nicht ihre feste Art — ein Entwurf wechselt bei echtem Versand zu `gesendet`, zusammen mit dem Zeitstempel `gesendet_am`. Eine erledigte Eingangs-Mail (gespeichert oder verworfen) wurde dagegen nie *von uns gesendet*; sie als `gesendet` umzuflaggen würde den Wert für jede spätere Auswertung (z. B. eine Versand-Erfolgsquote in M10) verfälschen. Erledigte Eingangs-Mails werden deshalb gelöscht, genau wie im Prototyp, der sie nach der Aktion aus seiner Liste entfernt.
 
 - [ ] **Step 1: `app/actions/nachrichten.ts` anlegen**
