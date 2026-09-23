@@ -77,7 +77,7 @@ export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen }: P
         {felder && (
           <>
             <div className="mb-2.5 mt-4 border-b border-line pb-1.5 text-xs text-ink-3">
-              PULS hat erkannt{luecken > 0 ? ` · ${luecken} fehlt` : ""}
+              immoheart hat erkannt{luecken > 0 ? ` · ${luecken} fehlt` : ""}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(Object.keys(LABELS) as (keyof ErkannteFelder)[]).map((schluessel) => (

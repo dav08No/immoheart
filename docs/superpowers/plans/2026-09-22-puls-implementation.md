@@ -4435,7 +4435,7 @@ B. Frei
 
 Absender-E-Mail `b.frei@thermo-kunststoff.ch`, Betreff „Suche Produktionsfläche", „Übernehmen" klicken.
 
-Expected: Eine neue Eingang-Nachricht erscheint, „PULS hat erkannt" zeigt Fläche/Ort/Bezug korrekt, Budget/Firma/Branche als **?** (Firma stand nicht im Beispieltext). Unter „Entwürfe" erscheint automatisch eine vorbereitete Rückfrage-Mail an `b.frei@thermo-kunststoff.ch`, die genau nach den fehlenden Angaben fragt.
+Expected: Eine neue Eingang-Nachricht erscheint, „immoheart hat erkannt" zeigt Fläche/Ort/Bezug korrekt, Budget/Firma/Branche als **?** (Firma stand nicht im Beispieltext). Unter „Entwürfe" erscheint automatisch eine vorbereitete Rückfrage-Mail an `b.frei@thermo-kunststoff.ch`, die genau nach den fehlenden Angaben fragt.
 
 - [ ] **Step 4: Freigabestufe 1 prüfen**
 
