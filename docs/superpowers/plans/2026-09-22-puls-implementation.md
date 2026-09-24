@@ -7481,16 +7481,67 @@ export default async function ZahlenPage() {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (Leerzustand für rollen­eingeschränkte
+Basistabellen, wie von Task 69s Review explizit gefordert):**
+
+1. **`hatDaten = verlauf.length > 0` als einziges Signal für alle vier Kacheln und
+   beide Diagramme.** `holeZahlenKennzahlen`/`holeErfolgsquoteVerlauf`/
+   `holeFlaechenVerteilung` lesen laut Kommentar in `lib/queries/zahlen.ts` alle
+   dieselbe(n) rollen­eingeschränkte(n) Basistabelle(n) (`anfragen`/`nachrichten`,
+   seit den RLS-Korrekturen nur für admin/vermittler lesbar) -- für eine Rolle ohne
+   Zugriff (leser) liefert `holeErfolgsquoteVerlauf()` (ungefiltert auf `anfragen`)
+   zuverlässig `[]`. Ein leeres `verlauf` impliziert damit zwangsläufig auch: der
+   Rechenfallback 0 statt eines echten Werts bei `erfolgsquoteProzent`, `null` bei
+   `bisErstangebotTage` (nachrichten-Join auf dieselbe Basistabelle) und überall 0
+   bei `verteilung` (Teilmenge derselben Zeilen). Ein einziges Signal genügt daher,
+   statt in jeder der drei Funktionen einen eigenen Leerzustands-Flag zu ergänzen.
+   `nacharbeitProTagMinuten`/`freigabequoteProzent` sind feste Platzhalterwerte ohne
+   Datenbankbezug (siehe `lib/queries/zahlen.ts`) und bleiben unabhängig von
+   `hatDaten` unverändert sichtbar -- sie sind nicht Teil des RLS-Problems.
+2. **Kachel "Erfolgsquote" zeigt bei `!hatDaten` "–" statt einer irreführenden
+   "0 %"**, mit " · keine Daten" an der Bezeichnung ergänzt -- analog zu
+   `PulsHero` (M8), das denselben Leerzustand für seine einzelne Kachel bereits
+   löst (eigener `hatDaten`-Flag statt eines rechnerischen Werts, `"–"` statt einer
+   Zahl unterhalb des eigentlich erreichbaren Bereichs).
+3. **Kachel "Bis Erstangebot" zeigt "–" bei `bisErstangebotTage === null`**
+   (statt `"?"` aus dem Code-Block oben, konsistent mit der `"–"`-Konvention aus
+   `PulsHero`), ergänzt " · keine Daten" an der Bezeichnung aber nur, wenn
+   `!hatDaten` zutrifft -- ein `null` bei vollem Rollenzugriff (z. B. noch kein
+   einziges Angebot verschickt) ist ein echter, unauffälliger Leerwert und keine
+   Rollen-Einschränkung, die eigens erklärt werden müsste.
+4. **Liniendiagramm rendert bei `!hatDaten` eine neutrale gestrichelte
+   Mittellinie (`var(--ink-3)`) statt eines leeren `<polyline>`.**
+   `liniendiagramm([])` liefert `points=""`, was bereits ohne Crash rendert, aber
+   als leere, nicht erklärte Fläche erscheint -- exakt das von `PulsHero` gelöste
+   Problem (dort: flache Mittellinie statt gar keiner sichtbaren Kurve). `aria-label`
+   wird für diesen Fall ebenfalls ergänzt.
+5. **Balkendiagramm "Gesuchte Grössen" ersetzt bei `!hatDaten` die fünf
+   Bereichs-Zeilen durch einen einzelnen Hinweistext** ("Keine Daten sichtbar"),
+   statt fünf technisch korrekte, aber nichtssagende 0-Breite-Balken zu zeigen (die
+   sich optisch nicht von einer echten, rollen-unabhängigen "0 offene Anfragen in
+   jedem Bereich"-Lage unterscheiden liessen). `Math.max(1, ...verteilung.map(...))`
+   aus dem Code-Block oben bleibt unverändert für den `hatDaten`-Fall bestehen
+   (verhindert bereits dort eine Division durch 0, auch wenn dort einzelne, aber
+   nicht alle Bereiche 0 sind).
+6. **Kein `try`/`catch` um die drei `await hole...()`-Aufrufe.** `ZahlenPage` ist
+   eine reine Server Component ohne Nutzerinteraktion; ein während des
+   Server-Renderns geworfener Fehler (z. B. Netzwerkausfall) wird bereits von
+   `app/(app)/error.tsx` (M4, Next.js Error-Boundary für dieses Routen-Segment)
+   abgefangen. Kein anderes Server-Component-`page.tsx` in diesem Projekt
+   (`/`, `/anfragen`, `/objekte`, `/postfach`, `/regeln`) trägt ein eigenes
+   try/catch um seine Datenabfragen -- ein lokales Fehlerbanner hier wäre eine
+   zweite, redundante Fehleroberfläche für denselben Fall.
+
 - [ ] **Step 2: Manuell prüfen**
 
 Run: `npm run dev`, auf `/zahlen` öffnen.
-Expected: Vier Kacheln, ein Liniendiagramm (anfangs evtl. ein einzelner Punkt, da die Seed-Daten alle im selben Monat liegen — wächst mit echten Daten über die Zeit), ein Balkendiagramm der offenen Anfragen nach Flächengrösse.
+Expected: Vier Kacheln, ein Liniendiagramm (anfangs evtl. ein einzelner Punkt, da die Seed-Daten alle im selben Monat liegen — wächst mit echten Daten über die Zeit), ein Balkendiagramm der offenen Anfragen nach Flächengrösse. Für die Rolle leser: alle vier Kacheln und beide Diagramme zeigen den neutralen "keine Daten"-Leerzustand statt irreführender Nullen.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add "app/(app)/zahlen"
-git commit -m "feat: Zahlen-Seite mit handgeschriebenen SVG-Diagrammen"
+git add "app/(app)/zahlen" docs/superpowers/plans/2026-09-22-puls-implementation.md
+git commit -m "feat: Zahlen-Seite mit handgeschriebenen SVG-Diagrammen und Leerzustand für leser"
 ```
 
 ---
