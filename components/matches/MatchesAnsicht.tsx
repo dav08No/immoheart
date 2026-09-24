@@ -5,22 +5,29 @@ import { PulsHero } from "./PulsHero"
 import { MatchCard } from "./MatchCard"
 import { MatchDetail } from "./MatchDetail"
 import { matchSenden, matchVerwerfen, anfrageNachfragen } from "@/app/actions/matches"
-import { puls } from "@/lib/puls"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { AnfrageMitFirma } from "@/lib/queries/anfragen"
 
 export function MatchesAnsicht({
-  matches, letzteKontakte, offeneAnzahl, objektAnzahl, langeStillAnfragen,
+  matches, letzteKontakte, offeneAnzahl, langeStillAnzahl, objektAnzahl, langeStillAnfragen,
 }: {
   matches: NeuerMatch[]
   letzteKontakte: Date[]
   offeneAnzahl: number
+  langeStillAnzahl: number
   objektAnzahl: number
   langeStillAnfragen: AnfrageMitFirma[]
 }) {
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(null)
   const ausgewaehlt = matches.find((m) => m.id === ausgewaehlteId) ?? null
-  const langeStillAnzahl = letzteKontakte.filter((d) => puls(d) < 25).length
+  // offeneAnzahl/langeStillAnzahl kommen bewusst als fertige Props statt hier
+  // aus `letzteKontakte` abgeleitet zu werden: letzteKontakte (nur für
+  // PulsHero) stammt aus holeOffenePulsWerte, das die anfragen-Basistabelle
+  // liest und für die Rolle leser RLS-bedingt still [] liefert (siehe
+  // Kommentar dort und in page.tsx). Daraus abgeleitete Kennzahlkacheln
+  // würden der "Lange nichts gehört"-Liste direkt darunter widersprechen, die
+  // aus der für leser lesbaren anfragen_sichtbar-Quelle kommt -- page.tsx
+  // berechnet beide Zahlen deshalb aus genau dieser Quelle.
 
   // Ein einziger seitenweiter Banner statt eines Fehler-States pro Karte/
   // Zeile: diese Seite hat drei unabhängige Aktionsorte (Match-Karten, die

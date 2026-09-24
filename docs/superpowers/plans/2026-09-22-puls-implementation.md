@@ -7027,6 +7027,26 @@ export function MatchesAnsicht({
    | null` an eine `string`-Parameterstelle). Zeilen ohne `id`/`letzter_kontakt`
    werden jetzt defensiv übersprungen (mit `console.error`, praktisch
    unerreichbar) statt weggecastet, analog zu `AnfragenTabelle`.
+4. **`offeneAnzahl`/`langeStillAnzahl` kommen aus `anfragen`
+   (`anfragen_sichtbar`), nicht aus `letzteKontakte` (Fix-Loop Runde 1,
+   Reviewer-Fund "leser-role dashboard shows contradictory numbers").** Der
+   Code-Block oben berechnet beide Zahlen aus `letzteKontakte`
+   (`holeOffenePulsWerte`), das die `anfragen`-Basistabelle liest -- seit
+   `20260923033041_rls_fix_base_table_read.sql` nur für admin/vermittler
+   lesbar, ein `leser` bekäme dort still `[]`. Die "Lange nichts
+   gehört"-Liste direkt darunter kommt dagegen aus `anfragen_sichtbar`, die
+   auch `leser` lesen darf, und kann bis zu drei echte Zeilen zeigen. Ohne
+   Angleichung zeigten die beiden rechten Kennzahlkacheln für `leser` "0",
+   während die Liste direkt darunter widersprüchlich echte Einträge listet --
+   `/` hat keine Rollensperre, dieser Zustand war also real erreichbar.
+   `page.tsx` berechnet `offeneAnzahl` (`offeneAnfragen.length`) und
+   `langeStillAnzahl` (`offeneAnfragen.filter(a => a.letzter_kontakt !== null
+   && puls(new Date(a.letzter_kontakt)) < 25).length`) jetzt aus derselben
+   `offeneAnfragen`-Variable, aus der auch `langeStillAnfragen` (die
+   Liste) abgeleitet wird, und reicht beide als eigene Props an
+   `MatchesAnsicht` durch. `letzteKontakte` bleibt ausschliesslich Prop für
+   `PulsHero`, das für genau diesen leser-leeren Fall bereits einen eigenen
+   "keine Daten"-Leerzustand hat (Task 62, endorsed).
 
 **Verifiziert, nicht verändert:** `holeAnfragen` (M6 Task 47) sortiert
 `anfragen_sichtbar` nach `letzter_kontakt` **aufsteigend** (`{ ascending: true
