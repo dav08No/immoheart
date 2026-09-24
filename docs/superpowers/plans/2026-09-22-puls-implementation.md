@@ -5972,6 +5972,45 @@ export function ObjektRaster({
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (Entscheidungen zu den beiden
+Vorbehalten aus Task 54/55s Review):**
+
+1. **`treffer`-Semantik bewusst als status='neu'-gefiltert festgelegt, nicht
+   als Gesamt-Historie.** `zaehleMatchesFuerObjekt` (Task 54) zählt ungefiltert
+   über `neu`/`gesendet`/`verworfen`; würde diese Komponente diese rohe Zahl
+   unkommentiert als "N Treffer" zeigen, wäre das Badge für eine Vermittlerin,
+   die das Raster nach offenen Handlungsmöglichkeiten überfliegt, irreführend
+   -- die Zahl bliebe hoch bzw. wüchse nur monoton, selbst wenn längst nichts
+   mehr offen ist ("12 Treffer" bei tatsächlich 0 unbearbeiteten). Als
+   "grobe Aktivitäts-Anzeige" wäre die Gesamt-Historie zwar auch ein
+   plausibles Signal, aber für die primäre Nutzung dieses Rasters (schnell
+   erkennen, wo noch etwas zu tun ist) ist der aktionable Anteil das
+   nützlichere Signal, deshalb die bewusste Entscheidung dafür. Die Komponente
+   selbst bekommt nur die fertige Zahl als `Record<string, number>`-Prop, kann
+   also nicht selbst filtern -- die Beschriftung wurde deshalb von "Treffer"
+   zu "neue Treffer" präzisiert, und ein Doc-Comment am Prop hält fest, dass
+   der künftige Aufrufer (voraussichtlich Task 58, `ObjekteAnsicht`) hier eine
+   status='neu'-gefilterte Zählung liefern muss statt `zaehleMatchesFuerObjekt`
+   direkt durchzureichen -- analog zu der Erwartung, die `AnfrageDetail`
+   (Task 50) für `AnfragenAnsicht` (Task 52) hinterlassen hat.
+2. **`status` wird jetzt visuell ausgewertet**, obwohl der Code-Block oben das
+   Feld nie liest: ein Status-Chip (`Verfügbar`/`Reserviert`/`Vermietet`,
+   analog zur bestehenden `Chip`-Komponente aus `AnfragenTabelle`) pro Karte
+   plus eine leichte Abblendung (`opacity-70`) für nicht-`verfuegbar`-Objekte.
+   `berechneUndSpeichereMatchesFuerObjekt` selbst wird hier NICHT angepasst
+   (Query-Layer-Bedenken, außerhalb des Scopes dieser UI-Task) -- heute ist
+   das ohnehin unschädlich, da kein Pfad ein Objekt auf einen anderen Status
+   als `verfuegbar` setzen kann. Aber sobald Status-Änderungen an Objekten
+   möglich sind, wäre ein Raster, das jedes Objekt identisch zeigt, aktiv
+   irreführend: eine Vermittlerin könnte ein bereits vermietetes Objekt für
+   verfügbar halten. Da `objekte` das `status`-Feld schon heute trägt und die
+   Unterscheidung rein clientseitig/darstellerisch ist (kein neuer Pfad, keine
+   neue Query), wurde sie schon jetzt ergänzt statt auf die noch nicht
+   existierende Status-Änderungs-UI verschoben.
+3. **`rel="noopener"` zu `rel="noopener noreferrer"` ergänzt** beim
+   Maps-Link, gleiches Lint-Erfordernis (`react/jsx-no-target-blank`) wie in
+   `AnfragenTabelle` (Task 49).
+
 - [ ] **Step 2: Typecheck und Commit**
 
 ```bash
