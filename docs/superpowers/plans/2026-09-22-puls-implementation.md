@@ -6992,6 +6992,49 @@ export function MatchesAnsicht({
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (`MatchesAnsicht.tsx`):**
+
+1. **Fehlerbehandlung für `senden`/`verwerfen`/`anfrageNachfragen`.** Der
+   Code-Block oben ruft `matchSenden`/`matchVerwerfen`/`anfrageNachfragen` ohne
+   `try`/`catch` auf. Task 61s Review hat aber festgestellt, dass
+   `empfaengerFuerAnfrage` (`app/actions/matches.ts`) inzwischen regulär wirft,
+   sobald einer Anfrage `firma_id` fehlt oder die verknüpfte Firma keine
+   `kontakt_email` hat -- und dass `firma_id` über keine App-eigene UI setzbar
+   ist (nur `seed.sql`s acht Demo-Zeilen haben sie gesetzt). Ein Klick auf
+   "Angebot senden"/"Nachfragen" für jede organisch angelegte Anfrage wirft
+   also im Normalfall, nicht nur im Randfall. Alle drei Aufrufe laufen jetzt in
+   `try`/`catch`, ein einziger seitenweiter `fehler`-State (`text-crit`-Banner
+   direkt unter `PulsHero`) wird bei jedem neuen Versuch zurückgesetzt --
+   gleiche Konvention wie `MailEinfuegen`/`EntwurfDetail`/`PostfachAnsicht`
+   (M5), `AnfrageFormular`/`AnfrageDetail`/`AnfragenAnsicht` (M6),
+   `ObjektFormular`/`ObjekteAnsicht` (M7). Ein Banner statt eines State pro
+   Karte/Zeile reicht aus: beide Server Actions werfen VOR jeder
+   Statusänderung, die betroffene Karte/Zeile bleibt also ohnehin unverändert
+   sichtbar (kein `revalidatePath` ohne Erfolg) -- die Meldung benennt
+   zusätzlich das Objekt bzw. die Firma, damit die Zuordnung eindeutig bleibt,
+   auch wenn der Drawer inzwischen schon wieder geschlossen ist.
+2. **`setAusgewaehlteId(null)` bleibt vor dem `await`.** `MatchDetail` (Task
+   64) hält die zuletzt gezeigten Daten selbst über `letzterMatch` fest und
+   schliesst sauber animiert, auch sobald `match` schon `null` ist -- ein
+   sofortiges Schliessen ist damit unabhängig vom Ausgang der Aktion visuell
+   unproblematisch, und die betroffene Karte bleibt bei einem Fehlschlag ohnehin
+   sichtbar (siehe Punkt 1).
+3. **Defensiver Null-Guard beim Rendern von `langeStillAnfragen`.**
+   `anfragen_sichtbar` ist eine View: `id`/`letzter_kontakt` sind laut
+   generiertem Typ nullable, obwohl in der Basistabelle `NOT NULL` (gleiches
+   Muster wie `AnfragenTabelle.tsx` und `holeNeueMatches`). Der Code-Block oben
+   liest `a.id`/`a.letzter_kontakt` ungeprüft; TypeScript lehnt das ab (`string
+   | null` an eine `string`-Parameterstelle). Zeilen ohne `id`/`letzter_kontakt`
+   werden jetzt defensiv übersprungen (mit `console.error`, praktisch
+   unerreichbar) statt weggecastet, analog zu `AnfragenTabelle`.
+
+**Verifiziert, nicht verändert:** `holeAnfragen` (M6 Task 47) sortiert
+`anfragen_sichtbar` nach `letzter_kontakt` **aufsteigend** (`{ ascending: true
+}`), d.h. älteste zuerst. `anfragen.filter(a => a.status === "offen").slice(0,
+3)` liefert damit tatsächlich die drei am längsten unkontaktierten offenen
+Anfragen für "Lange nichts gehört", nicht die drei jüngsten oder eine
+willkürliche Auswahl -- der Code-Block oben ist hier korrekt.
+
 - [ ] **Step 2: `app/(app)/page.tsx` ersetzen**
 
 ```tsx
