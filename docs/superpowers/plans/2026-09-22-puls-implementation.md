@@ -6408,14 +6408,54 @@ export async function holeOffenePulsWerte(): Promise<Date[]> {
 }
 ```
 
+**Proaktiver Fund (vor der formalen Whole-Branch-Review), analog zum Kritischer Fund in
+Task 53**: der obige Entwurf für `holeNeueMatches` (Step 1) selektiert `matches.*` — inklusive
+der rohen, RLS-unbeschränkten `kriterien`-Spalte (`"eingeloggt liest matches"`,
+`20260922195659_rls.sql`, hat anders als `anfragen_sichtbar` keine vertraulich/Rollen-Einschränkung)
+— für JEDEN `status='neu'`-Match im gesamten System und gibt sie ungefiltert als `NeuerMatch[]`
+zurück. Anders als bei Task 53s Fund (nur über den gezielt geöffneten Drawer einer einzelnen
+Anfrage erreichbar) landet dieser Rückgabewert direkt auf der für **jede** eingeloggte Rolle
+sichtbaren Matches-Startseite: ein `leser` hätte beim blossen Laden von `/` das reale
+`budget_pro_m2` jeder vertraulichen Anfrage im Klartext gesehen (über das Preis-Kriterium jedes
+betroffenen Matches), obwohl dieselbe Anfrage über `anfragen_sichtbar` korrekt maskiert wäre —
+eine grössere Angriffsfläche als der ursprüngliche Fund. Der Planungskommentar zu dieser Funktion
+(oben, vor Step 1) deckt nur die Firmennamen-Maskierung ab; die `kriterien`-Maskierung fehlte
+dort vollständig.
+
+Fix: dieselbe Maskierungslogik wie in `holeBesterMatchFuerAnfrage` (Task 53), in eine gemeinsame
+Hilfsfunktion `maskierePreisFuerVertraulicheAnfrage` (`lib/queries/matches.ts`) extrahiert und
+in `holeNeueMatches` pro Zeile angewendet (statt einmalig, da diese Funktion ein Array über
+mehrere Anfragen liefert). Für jede Match-Zeile, deren zugehörige Anfrage laut
+`anfragen_sichtbar.vertraulich` vertraulich ist UND deren aufrufende Rolle `leser` ist, wird
+`kriterien[].gesucht` des Preis-Eintrags auf `"—"` sowie dessen `status` auf `"teilweise"`
+gesetzt, und `hinweis` bei Übereinstimmung mit einem der vier Preis-spezifischen Texte generisch
+ersetzt — identisch zur in Task 53 dokumentierten Fix-Welle-2-Begründung (Preis-`status`/`hinweis`
+grenzen das reale Budget sonst indirekt über den unmaskierten Objekt-Preis ein). Zwei Aufrufer
+identischer Logik auf identischer Datenform rechtfertigen die Extraktion trotz der
+README-Coderegel "keine Abstraktion vor der dritten Wiederholung": bei sicherheitsrelevantem
+Code wiegt das Risiko eines bei künftigen Änderungen vergessenen Kopierpfads schwerer als die
+Regel. Die Firmennamen-Maskierung aus dem obigen Planungskommentar bleibt unverändert korrekt
+(bereits über `anfragen_sichtbar` gelöst, die `firma_id` für `leser`+`vertraulich` selbst schon
+zu `null` maskiert).
+
+`holeOffenePulsWerte` (Step 2) wurde gegengeprüft: die Selektion enthält ausschliesslich
+`letzter_kontakt` (kein Firmen- oder Budgetbezug), die Begründung "keine Vertraulichkeitsfrage"
+im Planungskommentar oben hält. Separat notiert, aber kein Fix in diesem Task: die Funktion
+liest wie `holeOffeneAnfragen` die Basistabelle `anfragen`, die seit
+`20260923033041_rls_fix_base_table_read.sql` nur admin/vermittler liest — ein `leser` bekäme
+hier still eine leere Liste statt eines Fehlers. Anders als bei `holeOffeneAnfragen` (nur intern
+aus dem Rematch-Pfad erreichbar) ist diese Funktion aber direkt von der für alle Rollen
+sichtbaren Matches-Startseite aus erreichbar; das ist kein Vertraulichkeits-Leck (die fehlende
+Sicht geht in Richtung "zu wenig", nicht "zu viel"), aber ein UI-Aspekt, den Task 65
+(`MatchesAnsicht`) beim Rendern für `leser` berücksichtigen sollte.
+
 - [ ] **Step 3: Typecheck und Commit**
 
 Run: `npx tsc --noEmit`
 
 ```bash
-git checkout -b feature/m8-matches
 git add lib/queries/matches.ts lib/queries/anfragen.ts
-git commit -m "feat: Query-Funktionen fuer die Matches-Startseite ohne Vertraulichkeits-Leck"
+git commit -m "feat: Query-Funktionen fuer die Matches-Startseite inkl. kriterien-Maskierung fuer vertrauliche Anfragen"
 ```
 
 ---
@@ -6951,6 +6991,69 @@ export function MatchesAnsicht({
   )
 }
 ```
+
+**Umgesetzte Abweichungen vom Code-Block oben (`MatchesAnsicht.tsx`):**
+
+1. **Fehlerbehandlung für `senden`/`verwerfen`/`anfrageNachfragen`.** Der
+   Code-Block oben ruft `matchSenden`/`matchVerwerfen`/`anfrageNachfragen` ohne
+   `try`/`catch` auf. Task 61s Review hat aber festgestellt, dass
+   `empfaengerFuerAnfrage` (`app/actions/matches.ts`) inzwischen regulär wirft,
+   sobald einer Anfrage `firma_id` fehlt oder die verknüpfte Firma keine
+   `kontakt_email` hat -- und dass `firma_id` über keine App-eigene UI setzbar
+   ist (nur `seed.sql`s acht Demo-Zeilen haben sie gesetzt). Ein Klick auf
+   "Angebot senden"/"Nachfragen" für jede organisch angelegte Anfrage wirft
+   also im Normalfall, nicht nur im Randfall. Alle drei Aufrufe laufen jetzt in
+   `try`/`catch`, ein einziger seitenweiter `fehler`-State (`text-crit`-Banner
+   direkt unter `PulsHero`) wird bei jedem neuen Versuch zurückgesetzt --
+   gleiche Konvention wie `MailEinfuegen`/`EntwurfDetail`/`PostfachAnsicht`
+   (M5), `AnfrageFormular`/`AnfrageDetail`/`AnfragenAnsicht` (M6),
+   `ObjektFormular`/`ObjekteAnsicht` (M7). Ein Banner statt eines State pro
+   Karte/Zeile reicht aus: beide Server Actions werfen VOR jeder
+   Statusänderung, die betroffene Karte/Zeile bleibt also ohnehin unverändert
+   sichtbar (kein `revalidatePath` ohne Erfolg) -- die Meldung benennt
+   zusätzlich das Objekt bzw. die Firma, damit die Zuordnung eindeutig bleibt,
+   auch wenn der Drawer inzwischen schon wieder geschlossen ist.
+2. **`setAusgewaehlteId(null)` bleibt vor dem `await`.** `MatchDetail` (Task
+   64) hält die zuletzt gezeigten Daten selbst über `letzterMatch` fest und
+   schliesst sauber animiert, auch sobald `match` schon `null` ist -- ein
+   sofortiges Schliessen ist damit unabhängig vom Ausgang der Aktion visuell
+   unproblematisch, und die betroffene Karte bleibt bei einem Fehlschlag ohnehin
+   sichtbar (siehe Punkt 1).
+3. **Defensiver Null-Guard beim Rendern von `langeStillAnfragen`.**
+   `anfragen_sichtbar` ist eine View: `id`/`letzter_kontakt` sind laut
+   generiertem Typ nullable, obwohl in der Basistabelle `NOT NULL` (gleiches
+   Muster wie `AnfragenTabelle.tsx` und `holeNeueMatches`). Der Code-Block oben
+   liest `a.id`/`a.letzter_kontakt` ungeprüft; TypeScript lehnt das ab (`string
+   | null` an eine `string`-Parameterstelle). Zeilen ohne `id`/`letzter_kontakt`
+   werden jetzt defensiv übersprungen (mit `console.error`, praktisch
+   unerreichbar) statt weggecastet, analog zu `AnfragenTabelle`.
+4. **`offeneAnzahl`/`langeStillAnzahl` kommen aus `anfragen`
+   (`anfragen_sichtbar`), nicht aus `letzteKontakte` (Fix-Loop Runde 1,
+   Reviewer-Fund "leser-role dashboard shows contradictory numbers").** Der
+   Code-Block oben berechnet beide Zahlen aus `letzteKontakte`
+   (`holeOffenePulsWerte`), das die `anfragen`-Basistabelle liest -- seit
+   `20260923033041_rls_fix_base_table_read.sql` nur für admin/vermittler
+   lesbar, ein `leser` bekäme dort still `[]`. Die "Lange nichts
+   gehört"-Liste direkt darunter kommt dagegen aus `anfragen_sichtbar`, die
+   auch `leser` lesen darf, und kann bis zu drei echte Zeilen zeigen. Ohne
+   Angleichung zeigten die beiden rechten Kennzahlkacheln für `leser` "0",
+   während die Liste direkt darunter widersprüchlich echte Einträge listet --
+   `/` hat keine Rollensperre, dieser Zustand war also real erreichbar.
+   `page.tsx` berechnet `offeneAnzahl` (`offeneAnfragen.length`) und
+   `langeStillAnzahl` (`offeneAnfragen.filter(a => a.letzter_kontakt !== null
+   && puls(new Date(a.letzter_kontakt)) < 25).length`) jetzt aus derselben
+   `offeneAnfragen`-Variable, aus der auch `langeStillAnfragen` (die
+   Liste) abgeleitet wird, und reicht beide als eigene Props an
+   `MatchesAnsicht` durch. `letzteKontakte` bleibt ausschliesslich Prop für
+   `PulsHero`, das für genau diesen leser-leeren Fall bereits einen eigenen
+   "keine Daten"-Leerzustand hat (Task 62, endorsed).
+
+**Verifiziert, nicht verändert:** `holeAnfragen` (M6 Task 47) sortiert
+`anfragen_sichtbar` nach `letzter_kontakt` **aufsteigend** (`{ ascending: true
+}`), d.h. älteste zuerst. `anfragen.filter(a => a.status === "offen").slice(0,
+3)` liefert damit tatsächlich die drei am längsten unkontaktierten offenen
+Anfragen für "Lange nichts gehört", nicht die drei jüngsten oder eine
+willkürliche Auswahl -- der Code-Block oben ist hier korrekt.
 
 - [ ] **Step 2: `app/(app)/page.tsx` ersetzen**
 
