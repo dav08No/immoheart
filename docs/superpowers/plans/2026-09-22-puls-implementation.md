@@ -5890,6 +5890,22 @@ git commit -m "feat: objektAnlegen und objektAktualisieren mit Rematching gegen 
 
 ### Task 56: `ObjektRaster`
 
+**Vorbehalte aus Task 54/55s Review, hier zu berücksichtigen**: (1)
+`zaehleMatchesFuerObjekt` (Task 54) zählt ALLE Matches unabhängig vom
+`status` (auch `verworfen`/`gesendet`), nicht nur `neu` -- falls diese Task
+die Zahl als "Treffer"-Badge im Raster zeigt, bewusst entscheiden, ob das
+gewünscht ist (Gesamt-Historie) oder ob ein `status='neu'`-Filter nötig ist
+(nur aktionable Treffer), analog zur sorgfältigen Status-Behandlung auf der
+Anfrage-Richtung. (2) `berechneUndSpeichereMatchesFuerObjekt` (Task 54)
+prüft `objekt.status` nirgends -- ein Objekt mit Status `reserviert`/
+`vermietet` würde bei einem `objektAktualisieren`-Aufruf trotzdem reale
+Match-Zeilen erzeugen. Heute unschädlich (nichts kann ein Objekt auf einen
+anderen Status als das Default `verfuegbar` setzen, da bisher keine
+UI/kein Pfad existiert), aber sobald diese oder eine spätere Task
+Status-Änderungen am Objekt ermöglicht, bewusst entscheiden, ob
+`berechneUndSpeichereMatchesFuerObjekt` selbst auf `status='verfuegbar'`
+gaten sollte.
+
 **Files:**
 - Create: `components/objekte/ObjektRaster.tsx`
 
