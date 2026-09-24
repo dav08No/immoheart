@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
@@ -66,6 +67,12 @@ export default function LoginPage() {
         >
           {laedt ? "…" : "Anmelden"}
         </button>
+        <p className="text-sm text-ink-2">
+          Noch kein Konto?{" "}
+          <Link href="/register" className="font-medium text-brand">
+            Registrieren
+          </Link>
+        </p>
       </form>
     </main>
   )
