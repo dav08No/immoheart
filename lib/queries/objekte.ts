@@ -74,3 +74,23 @@ export async function zaehleMatchesFuerObjekt(objektId: string): Promise<number>
   if (error) throw error
   return count ?? 0
 }
+
+// Eigene Funktion statt eines optionalen Status-Parameters auf
+// zaehleMatchesFuerObjekt: die beiden Zählungen bedienen unterschiedliche
+// Zwecke (Gesamtzahl vs. "hier gibt es noch etwas zu tun"), und
+// zaehleMatchesFuerObjekt hat bereits einen Aufrufer, der bewusst
+// ungefiltert zählen will. ObjektRaster (Task 56) erwartet laut eigenem
+// JSDoc-Kommentar ausdrücklich eine status='neu'-gefilterte Zählung für sein
+// "N neue Treffer"-Badge -- die rohe zaehleMatchesFuerObjekt zählt neu,
+// gesendet UND verworfen zusammen und würde das Badge auch dann hoch zeigen,
+// wenn längst nichts mehr offen ist.
+export async function zaehleNeueMatchesFuerObjekt(objektId: string): Promise<number> {
+  const supabase = await erstelleServerClient()
+  const { count, error } = await supabase
+    .from("matches")
+    .select("*", { count: "exact", head: true })
+    .eq("objekt_id", objektId)
+    .eq("status", "neu")
+  if (error) throw error
+  return count ?? 0
+}

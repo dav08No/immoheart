@@ -6184,6 +6184,49 @@ export default async function ObjektePage() {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (Auflösung der beiden Vorbehalte
+aus Task 56/57s Review):**
+
+1. **`zaehleNeueMatchesFuerObjekt` statt `zaehleMatchesFuerObjekt`.**
+   `ObjektRaster` (Task 56) hält per eigenem JSDoc-Kommentar fest, dass sein
+   `treffer`-Prop status='neu'-gefiltert erwartet wird ("neue Treffer"-Badge),
+   nicht die rohe Gesamtzählung über `neu`/`gesendet`/`verworfen` aus
+   `zaehleMatchesFuerObjekt` (Task 54). `lib/queries/objekte.ts` bekommt daher
+   eine eigene `zaehleNeueMatchesFuerObjekt(objektId)` (gleiches
+   `count: "exact", head: true`-Muster, zusätzlich `.eq("status", "neu")`)
+   statt eines optionalen Status-Parameters auf der bestehenden Funktion --
+   `zaehleMatchesFuerObjekt` hat mit `berechneUndSpeichereMatchesFuerObjekt`
+   (`lib/queries/matches.ts`, prüft dort ob überhaupt bereits Matches
+   existieren) bereits einen Aufrufer, der bewusst ungefiltert zählen will,
+   und die beiden Zählungen bedienen unterschiedliche Zwecke. `page.tsx` ruft
+   diese neue Funktion statt der aus dem Code-Block oben auf.
+2. **`key={bearbeitetesObjekt?.id ?? "neu"}` auf `<ObjektFormular>`**, anders
+   als der ungekeyte Aufruf im Code-Block oben. `ObjektFormular` (Task 57)
+   dokumentiert in einem eigenen Kommentar, dass es intern einen
+   `useEffect`+`objektIdRef`-Guard trägt, der genau für den Fall gedacht ist,
+   dass dieser Aufruf ohne `key` erfolgt (der `Drawer` bleibt beim Schliessen
+   gemountet, siehe `Drawer.tsx`) -- ohne Reset würden nach dem Bearbeiten von
+   Objekt A ein Wechsel zu Objekt B oder zu "Objekt anlegen" weiterhin A's
+   Feldwerte zeigen. Analog zu `EntwurfDetail` (M5) und `AnfrageDetail` (M6)
+   ist an dieser Stelle aber `key`-basiertes Remounten die etablierte primäre
+   Verteidigung dieses Projekts, nicht ein rein interner Guard -- der `key`
+   erzwingt einen vollständigen Unmount/Mount-Zyklus bei jedem
+   Karte-zu-Karte- oder Karte-zu-"neu"-Wechsel. Der interne Guard in
+   `ObjektFormular` bleibt unverändert bestehen und wirkt jetzt als
+   Defense-in-Depth, falls `ObjektFormular` künftig von einer Stelle ohne
+   `key` aufgerufen wird.
+3. **Kein zusätzlicher `modus`-Stale-Guard in `ObjekteAnsicht` selbst**,
+   anders als `ausgewaehlteIdRef` in `AnfragenAnsicht` (Task 52) oder
+   `nachrichtIdRef` in `PostfachAnsicht`. Jene Guards schützen gegen
+   veraltete Antworten eines eigenen asynchronen `fetch` (z.B.
+   `/api/anfragen/[id]/detail`), das nach einem schnellen Auswahlwechsel
+   verspätet zurückkommt. `ObjekteAnsicht` lädt selbst nichts nach -- `objekte`
+   und `treffer` kommen fertig als Props von der Server Component, und
+   `bearbeitetesObjekt` wird synchron aus `objekte` abgeleitet. Es gibt hier
+   also keinen In-Flight-Request, dessen verspätete Antwort einen falschen
+   State überschreiben könnte; der einzige Fall mit "altem" Zustand ist exakt
+   der, den `key` auf `ObjektFormular` (Punkt 2) bereits löst.
+
 - [ ] **Step 3: Manuell prüfen — das zentrale Abnahmekriterium des Projekts**
 
 Run: `npm run dev`. Vor dem Test im Supabase SQL-Editor eine sehr alte offene Anfrage sicherstellen: `update anfragen set letzter_kontakt = now() - interval '96 days' where id = '33333333-3333-3333-3333-333333333308';` (die Nordwest-Metallbau-Anfrage aus dem Seed, 96 Tage still).
