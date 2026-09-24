@@ -24,12 +24,14 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Exakter Vergleich, kein startsWith: bei einem Präfix-Vergleich würde ein
-  // künftiger Pfad wie "/login-hilfe" fälschlich als "schon auf der
-  // Login-Seite" gelten und die Middleware nicht mehr davor schützen --
+  // künftiger Pfad wie "/login-hilfe" fälschlich als "schon auf einer
+  // Auth-Seite" gelten und die Middleware nicht mehr davor schützen --
   // gefunden bei der finalen Milestone-Review (live bestätigt: GET /loginX
   // lieferte 404 statt eines 307-Redirects, weil die Middleware es
-  // durchliess).
-  const istLoginSeite = request.nextUrl.pathname === "/login"
+  // durchliess). Gilt genauso für "/register" -- .includes() auf einer
+  // festen Liste vollständiger Pfade, nie ein Präfix-Check.
+  const AUTH_SEITEN = ["/login", "/register"]
+  const istAuthSeite = AUTH_SEITEN.includes(request.nextUrl.pathname)
 
   // NextResponse.redirect(...) baut ein komplett neues Response-Objekt --
   // ohne diesen Schritt gehen alle Cookies, die setAll oben eventuell schon
@@ -45,10 +47,10 @@ export async function middleware(request: NextRequest) {
     return ziel
   }
 
-  if (!user && !istLoginSeite) {
+  if (!user && !istAuthSeite) {
     return mitAktualisiertenCookies(NextResponse.redirect(new URL("/login", request.url)))
   }
-  if (user && istLoginSeite) {
+  if (user && istAuthSeite) {
     return mitAktualisiertenCookies(NextResponse.redirect(new URL("/", request.url)))
   }
 
