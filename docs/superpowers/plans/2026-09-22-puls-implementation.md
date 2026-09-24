@@ -5660,15 +5660,35 @@ zusätzlich `holeEigenesProfil().rolle` (bestehendes JS-seitiges Rollen-Äquival
 `current_rolle()`, siehe Task 24) sowie `vertraulich` aus `anfragen_sichtbar` (nicht aus der
 für `leser` gesperrten Basistabelle `anfragen`, gleiches Argument wie beim `anfragen_sichtbar`-Zugriff
 in `holeVerlaufFuerAnfrage`). Ist die aufrufende Rolle `leser` UND die Anfrage `vertraulich`,
-wird ausschliesslich `kriterien[].gesucht` des Preis-Eintrags (gefunden über
-`k.kriterium === "Preis"`) durch `"—"` ersetzt — dieselbe Maskierungs-Notation wie in
-`AnfragenTabelle` für den vertraulich maskierten Firmennamen. Bewusst NICHT verändert:
-`angeboten` (Objekt-Preis, nicht Teil der vertraulichen Anfrage), `status`/`score` (geben
-nichts preis, was nicht ohnehin schon über die anderen unmaskierten Kriterien sichtbar wäre),
-und die persistierte `matches`-Zeile selbst (Maskierung passiert ausschliesslich im Lesepfad,
-bei jedem Aufruf neu). `holeVerlaufFuerAnfrage` wurde auf dasselbe Leck-Muster geprüft — dort
+wird `kriterien[].gesucht` des Preis-Eintrags (gefunden über `k.kriterium === "Preis"`) durch
+`"—"` ersetzt — dieselbe Maskierungs-Notation wie in `AnfragenTabelle` für den vertraulich
+maskierten Firmennamen. `holeVerlaufFuerAnfrage` wurde auf dasselbe Leck-Muster geprüft — dort
 enthalten die Verlaufstexte nur generische Formulierungen ("Neu gematcht mit …"), keine
 Zahlenwerte, also kein Fund.
+
+**Scoped Re-Review, Fix-Welle 2**: die erste Fassung dieses Fixes liess `status`/`hinweis`
+des Preis-Eintrags unverändert, mit der Begründung, sie gäben nichts preis, was nicht ohnehin
+über die anderen Kriterien sichtbar wäre. Der Re-Review widerlegte das für Preis konkret:
+der Objekt-Preis (`angeboten`) bleibt bewusst unmaskiert, und `status === "ok"`/`"nein"` grenzt
+über die Score-Formel in `punktePreis` das reale Budget nach unten bzw. oben ein
+(`budget >= preis/1.17` bzw. `budget < preis/1.37`); `hinweis` kann zudem wörtlich einen der
+vier Preis-spezifischen Texte aus `lib/matching.ts` enthalten ("Kein Budget genannt.", "Preis
+liegt deutlich/leicht über dem genannten Budget.", "... auf Anfrage, kein Vergleich möglich."),
+sobald Preis das schwächste Kriterium ist — über denselben Devtools-/`fetch`-Weg wie der
+ursprüngliche Fund einsehbar. Vom Controller als Important (nicht mehr Critical, da kein
+exakter Zahlenwert mehr übergeben wird, nur eine grobe Eingrenzung) eingestuft und direkt
+nachgebessert, statt für eine spätere Runde geparkt: `status` des Preis-Eintrags wird bei
+Maskierung zusätzlich auf `"teilweise"` erzwungen (kein Ampel-Signal mehr), und `hinweis`
+wird durch einen generischen Text ("Details zum Budget sind vertraulich.") ersetzt, falls er
+einer der vier Preis-spezifischen Texte ist (Abgleich über eine feste String-Liste, da der
+gespeicherte `hinweis` keine strukturierte Herkunftsangabe trägt). `angeboten` und der
+Gesamt-`score` bleiben bewusst unverändert: `score` ist eine gewichtete Summe über alle fünf
+Kriterien, deren übrige vier Eingaben (Fläche/Ort/Bezug/Anforderungen) für `leser` ohnehin
+unmaskiert in derselben Anfrage sichtbar sind — ihn zusätzlich zu verschleiern würde die
+Match-Sortierung/-Nützlichkeit beschädigen, ohne einen ebenso direkten, niedrigschwelligen
+Kanal wie `status`/`hinweis` zu schliessen. Die persistierte `matches`-Zeile selbst bleibt
+in beiden Fassungen unverändert — die Maskierung passiert ausschliesslich im Lesepfad, bei
+jedem Aufruf neu, nie beim Schreiben.
 
 **Wichtiger Fund (M6 Whole-Branch-Review)**: `aktualisiereAnfrage` (`lib/queries/anfragen.ts`,
 Task 47) prüfte nach dem `update(...).eq("id", id)` nur `error`, nicht die Anzahl betroffener

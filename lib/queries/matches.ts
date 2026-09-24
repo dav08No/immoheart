@@ -68,15 +68,33 @@ export async function berechneUndSpeichereMatchesFuerAnfrage(anfrageId: string):
 // durchsickern, obwohl dieselbe Anfrage in anfragen_sichtbar (und damit in
 // der "Daten"-Sektion desselben Drawers) korrekt als "?" maskiert ankommt.
 //
-// Bewusst NUR der Preis-Kriteriumstext wird ersetzt -- und davon nur
-// `gesucht` (das echte Anfrage-Budget), nicht `angeboten` (der Objekt-Preis,
-// der nicht Teil der vertraulichen Anfrage ist und für sich genommen nicht
-// als schützenswert gilt) und nicht `status`/`score` (deren Ampel/Prozentwert
-// nichts preisgibt, was nicht ohnehin schon über die anderen, unmaskierten
-// Kriterien sichtbar wäre). Die persistierte Zeile in `matches` selbst bleibt
-// unverändert -- die Maskierung passiert ausschliesslich hier im Lesepfad,
-// bei jedem Aufruf neu, nie beim Schreiben.
+// Scoped Re-Review (M6 Whole-Branch-Review, Fix-Welle 2): die erste Fassung
+// ersetzte nur `gesucht`, liess aber `status`/`hinweis` unverändert -- beides
+// verrät das echte Budget indirekt, weil der (unmaskierte) Objekt-Preis in
+// derselben Zeile steht: `status === "ok"` grenzt das Budget nach unten ein
+// (`budget >= preis/1.17`), `status === "nein"` nach oben (`budget <
+// preis/1.37`, siehe punktePreis unten), und `hinweis` kann wörtlich
+// "Preis liegt deutlich/leicht über dem genannten Budget." oder "Kein Budget
+// genannt." lauten, sobald Preis das schwächste Kriterium ist. Für Preis wird
+// deshalb zusätzlich `status` auf einen neutralen Wert erzwungen und `hinweis`
+// generisch ersetzt, falls er einer der vier Preis-spezifischen Texte aus
+// lib/matching.ts ist. `angeboten` (der Objekt-Preis, nicht Teil der
+// vertraulichen Anfrage) und der Gesamt-`score` bleiben unverändert: `score`
+// ist eine gewichtete Summe über alle fünf Kriterien, deren übrige vier
+// Eingaben (Fläche/Ort/Bezug/Anforderungen) für leser ohnehin unmaskiert in
+// derselben Anfrage sichtbar sind -- ihn zusätzlich zu verschleiern würde die
+// Match-Sortierung/-Nützlichkeit beschädigen, ohne einen ebenso direkten,
+// niedrigschwelligen Kanal wie status/hinweis zu schliessen. Die persistierte
+// Zeile in `matches` selbst bleibt unverändert -- die Maskierung passiert
+// ausschliesslich hier im Lesepfad, bei jedem Aufruf neu, nie beim Schreiben.
 const BUDGET_MASKIERT = "—"
+const BUDGET_HINWEIS_MASKIERT = "Details zum Budget sind vertraulich."
+const PREIS_HINWEISE = new Set([
+  "Kein Budget genannt.",
+  "Preis des Objekts ist auf Anfrage, kein Vergleich möglich.",
+  "Preis liegt deutlich über dem genannten Budget.",
+  "Preis liegt leicht über dem genannten Budget.",
+])
 
 export async function holeBesterMatchFuerAnfrage(anfrageId: string) {
   const supabase = await erstelleServerClient()
@@ -98,9 +116,10 @@ export async function holeBesterMatchFuerAnfrage(anfrageId: string) {
 
   if (profil.rolle === "leser" && anfrageSichtbar?.vertraulich) {
     const kriterien = (data.kriterien as unknown as Kriterium[]).map((k) =>
-      k.kriterium === "Preis" ? { ...k, gesucht: BUDGET_MASKIERT } : k
+      k.kriterium === "Preis" ? { ...k, gesucht: BUDGET_MASKIERT, status: "teilweise" as const } : k
     )
-    return { ...data, kriterien }
+    const hinweis = PREIS_HINWEISE.has(data.hinweis) ? BUDGET_HINWEIS_MASKIERT : data.hinweis
+    return { ...data, kriterien, hinweis }
   }
 
   return data
