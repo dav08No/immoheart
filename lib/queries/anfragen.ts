@@ -38,10 +38,24 @@ export async function holeAnfrage(id: string): Promise<AnfrageRow | null> {
   return data
 }
 
+// Wichtiger Fund (M6 Whole-Branch-Review): ein UPDATE, dessen Zeile die
+// RLS-USING-Klausel nicht erfüllt (hier: "vermittler aendert anfragen",
+// current_rolle() in ('admin','vermittler')), trifft bei Postgres/PostgREST
+// null Zeilen -- das ist aus Sicht des Clients ein ERFOLGREICHES Update ohne
+// betroffene Zeilen, kein Fehler. Ohne `.select().maybeSingle()` plus
+// explizitem Null-Check hier würde ein leser, der versucht eine Anfrage zu
+// bearbeiten, scheinbar erfolgreich speichern (AnfrageDetail.speichern()
+// verlässt den Bearbeiten-Modus, zeigt "Treffer werden neu berechnet"),
+// obwohl in Wahrheit nichts persistiert wurde. `.select("id")` reicht aus,
+// um die betroffene Zeile zu bestätigen, ohne die volle Zeile aus der
+// (für leser ohnehin gesperrten) Basistabelle zurückzugeben. Gleiches
+// Muster (maybeSingle + expliziter Throw statt PostgREST-.single()-Fehler)
+// wie bereits in holeVerlaufFuerAnfrage unten.
 export async function aktualisiereAnfrage(id: string, aenderung: Partial<AnfrageEinfuegen>): Promise<void> {
   const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("anfragen").update(aenderung).eq("id", id)
+  const { data, error } = await supabase.from("anfragen").update(aenderung).eq("id", id).select("id").maybeSingle()
   if (error) throw error
+  if (!data) throw new Error("Anfrage konnte nicht aktualisiert werden")
 }
 
 export function zuAnfrageDomain(row: AnfrageRow): Anfrage {

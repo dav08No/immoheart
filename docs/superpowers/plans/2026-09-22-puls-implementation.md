@@ -5639,6 +5639,51 @@ git commit -m "feat: Anfragen-Seite zusammensetzen"
 
 ### Task 53: Meilenstein M6 abschliessen
 
+**Kritischer Fund (M6 Whole-Branch-Review), analog zu Task 46s `nachrichten`-Fund**:
+`holeBesterMatchFuerAnfrage` (`lib/queries/matches.ts`, Task 47) liest `matches.kriterien`
+direkt aus der Basistabelle. Diese jsonb-Spalte wird beim Berechnen/Speichern
+(`berechneUndSpeichereMatchesFuerAnfrage`, nur aus admin/vermittler-Schreibpfaden
+aufgerufen) mit dem ECHTEN, unmaskierten `budget_pro_m2` befüllt (`lib/matching.ts`,
+`kriteriumPreis`: `gesucht: bis ${formatPreis(anfrage.budgetProM2)}`). Die
+SELECT-Policy auf `matches` (`"eingeloggt liest matches"`, `20260922195659_rls.sql`)
+hat — anders als `anfragen_sichtbar` — **keine** vertraulich/Rollen-Einschränkung: jede
+eingeloggte Rolle, inklusive `leser`, darf die volle Zeile lesen. Erst seit M6 (Task 52,
+`AnfragenAnsicht.ladeDetailDaten` → `/api/anfragen/[id]/detail` → `holeBesterMatchFuerAnfrage`)
+ist dieser Pfad überhaupt vom Frontend aus erreichbar — bis dahin unschädlich, weil ungenutzt.
+Das reale Budget einer vertraulichen Anfrage landete dadurch im Klartext (z. B. "bis CHF
+250/m²") in der JSON-Antwort der API-Route, obwohl dieselbe Anfrage in der "Daten"-Sektion
+desselben Drawers (aus `anfragen_sichtbar`) korrekt als `?` maskiert erscheint — per Devtools
+oder direktem `fetch` durch eine `leser`-Session trivial einsehbar.
+
+Fix in `holeBesterMatchFuerAnfrage`, nicht in der Route oder der View: die Funktion holt nun
+zusätzlich `holeEigenesProfil().rolle` (bestehendes JS-seitiges Rollen-Äquivalent zu
+`current_rolle()`, siehe Task 24) sowie `vertraulich` aus `anfragen_sichtbar` (nicht aus der
+für `leser` gesperrten Basistabelle `anfragen`, gleiches Argument wie beim `anfragen_sichtbar`-Zugriff
+in `holeVerlaufFuerAnfrage`). Ist die aufrufende Rolle `leser` UND die Anfrage `vertraulich`,
+wird ausschliesslich `kriterien[].gesucht` des Preis-Eintrags (gefunden über
+`k.kriterium === "Preis"`) durch `"—"` ersetzt — dieselbe Maskierungs-Notation wie in
+`AnfragenTabelle` für den vertraulich maskierten Firmennamen. Bewusst NICHT verändert:
+`angeboten` (Objekt-Preis, nicht Teil der vertraulichen Anfrage), `status`/`score` (geben
+nichts preis, was nicht ohnehin schon über die anderen unmaskierten Kriterien sichtbar wäre),
+und die persistierte `matches`-Zeile selbst (Maskierung passiert ausschliesslich im Lesepfad,
+bei jedem Aufruf neu). `holeVerlaufFuerAnfrage` wurde auf dasselbe Leck-Muster geprüft — dort
+enthalten die Verlaufstexte nur generische Formulierungen ("Neu gematcht mit …"), keine
+Zahlenwerte, also kein Fund.
+
+**Wichtiger Fund (M6 Whole-Branch-Review)**: `aktualisiereAnfrage` (`lib/queries/anfragen.ts`,
+Task 47) prüfte nach dem `update(...).eq("id", id)` nur `error`, nicht die Anzahl betroffener
+Zeilen. Ein `UPDATE`, dessen Zeile die RLS-USING-Klausel für `UPDATE` auf `anfragen`
+(`"vermittler aendert anfragen"`, `current_rolle() in ('admin', 'vermittler')`) nicht erfüllt,
+trifft bei PostgREST null Zeilen — das ist ein erfolgreicher Response ohne betroffene Zeilen,
+kein Fehler. Für `leser` (dem laut README-Rollenmodell kein Schreibzugriff zusteht) sah das
+Speichern in `AnfrageDetail.speichern()` (Task 50) deshalb komplett erfolgreich aus (Bearbeiten-Modus
+verlassen, "Treffer werden neu berechnet"-Hinweis), obwohl nichts persistiert wurde. Fix:
+`.update(aenderung).eq("id", id).select("id").maybeSingle()` statt nur `.update(...).eq(...)`,
+mit explizitem Wurf (`"Anfrage konnte nicht aktualisiert werden"`), falls keine Zeile
+zurückkommt — gleiches Muster (`maybeSingle` + expliziter Throw statt PostgREST-`.single()`-Fehler)
+wie bereits in `holeVerlaufFuerAnfrage`. Läuft ohne Änderungen an `AnfrageDetail` selbst durch
+dessen bereits verdrahteten `fehler`/try-catch-Pfad (aus Task 50s Review).
+
 - [ ] **Step 1: Abnahmekriterium erneut end-to-end prüfen**
 
 Eine Anfrage ohne Budget und ohne Bezugstermin lässt sich speichern (Task 52, Step 4) — Lücken erscheinen in Tabelle **und** im Drawer als `?` (README-Abnahmekriterium wörtlich erfüllt).
