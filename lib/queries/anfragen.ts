@@ -102,6 +102,22 @@ export async function holeOffenePulsWerte(): Promise<Date[]> {
   return data.map((row) => new Date(row.letzter_kontakt))
 }
 
+// Liest die echte, unmaskierte Kontakt-Mail -- kein Verstoss gegen die
+// M6-Vertraulichkeitsregel: die betrifft nur die *Anzeige* an eine
+// eingeschränkte Rolle (anfragen_sichtbar maskiert budget_pro_m2/firma_id für
+// leser bei vertraulich=true), nicht diesen internen Versandschritt in
+// matches.ts. Dessen einzige Aufrufer (matchSenden/anfrageNachfragen) lesen
+// vorher bereits holeAnfrage -- die Basistabelle, seit
+// 20260923033041_rls_fix_base_table_read.sql nur für admin/vermittler lesbar
+// -- und schlagen für leser dort bereits mit einem geworfenen Fehler fehl,
+// bevor diese Funktion je erreicht wird.
+export async function holeFirma(firmaId: string): Promise<{ name: string; kontakt_email: string | null } | null> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase.from("firmen").select("name, kontakt_email").eq("id", firmaId).maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export function zuAnfrageDomain(row: AnfrageRow): Anfrage {
   return {
     id: row.id,
