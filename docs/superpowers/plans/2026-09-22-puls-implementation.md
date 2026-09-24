@@ -3675,6 +3675,23 @@ bereits verarbeitet oder existiert nicht mehr") statt eine zweite Anfrage
 anzulegen. Details und die volle Abwägung der beiden erwogenen Optionen siehe
 Task 44s Abweichungspunkt 9.
 
+**Nachtrag aus Task 48s Fix-Loop Runde 1**: `alsAnfrageSpeichern` ruft im
+Code-Block unten `legeAnfrageAn` noch ohne anschliessenden Match-Durchlauf
+auf. Reviewer-Fund beim Bau von Task 48: `AnfrageDetail` (Task 50) berechnet
+Matches nicht selbst bei jedem Aufruf, sondern liest ausschliesslich
+vorab gespeicherte Zeilen über `holeBesterMatchFuerAnfrage`. War die
+KI-Erkennung bereits vollständig (keine `?`-Lücken, die eine Vermittlerin
+erst im Formular schliessen und damit über `anfrageAktualisieren`
+(Task 48) ein Rematching auslösen müsste), gab es vor dieser Korrektur nie
+einen Auslöser für den ersten Match-Durchlauf einer aus einer Mail
+angelegten Anfrage -- der Bereich "Bester Treffer" wäre für sie dauerhaft
+leer geblieben. Tatsächlich umgesetzt: die Rückgabe von `legeAnfrageAn`
+wird jetzt in `neue` festgehalten, unmittelbar gefolgt von
+`await berechneUndSpeichereMatchesFuerAnfrage(neue.id)` (aus
+`lib/queries/matches.ts`, Task 47), noch vor den beiden
+`revalidatePath`-Aufrufen. Der Code-Block unten ist NICHT auf diesem
+aktuellen Stand.
+
 `richtung` ist laut README-Enum (`eingang | entwurf | gesendet`) der **Status** einer Nachricht, nicht ihre feste Art — ein Entwurf wechselt bei echtem Versand zu `gesendet`, zusammen mit dem Zeitstempel `gesendet_am`. Eine erledigte Eingangs-Mail (gespeichert oder verworfen) wurde dagegen nie *von uns gesendet*; sie als `gesendet` umzuflaggen würde den Wert für jede spätere Auswertung (z. B. eine Versand-Erfolgsquote in M10) verfälschen. Erledigte Eingangs-Mails werden deshalb gelöscht, genau wie im Prototyp, der sie nach der Aktion aus seiner Liste entfernt.
 
 - [ ] **Step 1: `app/actions/nachrichten.ts` anlegen**
@@ -5369,6 +5386,53 @@ git add components/anfragen/AnfrageDetail.tsx
 git commit -m "feat: AnfrageDetail mit Inline-Bearbeitung, bestem Treffer und Verlauf"
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben:**
+
+1. **`speichern()` läuft durch try/catch statt ungeschützt zu awaiten**, mit einem sichtbaren
+   `fehler`-Zustand (`text-crit`, gleiche Konvention wie `MailEinfuegen`/`EntwurfDetail`/
+   `PostfachAnsicht`) statt einer stillschweigend verschluckten Exception. `anfrageAktualisieren`
+   (Task 48) wirft bewusst; ohne try/catch hier bliebe die Nutzerin bei z.B. einem RLS- oder
+   Netzwerkfehler im Bearbeiten-Modus hängen, ohne zu erfahren, dass nichts gespeichert wurde --
+   exakt die Lücke, die in jeder bisherigen M5/M6-UI-Aufgabe mit Server-Action-Aufruf geschlossen
+   wurde.
+2. **Zusätzlicher `laufend`-Zustand** (Analog zu `EntwurfDetail`s `laufend`): deaktiviert
+   Speichern/Abbrechen/alle Eingabefelder während des Speicherns und beschriftet den
+   Speichern-Button mit "Wird gespeichert…", statt einen Doppelklick während eines bereits
+   laufenden Requests zuzulassen.
+3. **`anfrageIdRef` + Reset-`useEffect` auf `anfrage.id`** ergänzt (Analog zu `EntwurfDetail`s
+   `nachrichtIdRef`): `AnfragenAnsicht` (Task 52) rendert diese Komponente voraussichtlich ohne
+   `key={anfrage.id}`, sodass dieselbe Instanz bei einem Zeilenwechsel im Drawer ein neues
+   `anfrage`-Prop bekommt, statt neu zu mounten. Ohne Reset bliebe lokaler Bearbeiten-State
+   (Eingaben, Fehler, laufend) von der vorher ausgewählten Anfrage kleben; ohne den Ref-Vergleich
+   könnte eine spät auflösende `speichern()`-Antwort für Anfrage A fälschlich den bereits für
+   Anfrage B sichtbaren State überschreiben.
+4. **Nullguard für `anfrage.id`/`anfrage.letzter_kontakt`** (gleiche `anfragen_sichtbar`-
+   Nullability-Drift wie in `AnfragenTabelle`), hier aber als Fehlermeldung im Drawer statt als
+   übersprungene Tabellenzeile, weil diese Komponente eine einzelne Anfrage statt einer Liste
+   bekommt -- es gibt kein "einfach nicht rendern", ohne dass der Drawer bei `offen=true`
+   verwirrend leer bliebe. In der Praxis sollte der Fall nicht eintreten: der einzige geplante
+   Aufrufer (`AnfragenAnsicht`, Task 52) wählt die ID über `AnfragenTabelle`, die Zeilen mit
+   fehlender `id`/`letzter_kontakt` bereits herausfiltert. Der Guard ist Verteidigung gegen
+   künftige Aufrufer, kein erwarteter Alltagsfall -- deshalb auch hier `console.error` statt
+   eines stillen Fallbacks.
+5. **`besterMatch`-Anzeige nach erfolgreichem Speichern als veraltet markiert**, statt weiterhin
+   Score/Kriterien aus dem beim Öffnen geladenen Prop als aktuell auszugeben. `anfrageAktualisieren`
+   löst bei genau den fünf Feldern, die dieses Formular schreibt (`flaeche_min`, `flaeche_max`,
+   `ort`, `budget_pro_m2`, `bezug` -- alle in `MATCH_RELEVANTE_FELDER`), serverseitig ein
+   Rematching aus (`berechneUndSpeichereMatchesFuerAnfrage`). `besterMatch` kommt hier aber nicht
+   aus einer Server-Component-Prop-Kette, die durch `revalidatePath` automatisch aktualisiert
+   würde, sondern aus einem separaten `fetch` auf `/api/anfragen/[id]/detail` in einem
+   `useEffect`, der nur auf `ausgewaehlteId` reagiert (Task 52-Entwurf) -- ein Speichern bei
+   gleichbleibender Auswahl löst diesen Effekt nicht erneut aus. Ohne Markierung würde der Drawer
+   nach dem Speichern einen Score/Kriterien zeigen, die serverseitig bereits überholt sind. Die
+   Komponente kann den Neu-Fetch nicht selbst auslösen (kein Zugriff auf den Fetch-State der
+   Elternkomponente), zeigt aber sichtbar an, dass die Werte neu berechnet wurden und ein
+   Schliessen/erneutes Öffnen des Drawers die aktuellen liefert. Zusätzlich ein optionaler,
+   in der Plan-Signatur nicht vorgesehener Callback-Prop `onAenderungGespeichert` ergänzt: wird
+   nach erfolgreichem Speichern aufgerufen, damit `AnfragenAnsicht` (Task 52) ihn bei Bedarf an
+   ihren Fetch-Effekt anschliessen und `besterMatch`/`verlauf` aktiv neu laden kann. Ohne
+   Verdrahtung durch Task 52 ändert der optionale Prop nichts am bisherigen Verhalten.
+
 ---
 
 ### Task 51: `AnfrageFormular`
@@ -5574,6 +5638,71 @@ git commit -m "feat: Anfragen-Seite zusammensetzen"
 ---
 
 ### Task 53: Meilenstein M6 abschliessen
+
+**Kritischer Fund (M6 Whole-Branch-Review), analog zu Task 46s `nachrichten`-Fund**:
+`holeBesterMatchFuerAnfrage` (`lib/queries/matches.ts`, Task 47) liest `matches.kriterien`
+direkt aus der Basistabelle. Diese jsonb-Spalte wird beim Berechnen/Speichern
+(`berechneUndSpeichereMatchesFuerAnfrage`, nur aus admin/vermittler-Schreibpfaden
+aufgerufen) mit dem ECHTEN, unmaskierten `budget_pro_m2` befüllt (`lib/matching.ts`,
+`kriteriumPreis`: `gesucht: bis ${formatPreis(anfrage.budgetProM2)}`). Die
+SELECT-Policy auf `matches` (`"eingeloggt liest matches"`, `20260922195659_rls.sql`)
+hat — anders als `anfragen_sichtbar` — **keine** vertraulich/Rollen-Einschränkung: jede
+eingeloggte Rolle, inklusive `leser`, darf die volle Zeile lesen. Erst seit M6 (Task 52,
+`AnfragenAnsicht.ladeDetailDaten` → `/api/anfragen/[id]/detail` → `holeBesterMatchFuerAnfrage`)
+ist dieser Pfad überhaupt vom Frontend aus erreichbar — bis dahin unschädlich, weil ungenutzt.
+Das reale Budget einer vertraulichen Anfrage landete dadurch im Klartext (z. B. "bis CHF
+250/m²") in der JSON-Antwort der API-Route, obwohl dieselbe Anfrage in der "Daten"-Sektion
+desselben Drawers (aus `anfragen_sichtbar`) korrekt als `?` maskiert erscheint — per Devtools
+oder direktem `fetch` durch eine `leser`-Session trivial einsehbar.
+
+Fix in `holeBesterMatchFuerAnfrage`, nicht in der Route oder der View: die Funktion holt nun
+zusätzlich `holeEigenesProfil().rolle` (bestehendes JS-seitiges Rollen-Äquivalent zu
+`current_rolle()`, siehe Task 24) sowie `vertraulich` aus `anfragen_sichtbar` (nicht aus der
+für `leser` gesperrten Basistabelle `anfragen`, gleiches Argument wie beim `anfragen_sichtbar`-Zugriff
+in `holeVerlaufFuerAnfrage`). Ist die aufrufende Rolle `leser` UND die Anfrage `vertraulich`,
+wird `kriterien[].gesucht` des Preis-Eintrags (gefunden über `k.kriterium === "Preis"`) durch
+`"—"` ersetzt — dieselbe Maskierungs-Notation wie in `AnfragenTabelle` für den vertraulich
+maskierten Firmennamen. `holeVerlaufFuerAnfrage` wurde auf dasselbe Leck-Muster geprüft — dort
+enthalten die Verlaufstexte nur generische Formulierungen ("Neu gematcht mit …"), keine
+Zahlenwerte, also kein Fund.
+
+**Scoped Re-Review, Fix-Welle 2**: die erste Fassung dieses Fixes liess `status`/`hinweis`
+des Preis-Eintrags unverändert, mit der Begründung, sie gäben nichts preis, was nicht ohnehin
+über die anderen Kriterien sichtbar wäre. Der Re-Review widerlegte das für Preis konkret:
+der Objekt-Preis (`angeboten`) bleibt bewusst unmaskiert, und `status === "ok"`/`"nein"` grenzt
+über die Score-Formel in `punktePreis` das reale Budget nach unten bzw. oben ein
+(`budget >= preis/1.17` bzw. `budget < preis/1.37`); `hinweis` kann zudem wörtlich einen der
+vier Preis-spezifischen Texte aus `lib/matching.ts` enthalten ("Kein Budget genannt.", "Preis
+liegt deutlich/leicht über dem genannten Budget.", "... auf Anfrage, kein Vergleich möglich."),
+sobald Preis das schwächste Kriterium ist — über denselben Devtools-/`fetch`-Weg wie der
+ursprüngliche Fund einsehbar. Vom Controller als Important (nicht mehr Critical, da kein
+exakter Zahlenwert mehr übergeben wird, nur eine grobe Eingrenzung) eingestuft und direkt
+nachgebessert, statt für eine spätere Runde geparkt: `status` des Preis-Eintrags wird bei
+Maskierung zusätzlich auf `"teilweise"` erzwungen (kein Ampel-Signal mehr), und `hinweis`
+wird durch einen generischen Text ("Details zum Budget sind vertraulich.") ersetzt, falls er
+einer der vier Preis-spezifischen Texte ist (Abgleich über eine feste String-Liste, da der
+gespeicherte `hinweis` keine strukturierte Herkunftsangabe trägt). `angeboten` und der
+Gesamt-`score` bleiben bewusst unverändert: `score` ist eine gewichtete Summe über alle fünf
+Kriterien, deren übrige vier Eingaben (Fläche/Ort/Bezug/Anforderungen) für `leser` ohnehin
+unmaskiert in derselben Anfrage sichtbar sind — ihn zusätzlich zu verschleiern würde die
+Match-Sortierung/-Nützlichkeit beschädigen, ohne einen ebenso direkten, niedrigschwelligen
+Kanal wie `status`/`hinweis` zu schliessen. Die persistierte `matches`-Zeile selbst bleibt
+in beiden Fassungen unverändert — die Maskierung passiert ausschliesslich im Lesepfad, bei
+jedem Aufruf neu, nie beim Schreiben.
+
+**Wichtiger Fund (M6 Whole-Branch-Review)**: `aktualisiereAnfrage` (`lib/queries/anfragen.ts`,
+Task 47) prüfte nach dem `update(...).eq("id", id)` nur `error`, nicht die Anzahl betroffener
+Zeilen. Ein `UPDATE`, dessen Zeile die RLS-USING-Klausel für `UPDATE` auf `anfragen`
+(`"vermittler aendert anfragen"`, `current_rolle() in ('admin', 'vermittler')`) nicht erfüllt,
+trifft bei PostgREST null Zeilen — das ist ein erfolgreicher Response ohne betroffene Zeilen,
+kein Fehler. Für `leser` (dem laut README-Rollenmodell kein Schreibzugriff zusteht) sah das
+Speichern in `AnfrageDetail.speichern()` (Task 50) deshalb komplett erfolgreich aus (Bearbeiten-Modus
+verlassen, "Treffer werden neu berechnet"-Hinweis), obwohl nichts persistiert wurde. Fix:
+`.update(aenderung).eq("id", id).select("id").maybeSingle()` statt nur `.update(...).eq(...)`,
+mit explizitem Wurf (`"Anfrage konnte nicht aktualisiert werden"`), falls keine Zeile
+zurückkommt — gleiches Muster (`maybeSingle` + expliziter Throw statt PostgREST-`.single()`-Fehler)
+wie bereits in `holeVerlaufFuerAnfrage`. Läuft ohne Änderungen an `AnfrageDetail` selbst durch
+dessen bereits verdrahteten `fehler`/try-catch-Pfad (aus Task 50s Review).
 
 - [ ] **Step 1: Abnahmekriterium erneut end-to-end prüfen**
 

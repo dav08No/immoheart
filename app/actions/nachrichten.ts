@@ -13,6 +13,7 @@ import {
   type NachrichtRow,
 } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn } from "@/lib/queries/anfragen"
+import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
 import { legeRegelAn, naechsterRegelCode } from "@/lib/queries/regeln"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 
@@ -132,7 +133,7 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     throw new Error("Nachricht wurde bereits verarbeitet oder existiert nicht mehr")
   }
 
-  await legeAnfrageAn({
+  const neue = await legeAnfrageAn({
     ort: felder.ort,
     nutzung,
     flaeche_min: felder.flaeche_min,
@@ -140,6 +141,16 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     budget_pro_m2: felder.budget_pro_m2,
     bezug: felder.bezug,
   })
+
+  // Fix-Loop Task 48: AnfrageDetail (Task 50) berechnet Matches nicht selbst
+  // bei jedem Aufruf, sondern liest ausschliesslich vorab gespeicherte Zeilen
+  // über holeBesterMatchFuerAnfrage. War die KI-Erkennung bereits vollständig
+  // (keine "?"-Lücken, die eine Vermittlerin erst im Formular schliessen und
+  // damit über anfrageAktualisieren ein Rematching auslösen müsste), gäbe es
+  // ohne diesen Aufruf hier nie einen Auslöser für den ersten Match-Durchlauf
+  // -- der Bereich "Bester Treffer" bliebe für eine aus einer Mail angelegte
+  // Anfrage dauerhaft leer.
+  await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
 
   revalidatePath("/postfach")
   revalidatePath("/anfragen")
