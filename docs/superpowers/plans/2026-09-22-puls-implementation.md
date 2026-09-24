@@ -6246,6 +6246,74 @@ git commit -m "feat: Objekte-Seite zusammensetzen"
 
 ### Task 59: Meilenstein M7 abschliessen
 
+**Kritischer Fund (M7 Whole-Branch-Review), analog zu Task 46s `nachrichten`-Fund und
+Task 53s `matches.kriterien`-Fund**: `berechneUndSpeichereMatchesFuerObjekt`
+(`lib/queries/matches.ts`, Task 54) holte das Objekt ungefiltert über `holeObjekt(id)`
+und matchte es gegen jede `status='offen'`-Anfrage aus `holeOffeneAnfragen()`, ohne je
+`objekt.status` zu prüfen — weder `berechneMatch` noch `zuObjektDomain` lasen diesen
+Wert. Task 54/55s eigener Review stufte das noch als "aktuell unerreichbar" ein, weil
+nichts ein Objekt mit einem anderen Status als `verfuegbar` anlegen oder ändern konnte.
+Task 57s `ObjektFormular` öffnete genau diesen Pfad: ein Status-`<select>` im
+Bearbeiten-Modus, dessen `absenden()` im `werte`-Objekt **jeder** Speicherung
+unbedingt auch `flaeche`/`ort`/`nutzung`/`verfuegbar_ab` mitschickt (alle
+match-relevant) — `objektAktualisieren` (`app/actions/objekte.ts`) sieht dadurch bei
+jeder Bearbeitung ein match-relevantes Feld als "angefasst" und löst immer den vollen
+Rematch aus, unabhängig davon, was die Vermittlerin tatsächlich geändert hat. Konkret:
+eine Vermittlerin markiert ein Objekt "Vermietet" (einzige Absicht) → voller
+Rematch-Lauf → frische `status='neu'`-Matches zwischen dem jetzt nicht mehr
+verfügbaren Objekt und jeder offenen Anfrage — sichtbar als "Bester Treffer" einer
+Anfrage (`holeBesterMatchFuerAnfrage`, M6, prüft `objekt.status` ebenfalls nicht) und
+im `ObjektRaster`-Badge "N neue Treffer" auf einer Karte, die gleichzeitig
+gedimmt/"Vermietet" beschriftet ist. Das bricht zudem genau die Cross-Direction-
+Konsistenz, die der M6-Review geprüft hatte: `holeVerfuegbareObjekte()`
+(`lib/queries/objekte.ts`, Anfrage→Objekte-Richtung) filtert `.eq("status",
+"verfuegbar")`, ein Anfrage-getriebener Rematch besucht ein vermietetes Objekt also
+nie — derselbe `berechneMatch`, aber ein abweichendes Ergebnis je nachdem, welche
+Seite den Rematch auslöst.
+
+Fix in `berechneUndSpeichereMatchesFuerObjekt` selbst (nicht in `objektAktualisieren`
+oder `ObjektFormular`): direkt nach `holeObjekt` ein Gate `if (objektRow.status !==
+"verfuegbar")`, das die Anfrage-Schleife gar nicht erst betritt — spiegelt
+`holeVerfuegbareObjekte()`s Filter aus der Gegenrichtung. Zusätzlich werden in diesem
+Zweig die **bestehenden** `status='neu'`-Matches des Objekts gelöscht (`.eq("objekt_id",
+objektId).eq("status", "neu")`), nicht nur keine neuen mehr angelegt: bewusste
+Entscheidung, kein Scope-Creep. Begründung: ohne diese Aufräumung blieben Matches, die
+entstanden, während das Objekt noch `verfuegbar` war, nach einem Statuswechsel
+unbegrenzt liegen — die Anfrage-Richtung besucht ein nicht mehr verfügbares Objekt nie
+wieder (es fällt aus `holeVerfuegbareObjekte()`s Schleife, statt besucht und
+aufgeräumt zu werden), und `holeBesterMatchFuerAnfrage` filtert selbst nicht nach
+Objekt-Status. Eine solche Altzeile hätte also exakt dasselbe Symptom (vermietetes
+Objekt als "Bester Treffer") weiter reproduziert, nur einmalig statt laufend — das
+reine Gate allein hätte den gemeldeten Fund also nicht vollständig geschlossen. Wie
+beim score-basierten Löschzweig in derselben Funktion bleibt das strikt auf
+`status='neu'` beschränkt: `gesendet`/`verworfen`-Zeilen werden nie angetastet,
+konsistent mit der milestone-weiten Regel "keine bereits bearbeiteten Matches
+zerstören". Als Folge muss `status` jetzt auch in `MATCH_RELEVANTE_FELDER`
+(`app/actions/objekte.ts`) stehen — vorher bewusst ausgeschlossen mit der (nach diesem
+Fix nicht mehr zutreffenden) Begründung, ein Statuswechsel allein könne das Ergebnis
+nicht verändern; nach dem Fix gilt das Gegenteil, ein reiner Statuswechsel muss die
+Aufräumung auslösen können, auch falls kein anderes Feld sich ändert.
+
+**Bewusst nicht mitgelöst**: `ObjektFormular.absenden()` bündelt weiterhin
+unbedingt alle match-relevanten Felder in jedes Bearbeiten-Speichern, unabhängig davon,
+was sich tatsächlich geändert hat — der Mechanismus, der Task 55s bedingtes
+Rematch-Gating in der Praxis für jedes Bearbeiten-Speichern aushebelt (nicht falsch für
+sich allein, der Rematch ist idempotent, und nicht ursächlich für den oben behobenen
+Fund — das Gate in `berechneUndSpeichereMatchesFuerObjekt` schliesst diesen unabhängig
+vom Bündelungsverhalten). Eine Änderung, die im `werte`-Objekt nur tatsächlich
+geänderte Felder gegenüber der `objekt`-Prop mitschickt, wäre kein trivialer
+Ein-Zeilen-Fix: sie müsste jedes der neun Formularfelder einzeln gegen den
+Ausgangswert vergleichen (inkl. Typkonvertierung wie `Number(flaeche)` vs.
+`objekt.flaeche` und `preis ? Number(preis) : null` vs. `objekt.preis_pro_m2`), ohne
+den bestehenden Anlegen-Zweig (dort ist `objekt` `undefined`, alle Felder müssen immer
+mitgeschickt werden) oder den Ref-basierten Staleness-Schutz/Reset aus dem
+Task-57-Kommentar zu beschädigen. Ein Vergleichsfehler in nur einem Feld würde dort
+still einen tatsächlich geänderten Wert aus dem Update-Payload fallen lassen — ein
+Datenverlust-Bug, der schwerer wiegt als die behobene unnötige Rematch-Last. Für diese
+eine erlaubte Fix-Welle nach dem finalen Whole-Branch-Review bewusst nicht angefasst;
+als eigener Folge-Task vorgemerkt, falls das Gating in der Praxis relevant werden
+sollte (z. B. bei spürbarer Rematch-Latenz auf einem grossen Anfragen-Bestand).
+
 - [ ] **Step 1: Vollständigen Check laufen lassen**
 
 Run: `npx tsc --noEmit && npm run lint && npm run test && npm run build`

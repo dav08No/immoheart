@@ -27,11 +27,15 @@ export async function objektAnlegen(objekt: ObjektEinfuegen): Promise<void> {
 // berechneUndSpeichereMatchesFuerObjekt), ohne dass sich am Ergebnis je etwas
 // ändern könnte.
 //
-// status ist bewusst NICHT dabei: berechneUndSpeichereMatchesFuerObjekt holt
-// das Objekt direkt über holeObjekt(id) (nicht gefiltert über
-// holeVerfuegbareObjekte) und berechneMatch liest objekt.status gar nicht --
-// ein Statuswechsel für sich allein kann das Ergebnis dieses Aufrufs also
-// nicht verändern, genau wie bei anfragen.status in der Anfrage-Richtung.
+// status ist seit dem M7 Whole-Branch-Review-Fix in matches.ts bewusst DABEI
+// (anders als zuvor angenommen): berechneUndSpeichereMatchesFuerObjekt sperrt
+// dort inzwischen selbst gegen ein Nicht-verfuegbar-Objekt und räumt dessen
+// bestehende status='neu'-Matches auf, sobald es den Status wechselt (Kritischer
+// Fund, siehe Kommentar dort). Ein reiner Statuswechsel -- ohne dass sich ein
+// anderes hier gelistetes Feld ändert -- muss also weiterhin einen Aufruf
+// auslösen, sonst bliebe genau diese Aufräumung aus. berechneMatch selbst
+// liest objekt.status zwar nach wie vor nicht (der Status wirkt nur als Gate
+// VOR der eigentlichen Match-Berechnung, nicht als deren Eingabe).
 const MATCH_RELEVANTE_FELDER = [
   "flaeche",
   "preis_pro_m2",
@@ -39,6 +43,7 @@ const MATCH_RELEVANTE_FELDER = [
   "nutzung",
   "eigenschaften",
   "verfuegbar_ab",
+  "status",
 ] as const satisfies readonly (keyof ObjektEinfuegen)[]
 
 export async function objektAktualisieren(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
