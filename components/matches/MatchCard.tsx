@@ -1,4 +1,5 @@
 import type { NeuerMatch } from "@/lib/queries/matches"
+import type { KriteriumStatus } from "@/types"
 
 function mapsLink(adresse: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`
@@ -7,8 +8,8 @@ function webLink(name: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(name)}`
 }
 
-const STATUS_ZEICHEN: Record<string, string> = { ok: "✓", teilweise: "~", nein: "✕" }
-const STATUS_FARBE: Record<string, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
+const STATUS_ZEICHEN: Record<KriteriumStatus, string> = { ok: "✓", teilweise: "~", nein: "✕" }
+const STATUS_FARBE: Record<KriteriumStatus, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
 
 export function MatchCard({
   match, onOeffnen, onSenden, onVerwerfen,
@@ -24,7 +25,7 @@ export function MatchCard({
         <div className="h-20 w-[118px] overflow-hidden rounded-lg bg-surface-3">
           {match.objekt.foto_url && (
             // eslint-disable-next-line @next/next/no-img-element -- freie Foto-URL ohne Upload, siehe README
-            <img src={match.objekt.foto_url} alt="" className="h-full w-full object-cover" />
+            <img src={match.objekt.foto_url} alt={match.objekt.titel} className="h-full w-full object-cover" />
           )}
         </div>
         <div>
