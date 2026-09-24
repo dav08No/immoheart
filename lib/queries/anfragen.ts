@@ -58,6 +58,28 @@ export async function aktualisiereAnfrage(id: string, aenderung: Partial<Anfrage
   if (!data) throw new Error("Anfrage konnte nicht aktualisiert werden")
 }
 
+// Liest bewusst die Basistabelle, nicht anfragen_sichtbar: fürs Rematching
+// (berechneMatch) wird das echte, unmaskierte Budget gebraucht, nicht die
+// für vertrauliche Anfragen maskierte View-Fassung. Seit der M5-Korrektur
+// (20260923033041_rls_fix_base_table_read.sql) liest die Basistabelle nur
+// noch admin/vermittler ("vermittler liest anfragen"), leser bekämen hier
+// still eine leere Liste statt eines Fehlers. Das ist hier unkritisch: diese
+// Funktion wird ausschliesslich über berechneUndSpeichereMatchesFuerObjekt
+// (matches.ts) aufgerufen, und deren einzige vorgesehenen Aufrufer
+// (objektAnlegen/objektAktualisieren, Task 55) rufen vorher legeObjektAn
+// bzw. aktualisiereObjekt auf -- beide schlagen für leser bereits durch RLS
+// auf objekte fehl (Insert-Policy wirft direkt, aktualisiereObjekt wirft
+// seit dem Fix oben explizit), sodass diese Funktion einen leser nie
+// erreicht. Sollte künftig ein weiterer, leser-erreichbarer Aufrufpfad
+// entstehen, müsste hier dasselbe maybeSingle-Muster wie bei
+// aktualisiereAnfrage erwogen werden.
+export async function holeOffeneAnfragen(): Promise<AnfrageRow[]> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase.from("anfragen").select("*").eq("status", "offen")
+  if (error) throw error
+  return data
+}
+
 export function zuAnfrageDomain(row: AnfrageRow): Anfrage {
   return {
     id: row.id,

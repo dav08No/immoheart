@@ -1,7 +1,7 @@
 import { erstelleServerClient } from "@/lib/supabase/server"
 import { berechneMatch } from "@/lib/matching"
-import { holeAnfrage, zuAnfrageDomain } from "@/lib/queries/anfragen"
-import { holeVerfuegbareObjekte, zuObjektDomain } from "@/lib/queries/objekte"
+import { holeAnfrage, holeOffeneAnfragen, zuAnfrageDomain } from "@/lib/queries/anfragen"
+import { holeObjekt, holeVerfuegbareObjekte, zuObjektDomain } from "@/lib/queries/objekte"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import type { Kriterium } from "@/types"
 
@@ -34,6 +34,46 @@ export async function berechneUndSpeichereMatchesFuerAnfrage(anfrageId: string):
 
   for (const objektRow of objektRows) {
     const objekt = zuObjektDomain(objektRow)
+    const match = berechneMatch(anfrage, objekt)
+    if (match) {
+      const { error } = await supabase
+        .from("matches")
+        .upsert(
+          { anfrage_id: anfrage.id, objekt_id: objekt.id, score: match.score, kriterien: match.kriterien, hinweis: match.hinweis },
+          { onConflict: "anfrage_id,objekt_id" }
+        )
+      if (error) throw error
+    } else {
+      const { error } = await supabase
+        .from("matches")
+        .delete()
+        .eq("anfrage_id", anfrage.id)
+        .eq("objekt_id", objekt.id)
+        .eq("status", "neu")
+      if (error) throw error
+    }
+  }
+}
+
+// Gegenrichtung zu berechneUndSpeichereMatchesFuerAnfrage oben: läuft, wenn
+// ein Objekt neu angelegt oder geändert wird, gegen ALLE offenen Anfragen
+// (auch monatealte), nicht nur gegen die zuletzt bearbeitete. Bewusst eine
+// zweite, fast identische Funktion statt einer gemeinsamen Abstraktion:
+// erst beim dritten ähnlichen Fall würde sich das Zusammenfassen lohnen
+// (README-Coderegel "keine Abstraktion vor der dritten Wiederholung").
+// Upsert/Delete-Semantik (Status bleibt bei bereits gesendeten/verworfenen
+// Matches unverändert, nur status='neu' wird bei zu schwachem Score
+// entfernt) ist identisch zur Anfrage-Richtung, siehe deren Kommentar oben.
+export async function berechneUndSpeichereMatchesFuerObjekt(objektId: string): Promise<void> {
+  const [objektRow, anfrageRows] = await Promise.all([holeObjekt(objektId), holeOffeneAnfragen()])
+  // Kein Fehler, sondern ein no-op -- siehe die analoge Begründung bei
+  // berechneUndSpeichereMatchesFuerAnfrage oben.
+  if (!objektRow) return
+  const objekt = zuObjektDomain(objektRow)
+  const supabase = await erstelleServerClient()
+
+  for (const anfrageRow of anfrageRows) {
+    const anfrage = zuAnfrageDomain(anfrageRow)
     const match = berechneMatch(anfrage, objekt)
     if (match) {
       const { error } = await supabase
