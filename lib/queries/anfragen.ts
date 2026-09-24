@@ -80,6 +80,28 @@ export async function holeOffeneAnfragen(): Promise<AnfrageRow[]> {
   return data
 }
 
+// Reine Zeitstempel für den Bestandspuls auf der Matches-Startseite (Task 60)
+// -- keine Vertraulichkeitsfrage, da weder Firma noch Budget in der
+// Selektion stehen: `letzter_kontakt` verrät für sich genommen nichts über
+// eine bestimmte Firma (nur die Verteilung aller offenen Anfragen fliesst in
+// den Puls ein, siehe lib/puls.ts). Bewusst die Basistabelle statt
+// anfragen_sichtbar, analog zu holeOffeneAnfragen oben -- mit derselben dort
+// dokumentierten Einschränkung: seit 20260923033041_rls_fix_base_table_read.sql
+// liest die Basistabelle nur admin/vermittler, ein leser bekäme hier still
+// eine leere Liste statt eines Fehlers. Anders als holeOffeneAnfragen (nur
+// intern aus dem Rematch-Pfad erreichbar) wird diese Funktion jedoch direkt
+// von der für alle Rollen sichtbaren Matches-Startseite aufgerufen -- ein
+// leser sähe dort also einen leeren/fehlenden Bestandspuls statt eines
+// Fehlers. Das ist kein Vertraulichkeits-Leck (die Richtung des fehlenden
+// Zugriffs ist "zu wenig", nicht "zu viel" sehen), aber ein UI-seitiger Fall,
+// den Task 65 (MatchesAnsicht) beim Rendern für leser berücksichtigen muss.
+export async function holeOffenePulsWerte(): Promise<Date[]> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase.from("anfragen").select("letzter_kontakt").eq("status", "offen")
+  if (error) throw error
+  return data.map((row) => new Date(row.letzter_kontakt))
+}
+
 export function zuAnfrageDomain(row: AnfrageRow): Anfrage {
   return {
     id: row.id,

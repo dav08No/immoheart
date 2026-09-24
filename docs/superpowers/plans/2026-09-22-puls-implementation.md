@@ -6408,14 +6408,54 @@ export async function holeOffenePulsWerte(): Promise<Date[]> {
 }
 ```
 
+**Proaktiver Fund (vor der formalen Whole-Branch-Review), analog zum Kritischer Fund in
+Task 53**: der obige Entwurf für `holeNeueMatches` (Step 1) selektiert `matches.*` — inklusive
+der rohen, RLS-unbeschränkten `kriterien`-Spalte (`"eingeloggt liest matches"`,
+`20260922195659_rls.sql`, hat anders als `anfragen_sichtbar` keine vertraulich/Rollen-Einschränkung)
+— für JEDEN `status='neu'`-Match im gesamten System und gibt sie ungefiltert als `NeuerMatch[]`
+zurück. Anders als bei Task 53s Fund (nur über den gezielt geöffneten Drawer einer einzelnen
+Anfrage erreichbar) landet dieser Rückgabewert direkt auf der für **jede** eingeloggte Rolle
+sichtbaren Matches-Startseite: ein `leser` hätte beim blossen Laden von `/` das reale
+`budget_pro_m2` jeder vertraulichen Anfrage im Klartext gesehen (über das Preis-Kriterium jedes
+betroffenen Matches), obwohl dieselbe Anfrage über `anfragen_sichtbar` korrekt maskiert wäre —
+eine grössere Angriffsfläche als der ursprüngliche Fund. Der Planungskommentar zu dieser Funktion
+(oben, vor Step 1) deckt nur die Firmennamen-Maskierung ab; die `kriterien`-Maskierung fehlte
+dort vollständig.
+
+Fix: dieselbe Maskierungslogik wie in `holeBesterMatchFuerAnfrage` (Task 53), in eine gemeinsame
+Hilfsfunktion `maskierePreisFuerVertraulicheAnfrage` (`lib/queries/matches.ts`) extrahiert und
+in `holeNeueMatches` pro Zeile angewendet (statt einmalig, da diese Funktion ein Array über
+mehrere Anfragen liefert). Für jede Match-Zeile, deren zugehörige Anfrage laut
+`anfragen_sichtbar.vertraulich` vertraulich ist UND deren aufrufende Rolle `leser` ist, wird
+`kriterien[].gesucht` des Preis-Eintrags auf `"—"` sowie dessen `status` auf `"teilweise"`
+gesetzt, und `hinweis` bei Übereinstimmung mit einem der vier Preis-spezifischen Texte generisch
+ersetzt — identisch zur in Task 53 dokumentierten Fix-Welle-2-Begründung (Preis-`status`/`hinweis`
+grenzen das reale Budget sonst indirekt über den unmaskierten Objekt-Preis ein). Zwei Aufrufer
+identischer Logik auf identischer Datenform rechtfertigen die Extraktion trotz der
+README-Coderegel "keine Abstraktion vor der dritten Wiederholung": bei sicherheitsrelevantem
+Code wiegt das Risiko eines bei künftigen Änderungen vergessenen Kopierpfads schwerer als die
+Regel. Die Firmennamen-Maskierung aus dem obigen Planungskommentar bleibt unverändert korrekt
+(bereits über `anfragen_sichtbar` gelöst, die `firma_id` für `leser`+`vertraulich` selbst schon
+zu `null` maskiert).
+
+`holeOffenePulsWerte` (Step 2) wurde gegengeprüft: die Selektion enthält ausschliesslich
+`letzter_kontakt` (kein Firmen- oder Budgetbezug), die Begründung "keine Vertraulichkeitsfrage"
+im Planungskommentar oben hält. Separat notiert, aber kein Fix in diesem Task: die Funktion
+liest wie `holeOffeneAnfragen` die Basistabelle `anfragen`, die seit
+`20260923033041_rls_fix_base_table_read.sql` nur admin/vermittler liest — ein `leser` bekäme
+hier still eine leere Liste statt eines Fehlers. Anders als bei `holeOffeneAnfragen` (nur intern
+aus dem Rematch-Pfad erreichbar) ist diese Funktion aber direkt von der für alle Rollen
+sichtbaren Matches-Startseite aus erreichbar; das ist kein Vertraulichkeits-Leck (die fehlende
+Sicht geht in Richtung "zu wenig", nicht "zu viel"), aber ein UI-Aspekt, den Task 65
+(`MatchesAnsicht`) beim Rendern für `leser` berücksichtigen sollte.
+
 - [ ] **Step 3: Typecheck und Commit**
 
 Run: `npx tsc --noEmit`
 
 ```bash
-git checkout -b feature/m8-matches
 git add lib/queries/matches.ts lib/queries/anfragen.ts
-git commit -m "feat: Query-Funktionen fuer die Matches-Startseite ohne Vertraulichkeits-Leck"
+git commit -m "feat: Query-Funktionen fuer die Matches-Startseite inkl. kriterien-Maskierung fuer vertrauliche Anfragen"
 ```
 
 ---

@@ -178,6 +178,30 @@ const PREIS_HINWEISE = new Set([
   "Preis liegt leicht über dem genannten Budget.",
 ])
 
+// Gemeinsame Maskierungslogik für holeBesterMatchFuerAnfrage (unten) und
+// holeNeueMatches (Task 60): beide lesen dieselbe kriterien/hinweis-Form aus
+// derselben ungefilterten `matches`-Zeile und müssen für einen leser, der
+// eine vertrauliche Anfrage betrachtet, identisch maskieren -- siehe den
+// "Kritischer Fund"-Kommentar oben für die vollständige Begründung (warum
+// `status`/`hinweis` zusätzlich zu `gesucht` betroffen sind). Zwei reale
+// Aufrufer mit exakt identischer Logik auf derselben Datenform ist laut
+// README-Coderegel ("keine Abstraktion vor der dritten Wiederholung") schon
+// die zweite Wiederholung, nicht die dritte -- hier aber bewusst trotzdem
+// extrahiert, weil es sich um sicherheitsrelevanten Code handelt: zwei
+// Kopien derselben Maskierung würden bei einer künftigen Änderung (z.B. ein
+// fünfter PREIS_HINWEISE-Text) leicht auseinanderlaufen, und genau ein
+// vergessener Kopierpfad ist die Art Fehler, die diese Funktion verhindern soll.
+function maskierePreisFuerVertraulicheAnfrage(
+  kriterien: Kriterium[],
+  hinweis: string
+): { kriterien: Kriterium[]; hinweis: string } {
+  const maskierteKriterien = kriterien.map((k) =>
+    k.kriterium === "Preis" ? { ...k, gesucht: BUDGET_MASKIERT, status: "teilweise" as const } : k
+  )
+  const maskierterHinweis = PREIS_HINWEISE.has(hinweis) ? BUDGET_HINWEIS_MASKIERT : hinweis
+  return { kriterien: maskierteKriterien, hinweis: maskierterHinweis }
+}
+
 export async function holeBesterMatchFuerAnfrage(anfrageId: string) {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
@@ -197,12 +221,98 @@ export async function holeBesterMatchFuerAnfrage(anfrageId: string) {
   if (anfrageError) throw anfrageError
 
   if (profil.rolle === "leser" && anfrageSichtbar?.vertraulich) {
-    const kriterien = (data.kriterien as unknown as Kriterium[]).map((k) =>
-      k.kriterium === "Preis" ? { ...k, gesucht: BUDGET_MASKIERT, status: "teilweise" as const } : k
-    )
-    const hinweis = PREIS_HINWEISE.has(data.hinweis) ? BUDGET_HINWEIS_MASKIERT : data.hinweis
+    const { kriterien, hinweis } = maskierePreisFuerVertraulicheAnfrage(data.kriterien as unknown as Kriterium[], data.hinweis)
     return { ...data, kriterien, hinweis }
   }
 
   return data
+}
+
+// Task 60 (Matches-Startseite): proaktiv vor der formalen Whole-Branch-Review
+// gefundener und behobener Fund derselben Schwere-Klasse wie der
+// "Kritischer Fund (M6 Whole-Branch-Review)"-Kommentar oben, hier sogar mit
+// grösserer Reichweite. Der Planungsentwurf für diese Funktion selektierte
+// `matches.*` (inkl. der rohen, RLS-unbeschränkten kriterien-Spalte) für
+// JEDEN status='neu'-Match im GESAMTEN System und gab ihn ungefiltert als
+// NeuerMatch[] zurück -- die Dashboard-Startseite, die JEDE eingeloggte
+// Rolle inkl. leser beim Login zu sehen bekommt. Ohne Maskierung hätte ein
+// leser damit beim blossen Laden von "/" das echte Budget jeder vertraulichen
+// Anfrage im Klartext gesehen (über das Preis-Kriterium jedes betroffenen
+// Matches) -- eine grössere Angriffsfläche als der ursprüngliche M6-Fund, der
+// noch das gezielte Öffnen eines einzelnen Anfrage-Drawers voraussetzte. Der
+// Planungskommentar zu dieser Funktion deckt nur die Firmennamen-Maskierung
+// ab (über anfragen_sichtbar statt eines rohen anfragen(firmen(name))-Embeds);
+// die kriterien-Maskierung fehlte dort vollständig und wird hier nachgerüstet,
+// mit derselben maskierePreisFuerVertraulicheAnfrage-Logik wie oben, pro Zeile
+// angewendet (statt einmalig wie bei holeBesterMatchFuerAnfrage, da diese
+// Funktion ein Array über mehrere Anfragen liefert statt eines einzelnen
+// Matches).
+export type NeuerMatch = {
+  id: string
+  score: number
+  kriterien: Kriterium[]
+  hinweis: string
+  objekt: { titel: string; adresse: string; flaeche: number; preis_pro_m2: number | null; foto_url: string | null }
+  anfrage: { id: string; flaeche_min: number | null; flaeche_max: number | null; letzter_kontakt: string; vertraulich: boolean }
+  firma: { name: string; website: string | null } | null
+}
+
+export async function holeNeueMatches(): Promise<NeuerMatch[]> {
+  const supabase = await erstelleServerClient()
+  const { data: matchRows, error: matchError } = await supabase
+    .from("matches")
+    .select("*, objekte(titel, adresse, flaeche, preis_pro_m2, foto_url)")
+    .eq("status", "neu")
+    .order("score", { ascending: false })
+  if (matchError) throw matchError
+
+  const [profil, { data: anfragenData, error: anfragenError }, { data: firmenData, error: firmenError }] = await Promise.all([
+    holeEigenesProfil(),
+    supabase.from("anfragen_sichtbar").select("*"),
+    supabase.from("firmen").select("id, name, website"),
+  ])
+  if (anfragenError) throw anfragenError
+  if (firmenError) throw firmenError
+
+  const anfragenNachId = new Map(anfragenData.map((a) => [a.id, a]))
+  const firmenNachId = new Map(firmenData.map((f) => [f.id, f]))
+
+  return matchRows.flatMap((m) => {
+    const anfrage = anfragenNachId.get(m.anfrage_id)
+    // anfragen_sichtbar ist eine View: alle Spalten sind laut generiertem Typ
+    // nullable, obwohl id/letzter_kontakt/vertraulich in der Basistabelle NOT
+    // NULL sind (gleiches Muster wie in AnfragenTabelle.tsx/AnfrageDetail.tsx
+    // dokumentiert). Eine Zeile ohne id/letzter_kontakt kann es praktisch nicht
+    // geben; defensiv überspringen statt wegzucasten.
+    if (!anfrage || anfrage.id === null || anfrage.letzter_kontakt === null || !m.objekte) return []
+    const firma = anfrage.firma_id ? (firmenNachId.get(anfrage.firma_id) ?? null) : null
+
+    // vertraulich ist selbst nicht geheim (die View gibt das Flag für jede
+    // Rolle unmaskiert zurück, siehe supabase/migrations/20260922195659_rls.sql)
+    // -- nur budget_pro_m2/firma_id werden für leser+vertraulich in der View
+    // bereits zu null maskiert. Was die View NICHT maskiert, ist die rohe
+    // matches.kriterien-Spalte weiter unten -- deshalb hier zusätzlich maskieren.
+    const istVertraulichFuerLeser = profil.rolle === "leser" && anfrage.vertraulich === true
+    const { kriterien, hinweis } = istVertraulichFuerLeser
+      ? maskierePreisFuerVertraulicheAnfrage(m.kriterien as unknown as Kriterium[], m.hinweis)
+      : { kriterien: m.kriterien as Kriterium[], hinweis: m.hinweis }
+
+    return [
+      {
+        id: m.id,
+        score: m.score,
+        kriterien,
+        hinweis,
+        objekt: m.objekte,
+        anfrage: {
+          id: anfrage.id,
+          flaeche_min: anfrage.flaeche_min,
+          flaeche_max: anfrage.flaeche_max,
+          letzter_kontakt: anfrage.letzter_kontakt,
+          vertraulich: anfrage.vertraulich ?? false,
+        },
+        firma,
+      },
+    ]
+  })
 }
