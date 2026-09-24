@@ -5890,6 +5890,22 @@ git commit -m "feat: objektAnlegen und objektAktualisieren mit Rematching gegen 
 
 ### Task 56: `ObjektRaster`
 
+**Vorbehalte aus Task 54/55s Review, hier zu berücksichtigen**: (1)
+`zaehleMatchesFuerObjekt` (Task 54) zählt ALLE Matches unabhängig vom
+`status` (auch `verworfen`/`gesendet`), nicht nur `neu` -- falls diese Task
+die Zahl als "Treffer"-Badge im Raster zeigt, bewusst entscheiden, ob das
+gewünscht ist (Gesamt-Historie) oder ob ein `status='neu'`-Filter nötig ist
+(nur aktionable Treffer), analog zur sorgfältigen Status-Behandlung auf der
+Anfrage-Richtung. (2) `berechneUndSpeichereMatchesFuerObjekt` (Task 54)
+prüft `objekt.status` nirgends -- ein Objekt mit Status `reserviert`/
+`vermietet` würde bei einem `objektAktualisieren`-Aufruf trotzdem reale
+Match-Zeilen erzeugen. Heute unschädlich (nichts kann ein Objekt auf einen
+anderen Status als das Default `verfuegbar` setzen, da bisher keine
+UI/kein Pfad existiert), aber sobald diese oder eine spätere Task
+Status-Änderungen am Objekt ermöglicht, bewusst entscheiden, ob
+`berechneUndSpeichereMatchesFuerObjekt` selbst auf `status='verfuegbar'`
+gaten sollte.
+
 **Files:**
 - Create: `components/objekte/ObjektRaster.tsx`
 
@@ -5955,6 +5971,45 @@ export function ObjektRaster({
   )
 }
 ```
+
+**Umgesetzte Abweichungen vom Code-Block oben (Entscheidungen zu den beiden
+Vorbehalten aus Task 54/55s Review):**
+
+1. **`treffer`-Semantik bewusst als status='neu'-gefiltert festgelegt, nicht
+   als Gesamt-Historie.** `zaehleMatchesFuerObjekt` (Task 54) zählt ungefiltert
+   über `neu`/`gesendet`/`verworfen`; würde diese Komponente diese rohe Zahl
+   unkommentiert als "N Treffer" zeigen, wäre das Badge für eine Vermittlerin,
+   die das Raster nach offenen Handlungsmöglichkeiten überfliegt, irreführend
+   -- die Zahl bliebe hoch bzw. wüchse nur monoton, selbst wenn längst nichts
+   mehr offen ist ("12 Treffer" bei tatsächlich 0 unbearbeiteten). Als
+   "grobe Aktivitäts-Anzeige" wäre die Gesamt-Historie zwar auch ein
+   plausibles Signal, aber für die primäre Nutzung dieses Rasters (schnell
+   erkennen, wo noch etwas zu tun ist) ist der aktionable Anteil das
+   nützlichere Signal, deshalb die bewusste Entscheidung dafür. Die Komponente
+   selbst bekommt nur die fertige Zahl als `Record<string, number>`-Prop, kann
+   also nicht selbst filtern -- die Beschriftung wurde deshalb von "Treffer"
+   zu "neue Treffer" präzisiert, und ein Doc-Comment am Prop hält fest, dass
+   der künftige Aufrufer (voraussichtlich Task 58, `ObjekteAnsicht`) hier eine
+   status='neu'-gefilterte Zählung liefern muss statt `zaehleMatchesFuerObjekt`
+   direkt durchzureichen -- analog zu der Erwartung, die `AnfrageDetail`
+   (Task 50) für `AnfragenAnsicht` (Task 52) hinterlassen hat.
+2. **`status` wird jetzt visuell ausgewertet**, obwohl der Code-Block oben das
+   Feld nie liest: ein Status-Chip (`Verfügbar`/`Reserviert`/`Vermietet`,
+   analog zur bestehenden `Chip`-Komponente aus `AnfragenTabelle`) pro Karte
+   plus eine leichte Abblendung (`opacity-70`) für nicht-`verfuegbar`-Objekte.
+   `berechneUndSpeichereMatchesFuerObjekt` selbst wird hier NICHT angepasst
+   (Query-Layer-Bedenken, außerhalb des Scopes dieser UI-Task) -- heute ist
+   das ohnehin unschädlich, da kein Pfad ein Objekt auf einen anderen Status
+   als `verfuegbar` setzen kann. Aber sobald Status-Änderungen an Objekten
+   möglich sind, wäre ein Raster, das jedes Objekt identisch zeigt, aktiv
+   irreführend: eine Vermittlerin könnte ein bereits vermietetes Objekt für
+   verfügbar halten. Da `objekte` das `status`-Feld schon heute trägt und die
+   Unterscheidung rein clientseitig/darstellerisch ist (kein neuer Pfad, keine
+   neue Query), wurde sie schon jetzt ergänzt statt auf die noch nicht
+   existierende Status-Änderungs-UI verschoben.
+3. **`rel="noopener"` zu `rel="noopener noreferrer"` ergänzt** beim
+   Maps-Link, gleiches Lint-Erfordernis (`react/jsx-no-target-blank`) wie in
+   `AnfragenTabelle` (Task 49).
 
 - [ ] **Step 2: Typecheck und Commit**
 
@@ -6129,6 +6184,49 @@ export default async function ObjektePage() {
 }
 ```
 
+**Umgesetzte Abweichungen vom Code-Block oben (Auflösung der beiden Vorbehalte
+aus Task 56/57s Review):**
+
+1. **`zaehleNeueMatchesFuerObjekt` statt `zaehleMatchesFuerObjekt`.**
+   `ObjektRaster` (Task 56) hält per eigenem JSDoc-Kommentar fest, dass sein
+   `treffer`-Prop status='neu'-gefiltert erwartet wird ("neue Treffer"-Badge),
+   nicht die rohe Gesamtzählung über `neu`/`gesendet`/`verworfen` aus
+   `zaehleMatchesFuerObjekt` (Task 54). `lib/queries/objekte.ts` bekommt daher
+   eine eigene `zaehleNeueMatchesFuerObjekt(objektId)` (gleiches
+   `count: "exact", head: true`-Muster, zusätzlich `.eq("status", "neu")`)
+   statt eines optionalen Status-Parameters auf der bestehenden Funktion --
+   `zaehleMatchesFuerObjekt` hat mit `berechneUndSpeichereMatchesFuerObjekt`
+   (`lib/queries/matches.ts`, prüft dort ob überhaupt bereits Matches
+   existieren) bereits einen Aufrufer, der bewusst ungefiltert zählen will,
+   und die beiden Zählungen bedienen unterschiedliche Zwecke. `page.tsx` ruft
+   diese neue Funktion statt der aus dem Code-Block oben auf.
+2. **`key={bearbeitetesObjekt?.id ?? "neu"}` auf `<ObjektFormular>`**, anders
+   als der ungekeyte Aufruf im Code-Block oben. `ObjektFormular` (Task 57)
+   dokumentiert in einem eigenen Kommentar, dass es intern einen
+   `useEffect`+`objektIdRef`-Guard trägt, der genau für den Fall gedacht ist,
+   dass dieser Aufruf ohne `key` erfolgt (der `Drawer` bleibt beim Schliessen
+   gemountet, siehe `Drawer.tsx`) -- ohne Reset würden nach dem Bearbeiten von
+   Objekt A ein Wechsel zu Objekt B oder zu "Objekt anlegen" weiterhin A's
+   Feldwerte zeigen. Analog zu `EntwurfDetail` (M5) und `AnfrageDetail` (M6)
+   ist an dieser Stelle aber `key`-basiertes Remounten die etablierte primäre
+   Verteidigung dieses Projekts, nicht ein rein interner Guard -- der `key`
+   erzwingt einen vollständigen Unmount/Mount-Zyklus bei jedem
+   Karte-zu-Karte- oder Karte-zu-"neu"-Wechsel. Der interne Guard in
+   `ObjektFormular` bleibt unverändert bestehen und wirkt jetzt als
+   Defense-in-Depth, falls `ObjektFormular` künftig von einer Stelle ohne
+   `key` aufgerufen wird.
+3. **Kein zusätzlicher `modus`-Stale-Guard in `ObjekteAnsicht` selbst**,
+   anders als `ausgewaehlteIdRef` in `AnfragenAnsicht` (Task 52) oder
+   `nachrichtIdRef` in `PostfachAnsicht`. Jene Guards schützen gegen
+   veraltete Antworten eines eigenen asynchronen `fetch` (z.B.
+   `/api/anfragen/[id]/detail`), das nach einem schnellen Auswahlwechsel
+   verspätet zurückkommt. `ObjekteAnsicht` lädt selbst nichts nach -- `objekte`
+   und `treffer` kommen fertig als Props von der Server Component, und
+   `bearbeitetesObjekt` wird synchron aus `objekte` abgeleitet. Es gibt hier
+   also keinen In-Flight-Request, dessen verspätete Antwort einen falschen
+   State überschreiben könnte; der einzige Fall mit "altem" Zustand ist exakt
+   der, den `key` auf `ObjektFormular` (Punkt 2) bereits löst.
+
 - [ ] **Step 3: Manuell prüfen — das zentrale Abnahmekriterium des Projekts**
 
 Run: `npm run dev`. Vor dem Test im Supabase SQL-Editor eine sehr alte offene Anfrage sicherstellen: `update anfragen set letzter_kontakt = now() - interval '96 days' where id = '33333333-3333-3333-3333-333333333308';` (die Nordwest-Metallbau-Anfrage aus dem Seed, 96 Tage still).
@@ -6147,6 +6245,74 @@ git commit -m "feat: Objekte-Seite zusammensetzen"
 ---
 
 ### Task 59: Meilenstein M7 abschliessen
+
+**Kritischer Fund (M7 Whole-Branch-Review), analog zu Task 46s `nachrichten`-Fund und
+Task 53s `matches.kriterien`-Fund**: `berechneUndSpeichereMatchesFuerObjekt`
+(`lib/queries/matches.ts`, Task 54) holte das Objekt ungefiltert über `holeObjekt(id)`
+und matchte es gegen jede `status='offen'`-Anfrage aus `holeOffeneAnfragen()`, ohne je
+`objekt.status` zu prüfen — weder `berechneMatch` noch `zuObjektDomain` lasen diesen
+Wert. Task 54/55s eigener Review stufte das noch als "aktuell unerreichbar" ein, weil
+nichts ein Objekt mit einem anderen Status als `verfuegbar` anlegen oder ändern konnte.
+Task 57s `ObjektFormular` öffnete genau diesen Pfad: ein Status-`<select>` im
+Bearbeiten-Modus, dessen `absenden()` im `werte`-Objekt **jeder** Speicherung
+unbedingt auch `flaeche`/`ort`/`nutzung`/`verfuegbar_ab` mitschickt (alle
+match-relevant) — `objektAktualisieren` (`app/actions/objekte.ts`) sieht dadurch bei
+jeder Bearbeitung ein match-relevantes Feld als "angefasst" und löst immer den vollen
+Rematch aus, unabhängig davon, was die Vermittlerin tatsächlich geändert hat. Konkret:
+eine Vermittlerin markiert ein Objekt "Vermietet" (einzige Absicht) → voller
+Rematch-Lauf → frische `status='neu'`-Matches zwischen dem jetzt nicht mehr
+verfügbaren Objekt und jeder offenen Anfrage — sichtbar als "Bester Treffer" einer
+Anfrage (`holeBesterMatchFuerAnfrage`, M6, prüft `objekt.status` ebenfalls nicht) und
+im `ObjektRaster`-Badge "N neue Treffer" auf einer Karte, die gleichzeitig
+gedimmt/"Vermietet" beschriftet ist. Das bricht zudem genau die Cross-Direction-
+Konsistenz, die der M6-Review geprüft hatte: `holeVerfuegbareObjekte()`
+(`lib/queries/objekte.ts`, Anfrage→Objekte-Richtung) filtert `.eq("status",
+"verfuegbar")`, ein Anfrage-getriebener Rematch besucht ein vermietetes Objekt also
+nie — derselbe `berechneMatch`, aber ein abweichendes Ergebnis je nachdem, welche
+Seite den Rematch auslöst.
+
+Fix in `berechneUndSpeichereMatchesFuerObjekt` selbst (nicht in `objektAktualisieren`
+oder `ObjektFormular`): direkt nach `holeObjekt` ein Gate `if (objektRow.status !==
+"verfuegbar")`, das die Anfrage-Schleife gar nicht erst betritt — spiegelt
+`holeVerfuegbareObjekte()`s Filter aus der Gegenrichtung. Zusätzlich werden in diesem
+Zweig die **bestehenden** `status='neu'`-Matches des Objekts gelöscht (`.eq("objekt_id",
+objektId).eq("status", "neu")`), nicht nur keine neuen mehr angelegt: bewusste
+Entscheidung, kein Scope-Creep. Begründung: ohne diese Aufräumung blieben Matches, die
+entstanden, während das Objekt noch `verfuegbar` war, nach einem Statuswechsel
+unbegrenzt liegen — die Anfrage-Richtung besucht ein nicht mehr verfügbares Objekt nie
+wieder (es fällt aus `holeVerfuegbareObjekte()`s Schleife, statt besucht und
+aufgeräumt zu werden), und `holeBesterMatchFuerAnfrage` filtert selbst nicht nach
+Objekt-Status. Eine solche Altzeile hätte also exakt dasselbe Symptom (vermietetes
+Objekt als "Bester Treffer") weiter reproduziert, nur einmalig statt laufend — das
+reine Gate allein hätte den gemeldeten Fund also nicht vollständig geschlossen. Wie
+beim score-basierten Löschzweig in derselben Funktion bleibt das strikt auf
+`status='neu'` beschränkt: `gesendet`/`verworfen`-Zeilen werden nie angetastet,
+konsistent mit der milestone-weiten Regel "keine bereits bearbeiteten Matches
+zerstören". Als Folge muss `status` jetzt auch in `MATCH_RELEVANTE_FELDER`
+(`app/actions/objekte.ts`) stehen — vorher bewusst ausgeschlossen mit der (nach diesem
+Fix nicht mehr zutreffenden) Begründung, ein Statuswechsel allein könne das Ergebnis
+nicht verändern; nach dem Fix gilt das Gegenteil, ein reiner Statuswechsel muss die
+Aufräumung auslösen können, auch falls kein anderes Feld sich ändert.
+
+**Bewusst nicht mitgelöst**: `ObjektFormular.absenden()` bündelt weiterhin
+unbedingt alle match-relevanten Felder in jedes Bearbeiten-Speichern, unabhängig davon,
+was sich tatsächlich geändert hat — der Mechanismus, der Task 55s bedingtes
+Rematch-Gating in der Praxis für jedes Bearbeiten-Speichern aushebelt (nicht falsch für
+sich allein, der Rematch ist idempotent, und nicht ursächlich für den oben behobenen
+Fund — das Gate in `berechneUndSpeichereMatchesFuerObjekt` schliesst diesen unabhängig
+vom Bündelungsverhalten). Eine Änderung, die im `werte`-Objekt nur tatsächlich
+geänderte Felder gegenüber der `objekt`-Prop mitschickt, wäre kein trivialer
+Ein-Zeilen-Fix: sie müsste jedes der neun Formularfelder einzeln gegen den
+Ausgangswert vergleichen (inkl. Typkonvertierung wie `Number(flaeche)` vs.
+`objekt.flaeche` und `preis ? Number(preis) : null` vs. `objekt.preis_pro_m2`), ohne
+den bestehenden Anlegen-Zweig (dort ist `objekt` `undefined`, alle Felder müssen immer
+mitgeschickt werden) oder den Ref-basierten Staleness-Schutz/Reset aus dem
+Task-57-Kommentar zu beschädigen. Ein Vergleichsfehler in nur einem Feld würde dort
+still einen tatsächlich geänderten Wert aus dem Update-Payload fallen lassen — ein
+Datenverlust-Bug, der schwerer wiegt als die behobene unnötige Rematch-Last. Für diese
+eine erlaubte Fix-Welle nach dem finalen Whole-Branch-Review bewusst nicht angefasst;
+als eigener Folge-Task vorgemerkt, falls das Gating in der Praxis relevant werden
+sollte (z. B. bei spürbarer Rematch-Latenz auf einem grossen Anfragen-Bestand).
 
 - [ ] **Step 1: Vollständigen Check laufen lassen**
 
