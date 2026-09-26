@@ -56,10 +56,10 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
       </nav>
 
       <div className="flex flex-col gap-0.5 border-t border-line p-2.5">
-        <a href="/" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-2 hover:bg-surface-2">
+        <Link href="/" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-2 hover:bg-surface-2">
           <ExternalLink className="size-4 opacity-80" aria-hidden />
           Zur Website
-        </a>
+        </Link>
         <form action="/abmelden" method="post">
           <button
             type="submit"

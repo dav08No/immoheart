@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 
@@ -66,9 +67,9 @@ export default function LoginPage() {
         >
           {laedt ? "…" : "Anmelden"}
         </button>
-        <a href="/" className="text-center text-sm text-ink-2 hover:text-brand">
+        <Link href="/" className="text-center text-sm text-ink-2 hover:text-brand">
           ← Zur Website
-        </a>
+        </Link>
       </form>
     </main>
   )
