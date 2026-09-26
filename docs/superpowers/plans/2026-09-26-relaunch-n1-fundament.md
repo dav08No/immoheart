@@ -22,7 +22,7 @@
 - `lib/matching.ts`, `lib/puls.ts` und ihre Tests bleiben unverändert.
 - Supabase-Projekt `rvxlvrrpltmuzuomdwdf`. Preview und Production teilen die Datenbank.
 - Jeder Commit endet mit `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Arbeitsbranch: `feature/n1-fundament` (von `main`). Kein Merge auf `main` vor bestandenem Live-Test (Task 11).
+- Arbeitsbranch: `feature/n1-fundament` (von `design/relaunch-spec`). Kein Merge auf `main` vor bestandenem Live-Test (Task 11).
 
 ## Dateiübersicht
 
@@ -64,8 +64,10 @@
 
 - [ ] **Step 1: Branch anlegen**
 
+Vom Spec-Branch abzweigen, damit Spec und Plan im Feature-Branch liegen und mit N1 auf `main` kommen:
+
 ```bash
-git checkout main && git pull --ff-only
+git checkout design/relaunch-spec && git pull --ff-only
 git checkout -b feature/n1-fundament
 ```
 
