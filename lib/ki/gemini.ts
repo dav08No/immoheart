@@ -25,9 +25,10 @@ const VORUEBERGEHENDE_STATUS = [429, 500, 502, 503, 504]
 function holeStatus(fehler: unknown): number | undefined {
   if (typeof fehler !== "object" || fehler === null) return undefined
   const objekt = fehler as Record<string, unknown>
-  if (typeof objekt.status === "number") return objekt.status
-  if (typeof objekt.code === "number") return objekt.code
-  return undefined
+  // @google/genai's ApiError setzt ausschliesslich `status` (siehe
+  // node_modules/@google/genai/dist/genai.d.ts), kein `code` -- kein Fallback
+  // auf ein Feld, das dieser Client nie liefert.
+  return typeof objekt.status === "number" ? objekt.status : undefined
 }
 
 // Vorübergehende Fehler (Überlastung, Gateway-Probleme) rechtfertigen einen
@@ -45,10 +46,14 @@ export function istModellNichtVerfuegbar(fehler: unknown): boolean {
   return holeStatus(fehler) === 404
 }
 
-async function erzeugeStandard(modell: string, prompt: string): Promise<string | undefined> {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  const antwort = await client.models.generateContent({ model: modell, contents: prompt })
-  return antwort.text
+// Ein Client pro generiereText-Aufruf statt pro Versuch: der Client hält
+// keinen Zustand, der zwischen Versuchen erneuert werden müsste, und ein
+// einziger reicht für alle Modelle/Wiederholungen dieses Aufrufs.
+function baueErzeugeStandard(client: GoogleGenAI): (modell: string, prompt: string) => Promise<string | undefined> {
+  return async (modell, prompt) => {
+    const antwort = await client.models.generateContent({ model: modell, contents: prompt })
+    return antwort.text
+  }
 }
 
 function warteStandard(ms: number): Promise<void> {
@@ -62,14 +67,20 @@ export type GeneriereTextOptionen = {
 
 export async function generiereText(
   prompt: string,
-  { erzeuge = erzeugeStandard, warte = warteStandard }: GeneriereTextOptionen = {}
+  { erzeuge, warte = warteStandard }: GeneriereTextOptionen = {}
 ): Promise<string> {
+  const aufruf = erzeuge ?? baueErzeugeStandard(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }))
   let letzterFehler: unknown
 
   for (const modell of MODELLE) {
     for (let versuch = 0; versuch < VERSUCHE_PRO_MODELL; versuch++) {
       try {
-        const text = await erzeuge(modell, prompt)
+        const text = await aufruf(modell, prompt)
+        // Eine leere Antwort hat keinen HTTP-Status, gilt also weder als
+        // vorübergehend noch als "Modell nicht verfügbar" -- sie wird unten
+        // sofort geworfen, bewusst ohne Versuch auf dem Ersatzmodell: ein
+        // leerer Text deutet auf ein Prompt-/Antwortproblem hin, nicht auf
+        // eine Kapazitätsgrenze des Modells.
         if (!text) throw new Error("Unerwartete Antwort der KI")
         return text
       } catch (fehler) {
