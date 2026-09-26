@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
@@ -84,7 +85,7 @@
 
   --radius-card: 10px;
   --font-sans: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-display: var(--font-fraunces, Georgia), serif;
 }
 
 @layer base {
