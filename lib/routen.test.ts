@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { istAdminPfad, loginZielNachAbmelden } from "./routen"
+import { istAdminPfad, linkTyp, loginHinweis, loginZielNachAbmelden } from "./routen"
 
 describe("istAdminPfad", () => {
   it("erkennt /admin und alles darunter", () => {
@@ -34,5 +34,26 @@ describe("loginZielNachAbmelden", () => {
     expect(loginZielNachAbmelden("INAKTIV")).toBe("/login")
     expect(loginZielNachAbmelden("inaktiv ")).toBe("/login")
     expect(loginZielNachAbmelden("<script>")).toBe("/login")
+  })
+})
+
+describe("linkTyp", () => {
+  it("akzeptiert nur invite und recovery exakt", () => {
+    expect(linkTyp("invite")).toBe("invite")
+    expect(linkTyp("recovery")).toBe("recovery")
+    expect(linkTyp("INVITE")).toBeNull()
+    expect(linkTyp("signup")).toBeNull()
+    expect(linkTyp(null)).toBeNull()
+  })
+})
+
+describe("loginHinweis", () => {
+  it("liefert nur feste Texte für bekannte Gründe", () => {
+    expect(loginHinweis("inaktiv")).toBe("Dieses Konto ist deaktiviert.")
+    expect(loginHinweis("link-ungueltig")).toBe("Der Link ist ungültig oder abgelaufen.")
+    expect(loginHinweis("passwort-gesetzt")).toBe("Passwort gespeichert. Bitte melden Sie sich an.")
+    expect(loginHinweis("<script>")).toBeNull()
+    expect(loginHinweis("toString")).toBeNull()
+    expect(loginHinweis(null)).toBeNull()
   })
 })

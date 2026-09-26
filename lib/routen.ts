@@ -17,3 +17,24 @@ export function istAdminPfad(pfad: string): boolean {
 export function loginZielNachAbmelden(grund: string | null): string {
   return grund === "inaktiv" ? `${LOGIN_PFAD}?grund=inaktiv` : LOGIN_PFAD
 }
+
+export const PASSWORT_SETZEN_PFAD = "/passwort-setzen"
+
+export type LinkTyp = "invite" | "recovery"
+
+export function linkTyp(wert: string | null): LinkTyp | null {
+  return wert === "invite" || wert === "recovery" ? wert : null
+}
+
+// Feste Texte statt Query-Inhalt: /login zeigt nie, was in der URL steht.
+// Object.hasOwn statt `in`, damit "toString" & Co. nicht als Schlüssel gelten.
+export const LOGIN_HINWEISE: Record<string, string> = {
+  inaktiv: "Dieses Konto ist deaktiviert.",
+  "link-ungueltig": "Der Link ist ungültig oder abgelaufen.",
+  "passwort-gesetzt": "Passwort gespeichert. Bitte melden Sie sich an.",
+}
+
+export function loginHinweis(grund: string | null): string | null {
+  if (grund === null || !Object.hasOwn(LOGIN_HINWEISE, grund)) return null
+  return LOGIN_HINWEISE[grund] ?? null
+}
