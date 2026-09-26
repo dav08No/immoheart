@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, Search } from "lucide-react"
+import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, Search, Users, UserCircle } from "lucide-react"
 import type { Profil } from "@/types"
 
 const EINTRAEGE = [
@@ -25,6 +25,8 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
       .join("")
       .toUpperCase() || "?"
 
+  const eintraege = profil.darf_nutzer_anlegen ? [...EINTRAEGE, { pfad: "/admin/nutzer", label: "Nutzer", Icon: Users }] : EINTRAEGE
+
   return (
     <aside className="flex h-screen w-[206px] flex-none flex-col border-r border-line bg-surface">
       <div className="flex items-center gap-2 px-4 pb-3.5 pt-4">
@@ -33,7 +35,7 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
       <span className="border-b border-line px-4 pb-3.5 text-xs text-ink-3">Admin</span>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5">
-        {EINTRAEGE.map(({ pfad: ziel, label, Icon }) => {
+        {eintraege.map(({ pfad: ziel, label, Icon }) => {
           const aktiv = pfad === ziel
           return (
             <Link
@@ -71,12 +73,15 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
         </form>
       </div>
 
-      <div className="flex items-center gap-2.5 border-t border-line px-4 py-3 text-xs text-ink-2">
+      <Link
+        href="/admin/profil"
+        className="flex items-center gap-2.5 border-t border-line px-4 py-3 text-xs text-ink-2 hover:bg-surface-2"
+      >
         <span className="grid h-[27px] w-[27px] place-items-center rounded-full bg-brand text-[11px] font-semibold text-on-brand">
           {initialen}
         </span>
         {profil.name}
-      </div>
+      </Link>
     </aside>
   )
 }
