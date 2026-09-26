@@ -235,7 +235,7 @@ export function AnfrageDetail({
             besterMatch.kriterien.map((k) => (
               <div key={k.kriterium} className="mb-1.5 grid grid-cols-[78px_1fr_34px] items-center gap-2.5 text-xs">
                 <span>{k.kriterium}</span>
-                <span className="h-1.5 overflow-hidden rounded bg-surface-3">
+                <span className="h-1.5 overflow-hidden rounded-sm bg-surface-3">
                   <span
                     className={`block h-full ${k.status === "ok" ? "bg-brand" : k.status === "teilweise" ? "bg-warn" : "bg-crit"}`}
                     style={{ width: `${k.status === "ok" ? 100 : k.status === "teilweise" ? 60 : 20}%` }}

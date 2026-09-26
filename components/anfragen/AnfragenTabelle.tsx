@@ -73,7 +73,7 @@ export function AnfragenTabelle({
                   <div className="flex items-center gap-2">
                     {a.firma?.name ?? (a.vertraulich ? "—" : luecke)}
                     {a.vertraulich && (
-                      <span className="rounded border border-line-2 px-1 text-[11px] font-normal text-ink-3">
+                      <span className="rounded-sm border border-line-2 px-1 text-[11px] font-normal text-ink-3">
                         vertraulich
                       </span>
                     )}
