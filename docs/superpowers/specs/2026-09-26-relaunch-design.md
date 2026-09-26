@@ -109,7 +109,12 @@ offenen Admin-Tabs.
    liegengebliebene aus früheren Läufen). Bei Fehler `ki_status = fehler`
    und `ki_fehler` setzen; Knopf „erneut verarbeiten“ im Postfach.
 
-Anhänge werden nicht gespeichert, nur ihre Dateinamen (`anhaenge`). HTML
+**Anhänge.** Bilder (`image/jpeg|png|webp|heic`) und PDFs bis 10 MB pro
+Datei werden beim Abruf im **privaten** Storage-Bucket `mail-anhaenge`
+gespeichert (Tabelle `nachricht_anhaenge`); nur aktive Konten können sie
+lesen, angezeigt über kurzlebige signierte URLs. Von allen anderen Dateien
+wird nur der Name gespeichert. Hat ein Lauf wegen grosser Anhänge zu wenig
+Zeit, werden weniger Mails pro Lauf verarbeitet. HTML
 wird nie als HTML angezeigt: gespeichert und dargestellt wird der
 Textteil, fehlt er, eine aus dem HTML gewonnene Textfassung.
 
@@ -120,7 +125,7 @@ Kategorie und Felder zusammen liefert):
 |---|---|
 | `suchanfrage` | Felder erkennen wie bisher. Bei Lücken Rückfrage-Entwurf. „Als Anfrage speichern“ legt die Firma (Name aus Mail, `kontakt_email` = Absender) an bzw. verknüpft eine bestehende mit gleicher Adresse. |
 | `antwort` | Zuordnung zu einer Anfrage: zuerst über `In-Reply-To`/`References` gegen `message_id` unserer gesendeten Mails, sonst über den Absender (`firmen.kontakt_email` einer offenen Anfrage). Dann `letzter_kontakt` aktualisieren, neu genannte Angaben als Vorschlag anzeigen (per Klick übernehmen), Antwort-Entwurf. |
-| `objektangebot` | Objektdaten erkennen. „Als Objekt übernehmen“ öffnet das vorausgefüllte Objektformular. Antwort-Entwurf. |
+| `objektangebot` | Objektdaten erkennen. „Als Objekt übernehmen“ öffnet das vorausgefüllte Objektformular. Antwort-Entwurf; enthält die Mail keine Bilder, bittet der Entwurf um Fotos als Anhang. |
 | `sonstiges` | Nur ablegen, kein Entwurf. |
 
 Die Kategorie lässt sich im Postfach von Hand ändern; danach läuft die
@@ -164,7 +169,10 @@ Adressprüfung des eingebauten Supabase-Mailversands.
   Objekt übernehmen, Anfrage zuordnen, Kategorie ändern, erneut
   verarbeiten, Antwort entwerfen). Hinweis bei Abruffehler mit Zeitpunkt
   des letzten erfolgreichen Abrufs. Das manuelle „Mail einfügen“
-  entfällt.
+  entfällt. Anhänge: Badge mit Anzahl Bilder in der Liste; im Detail
+  Vorschau-Galerie mit Vollbild, je Bild „Download“ und „Als Objektfoto
+  übernehmen“ (kopiert serverseitig nach `objekt-fotos` zu einem
+  wählbaren Objekt, hinten angereiht); Anhang löschen.
 - **`/admin/entwuerfe`**: alle offenen Entwürfe, gruppiert nach Typ, mit
   Bezug (Anfrage, Objekt, Ursprungsmail). Editor, Speichern, Senden,
   Löschen, „Neue Mail“.
@@ -179,8 +187,8 @@ Adressprüfung des eingebauten Supabase-Mailversands.
 - **`/admin/zahlen`**: shadcn-Charts (Recharts). Anfragen pro Monat nach
   Quelle, Vermittlungsquote, Tage bis Erstangebot, Entwürfe gesendet vs.
   gelöscht, Mails ein/aus pro Woche, Top-Objekte nach Direktanfragen,
-  gesuchte Grössen und Nutzungsarten, Puls-Verteilung. Keine festen
-  Beispielwerte.
+  gesuchte Grössen und Nutzungsarten, Puls-Verteilung, belegter
+  Speicher (Free-Plan 1 GB). Keine festen Beispielwerte.
 - **`/admin/nutzer`**: Liste (Name, E-Mail, Haken, Status eingeladen /
   aktiv / deaktiviert), „Neues Konto“ (Name, E-Mail, Haken) mit
   Einladung, Deaktivieren/Reaktivieren, Einladung erneut senden.
@@ -231,7 +239,8 @@ Nutzung, Ort, Fläche von/bis, Budget/m², Bezug, Nachricht. Daneben die
 Mail-Variante mit Checkliste, „Adresse kopieren“ und `mailto` mit Vorlage.
 
 **`/inserieren`**: Ablauf für Eigentümer, Checkliste (Adresse, Fläche,
-Preis, Nutzung, Verfügbarkeit, Fotos), `mailto` mit Vorlage.
+Preis, Nutzung, Verfügbarkeit) mit hervorgehobenem Punkt **„Fotos als
+Anhang mitsenden“**, `mailto` mit Vorlage, die denselben Hinweis enthält.
 
 **SEO**: Metadaten je Seite, Open-Graph-Bild für Objekte, `sitemap.xml`,
 `robots.txt` (sperrt `/admin`).
@@ -269,12 +278,16 @@ Preis, Nutzung, Verfügbarkeit, Fotos), `mailto` mit Vorlage.
 - `nachrichten`: neu `message_id text unique`, `in_reply_to text`,
   `quelle` (`mail` | `website`), `kategorie` (`suchanfrage` | `antwort` |
   `objektangebot` | `objektanfrage` | `sonstiges`), `ki_status` (`offen` |
-  `fertig` | `fehler`), `ki_fehler`, `objekt_id`, `anhaenge jsonb`,
+  `fertig` | `fehler`), `ki_fehler`, `objekt_id`, `anhaenge jsonb` (Namen
+  nicht gespeicherter Dateien),
   `versand_fehler`, `gelesen boolean`, `geloescht_am`. Enum
   `nachricht_typ_enum` um `antwort` und `frei` ergänzt; `anfrage` bleibt
   der Typ aller Eingänge (die Art steht in `kategorie`).
 - `anfragen`: neu `quelle` und `objekt_id` (bei Direktanfrage). Die View
   `anfragen_sichtbar` entfällt; `vertraulich` wird entfernt.
+- Neu `nachricht_anhaenge` (`nachricht_id`, `pfad`, `dateiname`,
+  `mime_type`, `groesse`) und privater Bucket `mail-anhaenge` (lesen,
+  schreiben, löschen nur `ist_aktives_konto()`).
 - Neu `formular_limits` (IP-Hash, Zeitfenster, Zähler) und `mail_abruf`
   (einzige Zeile: `laeuft_seit`, `letzter_erfolg`, `letzter_fehler`).
 - Entfernt: Tabelle `regeln`.
@@ -321,8 +334,8 @@ Production.
 | N1 | Tailwind v4, shadcn, Tokens, Fonts; Umzug nach `/admin`; öffentliches Grundgerüst; Konto-Modell, RLS neu, Altlasten entfernt (Freigabe, Register, Regeln, leser, vertraulich), Start-Konto | Öffentliche Seiten ohne Login erreichbar, `/admin` nur mit Login, bestehende Admin-Funktionen laufen weiter |
 | N2 | Gmail-SMTP, Nutzerverwaltung, Einladung, Passwort vergessen/ändern, Deaktivieren | Neues Konto per Einladungsmail angelegt und eingeloggt; deaktiviertes Konto kommt nicht mehr rein |
 | N3 | Entwürfe-Tab, echter Versand, Antworten im Verlauf | Ein Entwurf wird bearbeitet, gesendet und kommt im Gmail an |
-| N4 | Abruf bei offenem Admin, Sperre, KI-Einordnung, neues Postfach, Antwort-Zuordnung | Eine echte Mail wird abgeholt, eingeordnet und erzeugt den passenden Entwurf; eine Antwort wird der Anfrage zugeordnet |
-| N5 | Foto-Upload, Beschreibung, Sichtbarkeit; `/objekte` mit Filtern, Detailseite, „Objekt anfragen“ | Besucher filtert, öffnet ein Objekt, fragt an; Eintrag und Entwurf erscheinen im Admin |
+| N4 | Abruf bei offenem Admin, Sperre, KI-Einordnung, neues Postfach, Antwort-Zuordnung, Anhänge speichern und anzeigen | Eine echte Mail mit Bild wird abgeholt, eingeordnet, das Bild ist im Postfach sichtbar und erzeugt den passenden Entwurf; eine Antwort wird der Anfrage zugeordnet |
+| N5 | Foto-Upload, Beschreibung, Sichtbarkeit, „Als Objektfoto übernehmen“; `/objekte` mit Filtern, Detailseite, „Objekt anfragen“ | Ein Mail-Bild wird als Objektfoto übernommen und erscheint öffentlich; Besucher filtert, öffnet ein Objekt, fragt an; Eintrag und Entwurf erscheinen im Admin |
 | N6 | Landingpage mit 3D-Hero, Suchauftrag, Inserieren, Impressum/Datenschutz, Animationen, SEO | Alle öffentlichen Seiten live, Suchauftrag landet im Postfach |
 | N7 | Zahlen mit Charts, Puls-Effekte im Admin, Feinschliff, Handy-Ansicht | Alle Kennzahlen aus echten Daten, keine Seite bricht auf Handybreite |
 
@@ -373,5 +386,6 @@ am Feld.
 
 Zahlungsabwicklung, Mandantensystem, externe Immobilienplattformen,
 native App, Mehrsprachigkeit, Kartenansicht mit allen Objekten,
-Speichern von Mail-Anhängen, automatische Bestätigungsmails an Besucher,
+Speichern anderer Anhänge als Bilder und PDFs, Datei-Upload in den
+öffentlichen Formularen, automatische Bestätigungsmails an Besucher,
 Regeln/Ausschlusskriterien.
