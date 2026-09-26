@@ -4,14 +4,16 @@ Anleitung, wo jeder Wert herkommt und wo er eingetragen werden muss. Die beiden 
 
 ---
 
-## Die vier Werte
+## Die Werte
 
 | Variable | Öffentlich? | Wo finden |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | ja, unbedenklich | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *Data API* → Feld **Project URL** |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ja, unbedenklich (dafür gemacht) | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *API Keys* → Eintrag **anon / public** (oder **publishable**) |
-| `SUPABASE_SERVICE_ROLE_KEY` | **nein — geheim** | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *API Keys* → Eintrag **service_role** (Klick auf „Reveal“/Augensymbol) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **nein — geheim** | Supabase Dashboard → Projekt **PULS** → *Project Settings* → *API Keys* → Eintrag **service_role** (Klick auf „Reveal”/Augensymbol) |
 | `GEMINI_API_KEY` | **nein — geheim** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key* (kostenloses Kontingent, kein Zahlungsmittel nötig) |
+| `GMAIL_USER` | ja | `immoheart.business@gmail.com` |
+| `GMAIL_APP_PASSWORD` | **nein — geheim** | Google-Konto von immoheart.business → *Sicherheit* → 2-Schritt-Verifizierung aktivieren → [App-Passwörter](https://myaccount.google.com/apppasswords) → Name „immoheart” → 16 Zeichen **ohne Leerzeichen** eintragen |
 
 Direkt-Link zum Supabase-Projekt: <https://supabase.com/dashboard/project/rvxlvrrpltmuzuomdwdf/settings/api-keys>
 
@@ -21,15 +23,17 @@ Direkt-Link zum Supabase-Projekt: <https://supabase.com/dashboard/project/rvxlvr
 
 ## Wo eintragen
 
-### 1 · Vercel — alle vier Werte
+### 1 · Vercel — alle sechs Werte
 
-*Projekt → Settings → Environment Variables.* Jede der vier Variablen einmal anlegen, dabei **beide** Haken setzen: **Production** und **Preview**.
+*Projekt → Settings → Environment Variables.* Jede der sechs Variablen einmal anlegen, dabei **beide** Haken setzen: **Production** und **Preview**.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL       (Wert siehe Tabelle oben)
 NEXT_PUBLIC_SUPABASE_ANON_KEY  (Wert siehe Tabelle oben)
-SUPABASE_SERVICE_ROLE_KEY      (Wert aus Supabase-Dashboard, „service_role“)
+SUPABASE_SERVICE_ROLE_KEY      (Wert aus Supabase-Dashboard, „service_role”)
 GEMINI_API_KEY                 (Wert aus Google AI Studio)
+GMAIL_USER                     (Wert siehe Tabelle oben)
+GMAIL_APP_PASSWORD             (Wert siehe Tabelle oben)
 ```
 
 Falls das Projekt in Vercel noch nicht existiert: [vercel.com/new](https://vercel.com/new) → GitHub-Repo `dav08No/immoheart` importieren → Framework wird automatisch als Next.js erkannt → zuerst importieren, danach die vier Variablen eintragen, dann „Redeploy“.
@@ -54,5 +58,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY  (derselbe Wert wie oben)
 - [ ] Vercel: `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Production + Preview)
 - [ ] Vercel: `SUPABASE_SERVICE_ROLE_KEY` (Production + Preview)
 - [ ] Vercel: `GEMINI_API_KEY` (Production + Preview)
+- [ ] Vercel: `GMAIL_USER` (Production + Preview)
+- [ ] Vercel: `GMAIL_APP_PASSWORD` (Production + Preview)
 - [ ] GitHub-Secret: `NEXT_PUBLIC_SUPABASE_URL`
 - [ ] GitHub-Secret: `NEXT_PUBLIC_SUPABASE_ANON_KEY`

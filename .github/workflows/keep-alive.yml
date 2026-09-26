@@ -14,6 +14,6 @@ jobs:
       - name: Datenbank anfragen, um Pausierung zu verhindern
         run: |
           curl -sS -o /dev/null -w "HTTP %{http_code}\n" \
-            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/regeln?select=id&limit=1" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/objekte_oeffentlich?select=id&limit=1" \
             -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
