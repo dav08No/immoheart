@@ -31,3 +31,10 @@ alter table profiles drop column if exists rolle;
 drop type if exists rolle_enum;
 
 delete from auth.users where email = 'test@immoheart.com';
+
+-- Anonyme Besucher bekommen nur, was die öffentliche Website braucht.
+revoke all on all tables in schema public from anon;
+grant select (id, titel, ort, flaeche, preis_pro_m2, nutzung, eigenschaften, verfuegbar_ab, status, created_at)
+  on table objekte to anon;
+grant select on objekte_oeffentlich to anon;
+revoke insert, update, delete, truncate, references, trigger on objekte_oeffentlich from authenticated;
