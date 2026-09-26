@@ -173,6 +173,10 @@ Adressprüfung des eingebauten Supabase-Mailversands.
   Vorschau-Galerie mit Vollbild, je Bild „Download“ und „Als Objektfoto
   übernehmen“ (kopiert serverseitig nach `objekt-fotos` zu einem
   wählbaren Objekt, hinten angereiht); Anhang löschen.
+  <!-- Umsetzungshinweis: objekte_oeffentlich ist eine security_invoker-View;
+       anon hat nur Spaltenrechte auf die freigegebenen Spalten plus eine
+       Zeilen-Policy (Plan N1, Task 3). Keine security-definer-View. -->
+
 - **`/admin/entwuerfe`**: alle offenen Entwürfe, gruppiert nach Typ, mit
   Bezug (Anfrage, Objekt, Ursprungsmail). Editor, Speichern, Senden,
   Löschen, „Neue Mail“.
