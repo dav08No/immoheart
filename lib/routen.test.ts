@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { istAdminPfad, linkTyp, loginHinweis, loginZielNachAbmelden } from "./routen"
+import { istAdminPfad, istGleicherUrsprung, linkTyp, loginHinweis, loginZielNachAbmelden } from "./routen"
 
 describe("istAdminPfad", () => {
   it("erkennt /admin und alles darunter", () => {
@@ -55,5 +55,20 @@ describe("loginHinweis", () => {
     expect(loginHinweis("<script>")).toBeNull()
     expect(loginHinweis("toString")).toBeNull()
     expect(loginHinweis(null)).toBeNull()
+  })
+})
+
+describe("istGleicherUrsprung", () => {
+  it("vergleicht Origin und Anfrage-URL nur über den Host", () => {
+    expect(
+      istGleicherUrsprung("https://immoheart.vercel.app", "https://immoheart.vercel.app/auth/bestaetigen/einloesen")
+    ).toBe(true)
+    expect(
+      istGleicherUrsprung("https://evil.example.com", "https://immoheart.vercel.app/auth/bestaetigen/einloesen")
+    ).toBe(false)
+    expect(istGleicherUrsprung(null, "https://immoheart.vercel.app/auth/bestaetigen/einloesen")).toBe(false)
+    expect(istGleicherUrsprung("nicht-eine-url", "https://immoheart.vercel.app/auth/bestaetigen/einloesen")).toBe(
+      false
+    )
   })
 })

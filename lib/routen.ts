@@ -38,3 +38,17 @@ export function loginHinweis(grund: string | null): string | null {
   if (grund === null || !Object.hasOwn(LOGIN_HINWEISE, grund)) return null
   return LOGIN_HINWEISE[grund] ?? null
 }
+
+// Schutz gegen Cross-Site-Einlösen: ein POST auf /auth/bestaetigen/einloesen von
+// einer fremden Seite (z. B. eingebettetes Formular, das die Session eines
+// eingeloggten Nutzers ersetzt) hätte trotz gültigem Token keinen passenden
+// Origin-Header. Fehlt der Header oder ist er keine gültige URL, wird das als
+// Fremd-Ursprung gewertet (fail closed), nicht als Ausnahme.
+export function istGleicherUrsprung(origin: string | null, anfrageUrl: string): boolean {
+  if (origin === null) return false
+  try {
+    return new URL(origin).host === new URL(anfrageUrl).host
+  } catch {
+    return false
+  }
+}
