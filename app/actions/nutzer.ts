@@ -57,7 +57,7 @@ export async function kontoAnlegen(eingabe: {
     return { hinweis: null }
   } catch (fehler) {
     console.error("kontoAnlegen: Einladung nicht gesendet", fehler)
-    return { hinweis: "Konto angelegt, aber die Einladung konnte nicht gesendet werden. Bitte „Einladung erneut senden“." }
+    return { hinweis: "Konto angelegt, aber die Einladung konnte nicht gesendet werden. Bitte „Link senden“." }
   }
 }
 
