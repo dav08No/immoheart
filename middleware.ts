@@ -45,6 +45,9 @@ export async function middleware(request: NextRequest) {
 
 // Öffentliche Seiten brauchen keine Session -- die Middleware läuft nur dort,
 // wo Login-Zustand eine Rolle spielt. "/admin/:path*" deckt auch "/admin" ab.
+// /passwort-setzen läuft ebenfalls durch die Middleware (Session-Refresh),
+// wird aber weder geschützt noch umgeleitet: istAdminPfad ist dort false und
+// der Pfad ist nicht "/login".
 export const config = {
-  matcher: ["/admin/:path*", "/login"],
+  matcher: ["/admin/:path*", "/login", "/passwort-setzen"],
 }
