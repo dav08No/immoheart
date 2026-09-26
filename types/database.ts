@@ -28,7 +28,6 @@ export type Database = {
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
           ort: string | null
           status: Database["public"]["Enums"]["anfrage_status_enum"]
-          vertraulich: boolean
         }
         Insert: {
           anforderungen?: Json
@@ -43,7 +42,6 @@ export type Database = {
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
           ort?: string | null
           status?: Database["public"]["Enums"]["anfrage_status_enum"]
-          vertraulich?: boolean
         }
         Update: {
           anforderungen?: Json
@@ -58,7 +56,6 @@ export type Database = {
           nutzung?: Database["public"]["Enums"]["nutzung_enum"]
           ort?: string | null
           status?: Database["public"]["Enums"]["anfrage_status_enum"]
-          vertraulich?: boolean
         }
         Relationships: [
           {
@@ -140,13 +137,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matches_anfrage_id_fkey"
-            columns: ["anfrage_id"]
-            isOneToOne: false
-            referencedRelation: "anfragen_sichtbar"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "matches_objekt_id_fkey"
             columns: ["objekt_id"]
             isOneToOne: false
@@ -214,13 +204,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "nachrichten_anfrage_id_fkey"
-            columns: ["anfrage_id"]
-            isOneToOne: false
-            referencedRelation: "anfragen_sichtbar"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "nachrichten_match_id_fkey"
             columns: ["match_id"]
             isOneToOne: false
@@ -282,111 +265,30 @@ export type Database = {
           aktiv: boolean
           created_at: string
           darf_nutzer_anlegen: boolean
-          freigabe_stufe: number
           id: string
           name: string
-          rolle: Database["public"]["Enums"]["rolle_enum"]
           user_id: string
         }
         Insert: {
           aktiv?: boolean
           created_at?: string
           darf_nutzer_anlegen?: boolean
-          freigabe_stufe?: number
           id?: string
           name: string
-          rolle?: Database["public"]["Enums"]["rolle_enum"]
           user_id: string
         }
         Update: {
           aktiv?: boolean
           created_at?: string
           darf_nutzer_anlegen?: boolean
-          freigabe_stufe?: number
           id?: string
           name?: string
-          rolle?: Database["public"]["Enums"]["rolle_enum"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      regeln: {
-        Row: {
-          aktiv: boolean
-          angewendet_count: number
-          beschreibung: string
-          code: string
-          created_at: string
-          id: string
-        }
-        Insert: {
-          aktiv?: boolean
-          angewendet_count?: number
-          beschreibung: string
-          code: string
-          created_at?: string
-          id?: string
-        }
-        Update: {
-          aktiv?: boolean
-          angewendet_count?: number
-          beschreibung?: string
-          code?: string
-          created_at?: string
-          id?: string
         }
         Relationships: []
       }
     }
     Views: {
-      anfragen_sichtbar: {
-        Row: {
-          anforderungen: Json | null
-          bezug: string | null
-          budget_pro_m2: number | null
-          created_at: string | null
-          firma_id: string | null
-          flaeche_max: number | null
-          flaeche_min: number | null
-          id: string | null
-          letzter_kontakt: string | null
-          nutzung: Database["public"]["Enums"]["nutzung_enum"] | null
-          ort: string | null
-          status: Database["public"]["Enums"]["anfrage_status_enum"] | null
-          vertraulich: boolean | null
-        }
-        Insert: {
-          anforderungen?: Json | null
-          bezug?: string | null
-          budget_pro_m2?: never
-          created_at?: string | null
-          firma_id?: never
-          flaeche_max?: number | null
-          flaeche_min?: number | null
-          id?: string | null
-          letzter_kontakt?: string | null
-          nutzung?: Database["public"]["Enums"]["nutzung_enum"] | null
-          ort?: string | null
-          status?: Database["public"]["Enums"]["anfrage_status_enum"] | null
-          vertraulich?: boolean | null
-        }
-        Update: {
-          anforderungen?: Json | null
-          bezug?: string | null
-          budget_pro_m2?: never
-          created_at?: string | null
-          firma_id?: never
-          flaeche_max?: number | null
-          flaeche_min?: number | null
-          id?: string | null
-          letzter_kontakt?: string | null
-          nutzung?: Database["public"]["Enums"]["nutzung_enum"] | null
-          ort?: string | null
-          status?: Database["public"]["Enums"]["anfrage_status_enum"] | null
-          vertraulich?: boolean | null
-        }
-        Relationships: []
-      }
       objekte_oeffentlich: {
         Row: {
           created_at: string | null
@@ -428,10 +330,6 @@ export type Database = {
       }
     }
     Functions: {
-      current_rolle: {
-        Args: never
-        Returns: Database["public"]["Enums"]["rolle_enum"]
-      }
       ist_aktives_konto: { Args: never; Returns: boolean }
     }
     Enums: {
@@ -447,7 +345,6 @@ export type Database = {
         | "verkauf"
         | "bauland"
       objekt_status_enum: "verfuegbar" | "reserviert" | "vermietet"
-      rolle_enum: "admin" | "vermittler" | "leser"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -588,7 +485,6 @@ export const Constants = {
         "bauland",
       ],
       objekt_status_enum: ["verfuegbar", "reserviert", "vermietet"],
-      rolle_enum: ["admin", "vermittler", "leser"],
     },
   },
 } as const
