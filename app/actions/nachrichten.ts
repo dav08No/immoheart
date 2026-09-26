@@ -10,21 +10,9 @@ import {
   aktualisiereNachricht,
   loescheNachricht,
   loescheUndGibNachrichtZurueck,
-  type NachrichtRow,
 } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn } from "@/lib/queries/anfragen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
-import { legeRegelAn, naechsterRegelCode } from "@/lib/queries/regeln"
-import { holeEigenesProfil } from "@/lib/queries/profile"
-
-// Rückfragen und Nachfass gelten laut README-Freigabestufen wie Rückfragen:
-// automatischer Versand ab Stufe 2. Nur Angebote brauchen Stufe 3 (Spec-Annahme A2).
-export async function sendeWennFreigegeben(nachricht: NachrichtRow, erforderlicheStufe: 2 | 3): Promise<void> {
-  const profil = await holeEigenesProfil()
-  if (profil.freigabe_stufe >= erforderlicheStufe) {
-    await aktualisiereNachricht(nachricht.id, { richtung: "gesendet", gesendet_am: new Date().toISOString() })
-  }
-}
 
 export async function nachrichtEingegangen(text: string, von: string, betreff: string): Promise<void> {
   // Rohtext IMMER zuerst und unbedingt persistieren, bevor die KI angefragt wird.
@@ -48,7 +36,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
     body: text,
     erkannte_felder: null,
   })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 
   const felder = await erkenneFelder(text)
   await aktualisiereNachricht(nachricht.id, { erkannte_felder: felder })
@@ -56,7 +44,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
   const luecken = Object.values(felder).some((wert) => wert === null)
   if (luecken) {
     const entwurf = await entwurfRueckfrage(felder)
-    const rueckfrageNachricht = await legeNachrichtAn({
+    await legeNachrichtAn({
       richtung: "entwurf",
       typ: "rueckfrage",
       von: "kontakt@espaceso.ch",
@@ -64,10 +52,9 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
       betreff: entwurf.betreff,
       body: entwurf.body,
     })
-    await sendeWennFreigegeben(rueckfrageNachricht, 2)
   }
 
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
 export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
@@ -152,24 +139,21 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
   // Anfrage dauerhaft leer.
   await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
 
-  revalidatePath("/postfach")
-  revalidatePath("/anfragen")
+  revalidatePath("/admin/postfach")
+  revalidatePath("/admin/anfragen")
 }
 
 export async function entwurfSenden(nachrichtId: string): Promise<void> {
   await aktualisiereNachricht(nachrichtId, { richtung: "gesendet", gesendet_am: new Date().toISOString() })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
 export async function entwurfBearbeiten(nachrichtId: string, body: string): Promise<void> {
   await aktualisiereNachricht(nachrichtId, { body })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
-export async function entwurfVerwerfen(nachrichtId: string, grund: string): Promise<void> {
-  const code = await naechsterRegelCode()
-  await legeRegelAn(code, grund)
+export async function entwurfVerwerfen(nachrichtId: string): Promise<void> {
   await loescheNachricht(nachrichtId)
-  revalidatePath("/postfach")
-  revalidatePath("/regeln")
+  revalidatePath("/admin/postfach")
 }

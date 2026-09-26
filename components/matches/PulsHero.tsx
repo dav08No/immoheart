@@ -23,9 +23,8 @@ const FARBE_VAR: Record<ReturnType<typeof pulsFarbe>, string> = {
 
 export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
   const werte = letzteKontakte.map((d) => puls(d))
-  // Kein Kontakt sichtbar (z. B. Rolle "leser", siehe holeOffenePulsWerte) ist kein Puls von 0 —
-  // 0 läge unterhalb des von puls() je erreichbaren Bereichs (min. 4) und würde als "alles kritisch"
-  // statt als "keine Daten für diese Rolle" gelesen. Deshalb eigener neutraler Leerzustand.
+  // Ohne offene Anfragen gibt es keinen Puls -- eigener Leerzustand statt einer 0,
+  // die als "alles kritisch" gelesen würde.
   const hatDaten = werte.length > 0
   const durchschnitt = hatDaten ? Math.round(werte.reduce((s, v) => s + v, 0) / werte.length) : 0
   const frisch = werte.filter((w) => w >= 60).length

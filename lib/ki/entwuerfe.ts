@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai"
+import { generiereText } from "./gemini"
 import type { Anfrage, Kriterium, Objekt } from "@/types"
 import type { ErkannteFelder } from "./erkennung"
 
@@ -15,11 +15,10 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
     .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
   // Bewusst werfen statt auf einen leeren/generischen Platzhalter
-  // auszuweichen: bei Freigabestufe 2/3 (Task 39) wird ein Entwurf ohne
-  // Klick automatisch versendet. Ein stiller Fallback auf body: "" würde
-  // in diesem Fall eine echte, leere E-Mail an eine Firma verschicken,
-  // ohne dass je ein Mensch sie gesehen hätte -- die "wird ja sowieso
-  // gegengelesen"-Annahme stimmt für Stufe 1, aber nicht generell.
+  // auszuweichen: ein stiller Fallback auf body: "" würde einen Entwurf mit
+  // leerem Text im Postfach ablegen, der beim Senden unbemerkt als leere
+  // E-Mail an eine Firma rausginge, statt dass der eigentliche KI-Fehler
+  // sichtbar wird.
   if (typeof daten.betreff !== "string" || typeof daten.body !== "string") {
     throw new Error("Unerwartete Antwort der KI: betreff/body fehlen oder haben falschen Typ")
   }
@@ -27,16 +26,8 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
 }
 
 async function frageKi(prompt: string): Promise<Mailentwurf> {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  const antwort = await client.models.generateContent({
-    // gemini-2.5-flash wurde von Google deprecatet (404 "no longer available
-    // to new users") -- live verifiziert, siehe gleicher Kommentar in
-    // lib/ki/erkennung.ts.
-    model: "gemini-3.8-flash",
-    contents: prompt,
-  })
-  if (!antwort.text) throw new Error("Unerwartete Antwort der KI")
-  return parseMailAntwort(antwort.text)
+  const antwort = await generiereText(prompt)
+  return parseMailAntwort(antwort)
 }
 
 // Menschenlesbare Labels statt der rohen snake_case-Schlüssel im Prompt:

@@ -153,6 +153,13 @@ export type Database = {
             referencedRelation: "objekte"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "matches_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte_oeffentlich"
+            referencedColumns: ["id"]
+          },
         ]
       }
       nachrichten: {
@@ -272,7 +279,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          aktiv: boolean
           created_at: string
+          darf_nutzer_anlegen: boolean
           freigabe_stufe: number
           id: string
           name: string
@@ -280,7 +289,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          aktiv?: boolean
           created_at?: string
+          darf_nutzer_anlegen?: boolean
           freigabe_stufe?: number
           id?: string
           name: string
@@ -288,7 +299,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          aktiv?: boolean
           created_at?: string
+          darf_nutzer_anlegen?: boolean
           freigabe_stufe?: number
           id?: string
           name?: string
@@ -374,12 +387,52 @@ export type Database = {
         }
         Relationships: []
       }
+      objekte_oeffentlich: {
+        Row: {
+          created_at: string | null
+          eigenschaften: Json | null
+          flaeche: number | null
+          id: string | null
+          nutzung: Database["public"]["Enums"]["nutzung_enum"] | null
+          ort: string | null
+          preis_pro_m2: number | null
+          status: Database["public"]["Enums"]["objekt_status_enum"] | null
+          titel: string | null
+          verfuegbar_ab: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          eigenschaften?: Json | null
+          flaeche?: number | null
+          id?: string | null
+          nutzung?: Database["public"]["Enums"]["nutzung_enum"] | null
+          ort?: string | null
+          preis_pro_m2?: number | null
+          status?: Database["public"]["Enums"]["objekt_status_enum"] | null
+          titel?: string | null
+          verfuegbar_ab?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          eigenschaften?: Json | null
+          flaeche?: number | null
+          id?: string | null
+          nutzung?: Database["public"]["Enums"]["nutzung_enum"] | null
+          ort?: string | null
+          preis_pro_m2?: number | null
+          status?: Database["public"]["Enums"]["objekt_status_enum"] | null
+          titel?: string | null
+          verfuegbar_ab?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_rolle: {
         Args: never
         Returns: Database["public"]["Enums"]["rolle_enum"]
       }
+      ist_aktives_konto: { Args: never; Returns: boolean }
     }
     Enums: {
       anfrage_status_enum: "offen" | "vermittelt" | "ruhend"

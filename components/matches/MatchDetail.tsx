@@ -43,7 +43,7 @@ export function MatchDetail({
       offen={offen}
       onSchliessen={onSchliessen}
       titel={`${letzterMatch.score}% Treffer`}
-      untertitel={`${letzterMatch.objekt.titel} ↔ ${letzterMatch.firma?.name ?? (letzterMatch.anfrage.vertraulich ? "vertraulich" : "?")}`}
+      untertitel={`${letzterMatch.objekt.titel} ↔ ${letzterMatch.firma?.name ?? "?"}`}
     >
       <table className="w-full border-collapse text-xs">
         <thead>

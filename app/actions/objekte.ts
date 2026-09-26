@@ -10,8 +10,8 @@ type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
 export async function objektAnlegen(objekt: ObjektEinfuegen): Promise<void> {
   const neues = await legeObjektAn(objekt)
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
-  revalidatePath("/objekte")
-  revalidatePath("/")
+  revalidatePath("/admin/objekte")
+  revalidatePath("/admin")
 }
 
 // Gleiches Muster wie MATCH_RELEVANTE_FELDER in app/actions/anfragen.ts (M6
@@ -51,6 +51,6 @@ export async function objektAktualisieren(id: string, aenderung: Partial<ObjektE
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerObjekt(id)
   }
-  revalidatePath("/objekte")
-  revalidatePath("/")
+  revalidatePath("/admin/objekte")
+  revalidatePath("/admin")
 }

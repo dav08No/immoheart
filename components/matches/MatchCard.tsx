@@ -42,9 +42,7 @@ export function MatchCard({
         </div>
         <span className="grid h-[34px] w-[34px] place-items-center rounded-full bg-brand-soft text-brand">↔</span>
         <div>
-          <div className="text-sm font-semibold text-ink">
-            {match.firma?.name ?? (match.anfrage.vertraulich ? "vertraulich" : "?")}
-          </div>
+          <div className="text-sm font-semibold text-ink">{match.firma?.name ?? "?"}</div>
           <div className="mt-0.5 text-xs text-ink-2">
             sucht {match.anfrage.flaeche_min ?? "?"}–{match.anfrage.flaeche_max ?? "?"} m²
           </div>

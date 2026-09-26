@@ -10,7 +10,10 @@ immoheart erfasst Anfragen und Objekte strukturiert und gleicht sie **in beide R
 
 ## Stand
 
-Prototyp vorhanden (`docs/puls-cockpit-v5.html`), Umsetzung als Webapp in Arbeit.
+Relaunch zur öffentlichen Website mit Admin-Bereich in Arbeit. Verbindlich ist
+`docs/superpowers/specs/2026-09-26-relaunch-design.md`; wo dieses README
+widerspricht (Rollen, Freigabestufen, kein Mailversand, Gestaltung), gilt die Spec.
+Der Stand vor dem Relaunch liegt auf dem Branch `oldversion`.
 
 ---
 
@@ -81,13 +84,13 @@ npm run types           # supabase gen types typescript > types/database.ts
 ```
 app/
   (auth)/login           Anmeldung
-  (app)/                 geschützter Bereich
+  admin/                 Admin-Bereich (geschützt)
     page.tsx             Matches (Startseite)
     postfach/            Eingang und Mailentwürfe
     anfragen/            Anfragen verwalten
     objekte/             Objektbestand
-    regeln/              gelernte Ausschlusskriterien
     zahlen/              Auswertung
+  (public)/              öffentliche Website
   actions/               Server Actions (schreibende Operationen)
 components/              nach Bereich gegliedert, ui/ für Gemeinsames
 lib/

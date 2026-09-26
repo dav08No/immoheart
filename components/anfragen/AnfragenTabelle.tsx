@@ -27,18 +27,6 @@ export function AnfragenTabelle({
         </thead>
         <tbody>
           {anfragen.map((a) => {
-            // anfragen_sichtbar ist eine View: PostgREST/supabase-gen typisiert alle
-            // Spalten als nullable, obwohl id/letzter_kontakt/vertraulich in der
-            // Basistabelle NOT NULL sind (siehe supabase/migrations/20260923033041_rls_fix_base_table_read.sql,
-            // der aktuellen Fassung der View). Eine Zeile ohne id oder letzter_kontakt kann
-            // es also praktisch nicht geben -- wir überspringen sie defensiv statt sie mit
-            // `!`/`as` wegzucasten. Sollte es doch je passieren, wäre eine Zeile, die
-            // stillschweigend aus einer admin-genutzten Anfragenliste verschwindet, ein
-            // schlechter Fehlermodus -- deshalb laut loggen statt nur stumm zu überspringen.
-            if (a.id === null || a.letzter_kontakt === null) {
-              console.error("AnfragenTabelle: Zeile ohne id oder letzter_kontakt übersprungen", a)
-              return null
-            }
             const id = a.id
             const letzterKontakt = a.letzter_kontakt
             const tage = Math.floor((Date.now() - new Date(letzterKontakt).getTime()) / 86_400_000)
@@ -69,16 +57,7 @@ export function AnfragenTabelle({
                 onClick={() => onZeileWahl(id, false)}
                 className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
               >
-                <td className="px-4 py-2.5 text-sm font-medium text-ink">
-                  <div className="flex items-center gap-2">
-                    {a.firma?.name ?? (a.vertraulich ? "—" : luecke)}
-                    {a.vertraulich && (
-                      <span className="rounded border border-line-2 px-1 text-[11px] font-normal text-ink-3">
-                        vertraulich
-                      </span>
-                    )}
-                  </div>
-                </td>
+                <td className="px-4 py-2.5 text-sm font-medium text-ink">{a.firma?.name ?? luecke}</td>
                 <td className="px-4 py-2.5 text-sm text-ink-2">
                   {a.flaeche_min ?? "?"}–{a.flaeche_max ?? "?"} m²
                 </td>

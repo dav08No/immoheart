@@ -21,7 +21,7 @@ function mittellinie(): string {
 export default async function ZahlenPage() {
   // Keine try/catch hier: ZahlenPage ist eine reine Server-Component ohne
   // Nutzerinteraktion, ein Fehler beim Laden (z. B. Netzwerkausfall) wird
-  // bereits von app/(app)/error.tsx abgefangen (Next.js Error-Boundary für
+  // bereits von app/admin/error.tsx abgefangen (Next.js Error-Boundary für
   // Fehler, die während des Server-Renderns eines Segments geworfen werden) --
   // ein lokaler try/catch mit eigenem Fehlerbanner wäre hier nur eine zweite,
   // redundante Fehleroberfläche für denselben Fall.
@@ -33,18 +33,7 @@ export default async function ZahlenPage() {
   const punkte = liniendiagramm(verlauf)
   const maxAnzahl = Math.max(1, ...verteilung.map((v) => v.anzahl))
 
-  // holeZahlenKennzahlen/holeErfolgsquoteVerlauf/holeFlaechenVerteilung lesen alle
-  // dieselbe(n) rollen­eingeschränkte(n) Basistabelle(n) (siehe Kommentar in
-  // lib/queries/zahlen.ts) -- für eine Rolle ohne Zugriff (leser) liefert
-  // holeErfolgsquoteVerlauf() eine leere Liste, weil sie ungefiltert auf `anfragen`
-  // liest. Ein leeres verlauf bedeutet damit zuverlässig: auch erfolgsquoteProzent
-  // (aus derselben Abfragegrundlage) ist nur der Rechenfallback 0 statt eines echten
-  // Werts, bisErstangebotTage ist zwangsläufig null (nachrichten-Join auf dieselbe
-  // Basistabelle), und verteilung (Teilmenge derselben Zeilen) ist zwangsläufig
-  // ebenfalls überall 0. Ein einziges Signal reicht daher für alle vier Kacheln und
-  // beide Diagramme -- nacharbeitProTagMinuten/freigabequoteProzent sind (noch)
-  // feste Platzhalterwerte ohne Datenbankbezug (siehe lib/queries/zahlen.ts) und
-  // bleiben deshalb unabhängig von hatDaten unverändert sichtbar.
+  // Ohne Anfragen gibt es keinen Verlauf -- dann zeigen alle abgeleiteten Kacheln "keine Daten".
   const hatDaten = verlauf.length > 0
 
   return (
@@ -70,12 +59,6 @@ export default async function ZahlenPage() {
             <div className="text-xs text-ink-3">Nacharbeit / Tag</div>
             <div className="font-display text-2xl font-bold text-ink">
               {kennzahlen.nacharbeitProTagMinuten} <span className="text-sm text-ink-3">Min.</span>
-            </div>
-          </div>
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <div className="text-xs text-ink-3">Freigabequote</div>
-            <div className="font-display text-2xl font-bold text-ink">
-              {kennzahlen.freigabequoteProzent} <span className="text-sm text-ink-3">%</span>
             </div>
           </div>
         </div>

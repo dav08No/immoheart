@@ -1,12 +1,8 @@
 import type { ButtonHTMLAttributes } from "react"
+import { Button as ShadcnButton } from "@/components/shadcn/button"
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variante?: "primaer" | "sekundaer" }
 
-export function Button({ variante = "sekundaer", type = "button", className = "", ...rest }: Props) {
-  const basis = "rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-60"
-  const stil =
-    variante === "primaer"
-      ? "bg-brand text-on-brand hover:bg-brand-2"
-      : "border border-line-2 bg-surface text-ink hover:bg-surface-2"
-  return <button type={type} className={`${basis} ${stil} ${className}`} {...rest} />
+export function Button({ variante = "sekundaer", type = "button", ...rest }: Props) {
+  return <ShadcnButton type={type} variant={variante === "primaer" ? "default" : "outline"} size="sm" {...rest} />
 }
