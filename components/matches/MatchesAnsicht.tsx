@@ -20,14 +20,6 @@ export function MatchesAnsicht({
 }) {
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(null)
   const ausgewaehlt = matches.find((m) => m.id === ausgewaehlteId) ?? null
-  // offeneAnzahl/langeStillAnzahl kommen bewusst als fertige Props statt hier
-  // aus `letzteKontakte` abgeleitet zu werden: letzteKontakte (nur für
-  // PulsHero) stammt aus holeOffenePulsWerte, das die anfragen-Basistabelle
-  // liest und für die Rolle leser RLS-bedingt still [] liefert (siehe
-  // Kommentar dort und in page.tsx). Daraus abgeleitete Kennzahlkacheln
-  // würden der "Lange nichts gehört"-Liste direkt darunter widersprechen, die
-  // aus der für leser lesbaren anfragen_sichtbar-Quelle kommt -- page.tsx
-  // berechnet beide Zahlen deshalb aus genau dieser Quelle.
 
   // Ein einziger seitenweiter Banner statt eines Fehler-States pro Karte/
   // Zeile: diese Seite hat drei unabhängige Aktionsorte (Match-Karten, die
@@ -139,24 +131,14 @@ export function MatchesAnsicht({
           <span className="ml-auto text-xs text-ink-3">{langeStillAnfragen.length} Anfragen</span>
         </div>
         {langeStillAnfragen.map((a) => {
-          // anfragen_sichtbar ist eine View: id/letzter_kontakt sind laut generiertem
-          // Typ nullable, obwohl in der Basistabelle NOT NULL (gleiches Muster wie
-          // AnfragenTabelle.tsx/holeNeueMatches). Praktisch unerreichbar; defensiv
-          // überspringen statt wegzucasten, mit Log statt stillem Verschwinden.
-          if (a.id === null || a.letzter_kontakt === null) {
-            console.error("MatchesAnsicht: Anfrage ohne id oder letzter_kontakt übersprungen", a)
-            return null
-          }
           const id = a.id
-          const wer = a.firma?.name ?? (a.vertraulich ? "vertraulich" : "diese Anfrage")
+          const wer = a.firma?.name ?? "diese Anfrage"
           const tage = Math.floor((Date.now() - new Date(a.letzter_kontakt).getTime()) / 86_400_000)
           return (
             <div key={id} className="flex items-center gap-3 border-b border-line p-3 last:border-b-0">
               <span className={`h-2 w-2 rounded-full ${tage > 60 ? "bg-crit" : "bg-warn"}`} />
               <div>
-                <div className="text-sm font-medium text-ink">
-                  {a.firma?.name ?? (a.vertraulich ? "vertraulich" : "?")}
-                </div>
+                <div className="text-sm font-medium text-ink">{a.firma?.name ?? "?"}</div>
                 <div className="text-xs text-ink-3">
                   {a.flaeche_min ?? "?"}–{a.flaeche_max ?? "?"} m² · {a.ort ?? "?"}
                 </div>

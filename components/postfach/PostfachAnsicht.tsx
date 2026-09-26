@@ -46,15 +46,6 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
 
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
 
-  // Fix-Loop Runde 3 (Whole-Branch-Review, Finding 1): sendeWennFreigegeben
-  // (app/actions/nachrichten.ts), unconditional aus nachrichtEingegangen aufgerufen,
-  // setzt die frisch angelegte Rückfrage-Nachricht sofort auf richtung: "gesendet",
-  // sobald profil.freigabe_stufe >= 2 ist (eine normale, spec-konforme Konfiguration).
-  // Der ursprüngliche Treffer-Filter verlangte zwingend richtung === "entwurf" -- ab
-  // Freigabestufe 2/3 existierte die Rückfrage zum Zeitpunkt des Klicks also nie mehr
-  // als "entwurf", `treffer` war immer undefined und der Button tat sichtbar nichts.
-  // richtung wird deshalb hier komplett aus dem Treffer-Kriterium entfernt.
-  //
   // Es gibt in nachrichten kein Fremdschlüsselfeld, das eine eingehende Anfrage
   // eindeutig mit "ihrer" Rückfrage verknüpft (Schema: nur anfrage_id/match_id, kein
   // "ausgeloest_von"). Der Treffer läuft deshalb weiterhin nur über typ+an -- wie

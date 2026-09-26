@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/Button"
 import { entwurfSenden, entwurfBearbeiten, entwurfVerwerfen } from "@/app/actions/nachrichten"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 
-const GRUENDE = ["Passt nicht zur Lage", "Preis unrealistisch", "Zu früh", "Anderer Grund"]
-
 export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
   const [bearbeiten, setBearbeiten] = useState(false)
   const [body, setBody] = useState(nachricht.body)
@@ -18,10 +16,6 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
   // gleichzeitig gesendet und verworfen werden.
   const [laufend, setLaufend] = useState<"senden" | "uebernehmen" | "verwerfen" | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
-  // Welcher GRUENDE-Grund gerade an entwurfVerwerfen übergeben wird -- nur für die
-  // Beschriftung des angeklickten Buttons (siehe Reviewer-Feedback Minor 1); die
-  // Deaktivierung ALLER Grund-Buttons läuft weiterhin über `laufend`.
-  const [grundAktiv, setGrundAktiv] = useState<string | null>(null)
 
   // PostfachAnsicht (Task 44, noch nicht gebaut) rendert `<EntwurfDetail nachricht={ausgewaehlt} />`
   // voraussichtlich OHNE `key={nachricht.id}` (siehe EingangDetail/Task 42, das denselben
@@ -49,7 +43,6 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
     setVerwerfenOffen(false)
     setFehler(null)
     setLaufend(null)
-    setGrundAktiv(null)
     // Bewusst nur an nachricht.id gekoppelt, nicht an nachricht.body: dieser Effekt
     // soll ausschliesslich beim Wechsel der ausgewählten Nachricht greifen. Würde
     // nachricht.body mit aufgenommen, liefe der Reset auch nach jedem erfolgreichen
@@ -99,21 +92,17 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
     }
   }
 
-  async function verwerfen(grund: string) {
+  async function verwerfen() {
     const zielId = nachricht.id
     setLaufend("verwerfen")
-    setGrundAktiv(grund)
     setFehler(null)
     try {
-      await entwurfVerwerfen(nachricht.id, grund)
+      await entwurfVerwerfen(nachricht.id)
       if (nachrichtIdRef.current === zielId) setVerwerfenOffen(false)
     } catch (e) {
       if (nachrichtIdRef.current === zielId) setFehler(e instanceof Error ? e.message : String(e))
     } finally {
-      if (nachrichtIdRef.current === zielId) {
-        setLaufend(null)
-        setGrundAktiv(null)
-      }
+      if (nachrichtIdRef.current === zielId) setLaufend(null)
     }
   }
 
@@ -182,17 +171,11 @@ export function EntwurfDetail({ nachricht }: { nachricht: NachrichtRow }) {
         )}
 
         {verwerfenOffen && (
-          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-dashed border-line-2 pt-3">
-            {GRUENDE.map((grund) => (
-              <button
-                key={grund}
-                onClick={() => verwerfen(grund)}
-                disabled={laufend !== null}
-                className="rounded-full border border-line-2 px-2.5 py-1 text-xs text-ink-2 hover:border-brand hover:text-brand disabled:opacity-60"
-              >
-                {grundAktiv === grund ? "Wird verworfen…" : grund}
-              </button>
-            ))}
+          <div className="mt-3 flex items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
+            Entwurf wirklich löschen?
+            <Button onClick={verwerfen} disabled={laufend !== null}>
+              {laufend === "verwerfen" ? "Wird gelöscht…" : "Ja, löschen"}
+            </Button>
           </div>
         )}
       </div>

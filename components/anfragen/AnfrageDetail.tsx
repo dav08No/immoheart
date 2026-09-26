@@ -78,24 +78,6 @@ export function AnfrageDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anfrage.id])
 
-  // anfragen_sichtbar ist eine View: PostgREST/supabase-gen typisiert alle Spalten als
-  // nullable, obwohl id/letzter_kontakt in der Basistabelle NOT NULL sind (siehe
-  // AnfragenTabelle, gleiches Muster). Anders als dort erhält diese Komponente aber eine
-  // einzelne Anfrage statt einer Liste -- es gibt keine sinnvolle Möglichkeit, eine Zeile
-  // "zu überspringen"; stattdessen zeigt der Drawer eine Fehlermeldung statt abzustürzen.
-  // Praktisch sollte das nie eintreten: der einzige heute existierende Aufrufer wählt die
-  // ID über AnfragenTabelle aus, die Zeilen mit fehlender id/letzter_kontakt bereits
-  // herausfiltert -- dieser Guard ist Verteidigung gegen künftige Aufrufer, nicht ein
-  // erwarteter Alltagsfall.
-  if (anfrage.id === null || anfrage.letzter_kontakt === null) {
-    console.error("AnfrageDetail: Anfrage ohne id oder letzter_kontakt übergeben", anfrage)
-    return (
-      <Drawer offen={offen} onSchliessen={onSchliessen} titel="Anfrage" untertitel="">
-        <p className="text-sm text-crit">Diese Anfrage konnte nicht geladen werden.</p>
-      </Drawer>
-    )
-  }
-
   const id = anfrage.id
   const letzterKontakt = anfrage.letzter_kontakt
   const wert = puls(new Date(letzterKontakt))

@@ -49,15 +49,7 @@ export async function legeObjektAn(objekt: ObjektEinfuegen): Promise<ObjektRow> 
   return data
 }
 
-// Gleiches Muster wie aktualisiereAnfrage (lib/queries/anfragen.ts, M6
-// Whole-Branch-Review): "vermittler aendert objekte" (20260922195659_rls.sql)
-// schränkt das UPDATE per USING auf current_rolle() in ('admin','vermittler')
-// ein. Trifft ein leser mit dieser Funktion keine Zeile, meldet Postgres/
-// PostgREST dafür KEINEN Fehler -- ein RLS-gefiltertes UPDATE ohne
-// betroffene Zeilen ist aus Client-Sicht ein Erfolg. Ohne `.select("id").
-// maybeSingle()` plus explizitem Null-Check würde ein leser, der
-// aktualisiereObjekt erreicht, scheinbar erfolgreich speichern, obwohl
-// nichts persistiert wurde.
+// UPDATE ohne betroffene Zeile ist für PostgREST kein Fehler -- deshalb die id prüfen.
 export async function aktualisiereObjekt(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("objekte").update(aenderung).eq("id", id).select("id").maybeSingle()

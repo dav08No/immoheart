@@ -15,11 +15,10 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
     .trim()
   const daten = JSON.parse(bereinigt) as Record<string, unknown>
   // Bewusst werfen statt auf einen leeren/generischen Platzhalter
-  // auszuweichen: bei Freigabestufe 2/3 (Task 39) wird ein Entwurf ohne
-  // Klick automatisch versendet. Ein stiller Fallback auf body: "" würde
-  // in diesem Fall eine echte, leere E-Mail an eine Firma verschicken,
-  // ohne dass je ein Mensch sie gesehen hätte -- die "wird ja sowieso
-  // gegengelesen"-Annahme stimmt für Stufe 1, aber nicht generell.
+  // auszuweichen: ein stiller Fallback auf body: "" würde einen Entwurf mit
+  // leerem Text im Postfach ablegen, der beim Senden unbemerkt als leere
+  // E-Mail an eine Firma rausginge, statt dass der eigentliche KI-Fehler
+  // sichtbar wird.
   if (typeof daten.betreff !== "string" || typeof daten.body !== "string") {
     throw new Error("Unerwartete Antwort der KI: betreff/body fehlen oder haben falschen Typ")
   }

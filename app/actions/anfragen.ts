@@ -15,10 +15,10 @@ export async function anfrageAnlegen(anfrage: AnfrageEinfuegen): Promise<void> {
 }
 
 // Nur die Felder, die tatsächlich in berechneMatch (lib/matching.ts) einfliessen,
-// lösen ein Rematching aus. status, letzter_kontakt, firma_id und vertraulich
-// beeinflussen den Score nicht -- ein reines Statuswechsel- oder
-// Kontakt-Update (z.B. aus AnfrageDetail, Task 50) würde sonst bei jedem Klick
-// erneut gegen sämtliche verfügbaren Objekte matchen (ein Query pro Objekt in
+// lösen ein Rematching aus. status, letzter_kontakt und firma_id beeinflussen
+// den Score nicht -- ein reines Statuswechsel- oder Kontakt-Update (z.B. aus
+// AnfrageDetail, Task 50) würde sonst bei jedem Klick erneut gegen sämtliche
+// verfügbaren Objekte matchen (ein Query pro Objekt in
 // berechneUndSpeichereMatchesFuerAnfrage), ohne dass sich am Ergebnis je etwas
 // ändern könnte.
 const MATCH_RELEVANTE_FELDER = [
