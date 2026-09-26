@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai"
+import { generiereText } from "./gemini"
 import type { Nutzung } from "@/types"
 
 export type ErkannteFelder = {
@@ -60,19 +60,6 @@ export function parseErkennungsAntwort(antwort: string): ErkannteFelder {
 }
 
 export async function erkenneFelder(text: string): Promise<ErkannteFelder> {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  const antwort = await client.models.generateContent({
-    // gemini-2.5-flash wurde von Google deprecatet (404 "no longer available
-    // to new users") -- live gegen die echte API verifiziert, ebenso
-    // gemini-2.0-flash (beide 404). gemini-3.8-flash ist Googles eigene
-    // Empfehlung aus der Fehlermeldung und live bestätigt erreichbar
-    // (ein einfacher Testaufruf lieferte 200; ein zweiter, realistischerer
-    // Aufruf traf wiederholt auf ein vorübergehendes 503 "high demand" --
-    // ein Kapazitätsproblem auf Google-Seite, kein Hinweis auf ein falsches
-    // Modell oder einen ungültigen Key).
-    model: "gemini-3.8-flash",
-    contents: baueErkennungsPrompt(text),
-  })
-  if (!antwort.text) throw new Error("Unerwartete Antwort der KI")
-  return parseErkennungsAntwort(antwort.text)
+  const antwort = await generiereText(baueErkennungsPrompt(text))
+  return parseErkennungsAntwort(antwort)
 }

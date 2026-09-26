@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai"
+import { generiereText } from "./gemini"
 import type { Anfrage, Kriterium, Objekt } from "@/types"
 import type { ErkannteFelder } from "./erkennung"
 
@@ -26,16 +26,8 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
 }
 
 async function frageKi(prompt: string): Promise<Mailentwurf> {
-  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  const antwort = await client.models.generateContent({
-    // gemini-2.5-flash wurde von Google deprecatet (404 "no longer available
-    // to new users") -- live verifiziert, siehe gleicher Kommentar in
-    // lib/ki/erkennung.ts.
-    model: "gemini-3.8-flash",
-    contents: prompt,
-  })
-  if (!antwort.text) throw new Error("Unerwartete Antwort der KI")
-  return parseMailAntwort(antwort.text)
+  const antwort = await generiereText(prompt)
+  return parseMailAntwort(antwort)
 }
 
 // Menschenlesbare Labels statt der rohen snake_case-Schlüssel im Prompt:
