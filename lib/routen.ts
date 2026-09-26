@@ -31,7 +31,6 @@ export function linkTyp(wert: string | null): LinkTyp | null {
 export const LOGIN_HINWEISE: Record<string, string> = {
   inaktiv: "Dieses Konto ist deaktiviert.",
   "link-ungueltig": "Der Link ist ungültig oder abgelaufen.",
-  "passwort-gesetzt": "Passwort gespeichert. Bitte melden Sie sich an.",
 }
 
 export function loginHinweis(grund: string | null): string | null {

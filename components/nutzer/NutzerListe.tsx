@@ -47,9 +47,12 @@ export function NutzerListe({ konten, eigeneUserId }: { konten: Konto[]; eigeneU
               />
               darf Nutzer anlegen
             </label>
-            {k.status === "eingeladen" && (
-              <Button disabled={sperre} onClick={() => void ausfuehren(k.userId, () => einladungErneutSenden(k.userId), "Einladung gesendet")}>
-                Einladung erneut
+            {/* status "eingeladen" leitet sich aus last_sign_in_at ab, das verifyOtp
+                schon beim Linkaufruf setzt -- wer nie ein Passwort gespeichert hat,
+                gilt sonst als "aktiv" und würde den Knopf verlieren. */}
+            {!selbst && k.status !== "deaktiviert" && (
+              <Button disabled={sperre} onClick={() => void ausfuehren(k.userId, () => einladungErneutSenden(k.userId), "Link gesendet")}>
+                Link senden
               </Button>
             )}
             {!selbst &&

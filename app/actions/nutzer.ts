@@ -46,7 +46,8 @@ export async function kontoAnlegen(eingabe: {
     .insert({ user_id: data.user.id, name, aktiv: true, darf_nutzer_anlegen: darfNutzerAnlegen })
   if (profilFehler) {
     // Ohne Profil wäre das Konto unbrauchbar und die E-Mail blockiert -- zurückrollen.
-    await admin.auth.admin.deleteUser(data.user.id)
+    const { error: rollbackFehler } = await admin.auth.admin.deleteUser(data.user.id)
+    if (rollbackFehler) console.error("kontoAnlegen: Rollback fehlgeschlagen", profilFehler, rollbackFehler)
     throw new Error("Konto konnte nicht angelegt werden.")
   }
 

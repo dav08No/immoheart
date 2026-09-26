@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
 import { nameAendern } from "@/app/actions/profil"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
+import { passwortFehlerText } from "@/lib/passwort-fehler"
 
 const MINDESTLAENGE = 8
 const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
@@ -35,7 +36,7 @@ export function ProfilFormular({ name: startName, email }: { name: string; email
     setLaedt("passwort")
     const { error } = await erstelleBrowserClient().auth.updateUser({ password: passwort })
     setLaedt(null)
-    if (error) return void toast.error("Passwort konnte nicht gespeichert werden.")
+    if (error) return void toast.error(passwortFehlerText(error.code))
     setPasswort("")
     setWiederholung("")
     toast.success("Passwort geändert")

@@ -51,7 +51,6 @@ describe("loginHinweis", () => {
   it("liefert nur feste Texte für bekannte Gründe", () => {
     expect(loginHinweis("inaktiv")).toBe("Dieses Konto ist deaktiviert.")
     expect(loginHinweis("link-ungueltig")).toBe("Der Link ist ungültig oder abgelaufen.")
-    expect(loginHinweis("passwort-gesetzt")).toBe("Passwort gespeichert. Bitte melden Sie sich an.")
     expect(loginHinweis("<script>")).toBeNull()
     expect(loginHinweis("toString")).toBeNull()
     expect(loginHinweis(null)).toBeNull()

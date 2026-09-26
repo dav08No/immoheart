@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
+import { passwortFehlerText } from "@/lib/passwort-fehler"
 
 const MINDESTLAENGE = 8
 
@@ -23,7 +24,7 @@ export function PasswortSetzenFormular({ email }: { email: string }) {
     const supabase = erstelleBrowserClient()
     const { error } = await supabase.auth.updateUser({ password: passwort })
     setLaedt(false)
-    if (error) return setFehler("Passwort konnte nicht gespeichert werden.")
+    if (error) return setFehler(passwortFehlerText(error.code))
     router.push("/admin")
     router.refresh()
   }
