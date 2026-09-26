@@ -14,6 +14,6 @@ export async function holeEigenesProfil(): Promise<Profil> {
   // Ohne Profil oder mit deaktiviertem Konto liefert RLS keine Zeile. Ein Redirect
   // direkt auf /login würde von der Middleware sofort nach /admin zurückgeschickt
   // (die Session besteht ja noch) -- deshalb zuerst abmelden.
-  if (!data || !data.aktiv) redirect("/abmelden")
+  if (!data || !data.aktiv) redirect("/abmelden?grund=inaktiv")
   return data
 }

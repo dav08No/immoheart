@@ -1,9 +1,18 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { Suspense, useState, type FormEvent } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
+
+// useSearchParams verlangt einen Suspense-Grenzwert, sonst schlägt der Build fehl.
+// Der eigentliche Hinweistext ist deshalb in eine kleine innere Komponente
+// ausgelagert; das restliche Formular bleibt unverändert und muss nicht warten.
+function KontoDeaktiviertHinweis() {
+  const searchParams = useSearchParams()
+  if (searchParams.get("grund") !== "inaktiv") return null
+  return <p className="text-sm text-crit">Dieses Konto ist deaktiviert.</p>
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,6 +50,9 @@ export default function LoginPage() {
         className="flex w-full max-w-sm flex-col gap-3 rounded-card border border-line bg-surface p-6"
       >
         <h1 className="font-display text-xl font-bold text-ink">immoheart</h1>
+        <Suspense fallback={null}>
+          <KontoDeaktiviertHinweis />
+        </Suspense>
         <input
           type="email"
           required

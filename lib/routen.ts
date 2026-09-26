@@ -9,3 +9,11 @@ export function istAdminPfad(pfad: string): boolean {
   const klein = pfad.toLowerCase()
   return klein === ADMIN_START || klein.startsWith(`${ADMIN_START}/`)
 }
+
+// Exakter Vergleich statt z. B. case-insensitiv oder trim: `grund` kommt aus einem
+// öffentlichen Query-Parameter (/abmelden?grund=...) und wird ungeprüft in eine
+// Redirect-URL übernommen. Ein exakter Whitelist-Vergleich verhindert, dass
+// beliebiger Text (z. B. "<script>") auf /login reflektiert wird.
+export function loginZielNachAbmelden(grund: string | null): string {
+  return grund === "inaktiv" ? `${LOGIN_PFAD}?grund=inaktiv` : LOGIN_PFAD
+}

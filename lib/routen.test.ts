@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { istAdminPfad } from "./routen"
+import { istAdminPfad, loginZielNachAbmelden } from "./routen"
 
 describe("istAdminPfad", () => {
   it("erkennt /admin und alles darunter", () => {
@@ -20,5 +20,19 @@ describe("istAdminPfad", () => {
   it("ist nicht über Grossschreibung zu umgehen", () => {
     expect(istAdminPfad("/Admin")).toBe(true)
     expect(istAdminPfad("/ADMIN/postfach")).toBe(true)
+  })
+})
+
+describe("loginZielNachAbmelden", () => {
+  it("hängt den Grund bei exaktem Treffer 'inaktiv' an", () => {
+    expect(loginZielNachAbmelden("inaktiv")).toBe("/login?grund=inaktiv")
+  })
+
+  it("verwirft alles, was nicht exakt 'inaktiv' ist", () => {
+    expect(loginZielNachAbmelden(null)).toBe("/login")
+    expect(loginZielNachAbmelden("")).toBe("/login")
+    expect(loginZielNachAbmelden("INAKTIV")).toBe("/login")
+    expect(loginZielNachAbmelden("inaktiv ")).toBe("/login")
+    expect(loginZielNachAbmelden("<script>")).toBe("/login")
   })
 })

@@ -15,9 +15,17 @@ export default function AppError({ reset }: { error: Error & { digest?: string }
         >
           Erneut versuchen
         </button>
-        <a href="/login" className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand hover:bg-brand-2">
-          Zur Anmeldung
-        </a>
+        {/* Ein einfacher Link auf /login würde eine noch angemeldete Person direkt
+            zurück ins fehlerhafte /admin schicken (Middleware leitet dort sofort
+            um). Das Abmelden-Formular beendet zuerst die Session. */}
+        <form action="/abmelden" method="post">
+          <button
+            type="submit"
+            className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand hover:bg-brand-2"
+          >
+            Abmelden
+          </button>
+        </form>
       </div>
     </main>
   )
