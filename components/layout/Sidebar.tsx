@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, Search, Users, UserCircle } from "lucide-react"
+import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, Search, Users } from "lucide-react"
 import type { Profil } from "@/types"
 
 const EINTRAEGE = [
