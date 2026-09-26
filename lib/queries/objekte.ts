@@ -86,3 +86,13 @@ export async function zaehleNeueMatchesFuerObjekt(objektId: string): Promise<num
   if (error) throw error
   return count ?? 0
 }
+
+export async function holeAnzahlOeffentlicherObjekte(): Promise<number | null> {
+  const supabase = await erstelleServerClient()
+  const { count, error } = await supabase.from("objekte_oeffentlich").select("id", { count: "exact", head: true })
+  if (error) {
+    console.error("holeAnzahlOeffentlicherObjekte", error)
+    return null
+  }
+  return count
+}
