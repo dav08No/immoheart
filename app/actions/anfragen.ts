@@ -10,8 +10,8 @@ type AnfrageEinfuegen = Database["public"]["Tables"]["anfragen"]["Insert"]
 export async function anfrageAnlegen(anfrage: AnfrageEinfuegen): Promise<void> {
   const neue = await legeAnfrageAn(anfrage)
   await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
-  revalidatePath("/anfragen")
-  revalidatePath("/")
+  revalidatePath("/admin/anfragen")
+  revalidatePath("/admin")
 }
 
 // Nur die Felder, die tatsächlich in berechneMatch (lib/matching.ts) einfliessen,
@@ -36,6 +36,6 @@ export async function anfrageAktualisieren(id: string, aenderung: Partial<Anfrag
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerAnfrage(id)
   }
-  revalidatePath("/anfragen")
-  revalidatePath("/")
+  revalidatePath("/admin/anfragen")
+  revalidatePath("/admin")
 }

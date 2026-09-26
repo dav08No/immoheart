@@ -77,13 +77,13 @@ export async function matchSenden(matchId: string): Promise<void> {
 
   await aktualisiereMatchStatus(matchId, "gesendet")
 
-  revalidatePath("/")
-  revalidatePath("/postfach")
+  revalidatePath("/admin")
+  revalidatePath("/admin/postfach")
 }
 
 export async function matchVerwerfen(matchId: string): Promise<void> {
   await aktualisiereMatchStatus(matchId, "verworfen")
-  revalidatePath("/")
+  revalidatePath("/admin")
 }
 
 export async function anfrageNachfragen(anfrageId: string): Promise<void> {
@@ -107,6 +107,6 @@ export async function anfrageNachfragen(anfrageId: string): Promise<void> {
   // Spec-Annahme A2: Nachfass wie Rückfrage, automatischer Versand ab Stufe 2.
   await sendeWennFreigegeben(nachricht, 2)
 
-  revalidatePath("/")
-  revalidatePath("/postfach")
+  revalidatePath("/admin")
+  revalidatePath("/admin/postfach")
 }

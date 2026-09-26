@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
@@ -30,7 +29,7 @@ export default function LoginPage() {
       setFehler("E-Mail oder Passwort stimmt nicht.")
       return
     }
-    router.push("/")
+    router.push("/admin")
     router.refresh()
   }
 
@@ -67,12 +66,9 @@ export default function LoginPage() {
         >
           {laedt ? "…" : "Anmelden"}
         </button>
-        <p className="text-sm text-ink-2">
-          Noch kein Konto?{" "}
-          <Link href="/register" className="font-medium text-brand">
-            Registrieren
-          </Link>
-        </p>
+        <a href="/" className="text-center text-sm text-ink-2 hover:text-brand">
+          ← Zur Website
+        </a>
       </form>
     </main>
   )

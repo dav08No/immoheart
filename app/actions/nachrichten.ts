@@ -48,7 +48,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
     body: text,
     erkannte_felder: null,
   })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 
   const felder = await erkenneFelder(text)
   await aktualisiereNachricht(nachricht.id, { erkannte_felder: felder })
@@ -67,7 +67,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
     await sendeWennFreigegeben(rueckfrageNachricht, 2)
   }
 
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
 export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
@@ -152,24 +152,23 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
   // Anfrage dauerhaft leer.
   await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
 
-  revalidatePath("/postfach")
-  revalidatePath("/anfragen")
+  revalidatePath("/admin/postfach")
+  revalidatePath("/admin/anfragen")
 }
 
 export async function entwurfSenden(nachrichtId: string): Promise<void> {
   await aktualisiereNachricht(nachrichtId, { richtung: "gesendet", gesendet_am: new Date().toISOString() })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
 export async function entwurfBearbeiten(nachrichtId: string, body: string): Promise<void> {
   await aktualisiereNachricht(nachrichtId, { body })
-  revalidatePath("/postfach")
+  revalidatePath("/admin/postfach")
 }
 
 export async function entwurfVerwerfen(nachrichtId: string, grund: string): Promise<void> {
   const code = await naechsterRegelCode()
   await legeRegelAn(code, grund)
   await loescheNachricht(nachrichtId)
-  revalidatePath("/postfach")
-  revalidatePath("/regeln")
+  revalidatePath("/admin/postfach")
 }
