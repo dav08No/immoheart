@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { ADMIN_START, LOGIN_PFAD, istAdminPfad } from "@/lib/routen"
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -23,40 +24,27 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Exakter Vergleich, kein startsWith: bei einem Präfix-Vergleich würde ein
-  // künftiger Pfad wie "/login-hilfe" fälschlich als "schon auf einer
-  // Auth-Seite" gelten und die Middleware nicht mehr davor schützen --
-  // gefunden bei der finalen Milestone-Review (live bestätigt: GET /loginX
-  // lieferte 404 statt eines 307-Redirects, weil die Middleware es
-  // durchliess). Gilt genauso für "/register" -- .includes() auf einer
-  // festen Liste vollständiger Pfade, nie ein Präfix-Check.
-  const AUTH_SEITEN = ["/login", "/register"]
-  const istAuthSeite = AUTH_SEITEN.includes(request.nextUrl.pathname)
+  const pfad = request.nextUrl.pathname
 
-  // NextResponse.redirect(...) baut ein komplett neues Response-Objekt --
-  // ohne diesen Schritt gehen alle Cookies, die setAll oben eventuell schon
-  // auf `response` geschrieben hat (Token-Refresh, Session-Cleanup nach
-  // abgelaufenem Login), auf jedem der beiden Redirect-Pfade verloren. Der
-  // Browser würde dann bei jeder weiteren Anfrage erneut mit dem alten,
-  // bereits ungültigen Refresh-Token starten. Betrifft auch Supabase's
-  // eigenes offizielles Middleware-Beispiel, das denselben Fehler hat.
+  // NextResponse.redirect baut ein neues Response-Objekt; ohne Übernahme gingen
+  // von setAll erneuerte Session-Cookies auf den Redirect-Pfaden verloren.
   function mitAktualisiertenCookies(ziel: NextResponse): NextResponse {
-    for (const cookie of response.cookies.getAll()) {
-      ziel.cookies.set(cookie)
-    }
+    for (const cookie of response.cookies.getAll()) ziel.cookies.set(cookie)
     return ziel
   }
 
-  if (!user && !istAuthSeite) {
-    return mitAktualisiertenCookies(NextResponse.redirect(new URL("/login", request.url)))
+  if (!user && istAdminPfad(pfad)) {
+    return mitAktualisiertenCookies(NextResponse.redirect(new URL(LOGIN_PFAD, request.url)))
   }
-  if (user && istAuthSeite) {
-    return mitAktualisiertenCookies(NextResponse.redirect(new URL("/", request.url)))
+  if (user && pfad === LOGIN_PFAD) {
+    return mitAktualisiertenCookies(NextResponse.redirect(new URL(ADMIN_START, request.url)))
   }
 
   return response
 }
 
+// Öffentliche Seiten brauchen keine Session -- die Middleware läuft nur dort,
+// wo Login-Zustand eine Rolle spielt. "/admin/:path*" deckt auch "/admin" ab.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/admin/:path*", "/login"],
 }
