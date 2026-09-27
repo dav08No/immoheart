@@ -54,6 +54,10 @@ describe("objektanfrageSchema", () => {
   it("lehnt eine ungültige objektId ab", () => {
     expect(objektanfrageSchema.safeParse({ ...GUELTIG, objektId: "keine-uuid" }).success).toBe(false)
   })
+
+  it("nimmt Postgres-IDs ohne RFC-Variante an", () => {
+    expect(objektanfrageSchema.safeParse({ ...GUELTIG, objektId: "22222222-2222-2222-2222-222222222201" }).success).toBe(true)
+  })
 })
 
 describe("objektanfrageNachricht", () => {

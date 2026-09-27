@@ -3,7 +3,8 @@ import { Heart, MapPin } from "lucide-react"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
 import { formatZahl, nutzungLabel } from "./anzeige"
 
-export function ObjektKarte({ objekt }: { objekt: OeffentlichesObjekt }) {
+// Unter einer eigenen Abschnittsüberschrift (z.B. "Ähnliche Objekte") ist der Kartentitel h3.
+export function ObjektKarte({ objekt, titelEbene: Titel = "h2" }: { objekt: OeffentlichesObjekt; titelEbene?: "h2" | "h3" }) {
   const reserviert = objekt.status === "reserviert"
   return (
     <Link
@@ -29,7 +30,7 @@ export function ObjektKarte({ objekt }: { objekt: OeffentlichesObjekt }) {
         <span className="w-fit rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">
           {nutzungLabel(objekt.nutzung)}
         </span>
-        <h2 className="font-display text-lg leading-snug font-bold text-ink group-hover:text-brand">{objekt.titel}</h2>
+        <Titel className="font-display text-lg leading-snug font-bold text-ink group-hover:text-brand">{objekt.titel}</Titel>
         <p className="flex items-center gap-1 text-sm text-ink-2">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           {objekt.ort}

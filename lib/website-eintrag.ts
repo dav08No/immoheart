@@ -23,7 +23,9 @@ export const objektanfrageSchema = z.object({
     .optional()
     .transform((wert) => (wert === "" ? undefined : wert)),
   nachricht: z.string().trim().min(1, "Bitte schreiben Sie eine Nachricht.").max(2000, "Höchstens 2000 Zeichen."),
-  objektId: z.uuid(),
+  // z.guid statt z.uuid: Postgres nimmt jede 8-4-4-4-12-Hex-ID, auch ohne RFC-Variante
+  // (z.B. die Seed-Objekte 22222222-…); z.uuid() würde sie als ungültig abweisen.
+  objektId: z.guid(),
 })
 
 export type Objektanfrage = z.infer<typeof objektanfrageSchema>
