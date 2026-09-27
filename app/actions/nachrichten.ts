@@ -1,55 +1,32 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { Nutzung } from "@/types"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeNachricht, setzeAnfrageIdFallsLeer, verknuepfeAntwortenMitAnfrage } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn, loescheAnfrage } from "@/lib/queries/anfragen"
-import { holeFirmaPerEmail, legeFirmaAn, loescheFirmaFallsUnbenutzt } from "@/lib/queries/firmen"
+import { loescheFirmaFallsUnbenutzt } from "@/lib/queries/firmen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
-import { baueAnfrageEinfuegung, firmenName } from "@/lib/eingang/anfrage-aus-eingang"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
+import { objektanfrageVorbereiten, suchanfrageVorbereiten } from "@/app/actions/anfrage-vorbereitung"
 
-// Firma per Absenderadresse wiederverwenden statt bei jeder Mail derselben Firma eine
-// neue Zeile anzulegen. neuAngelegt wird an den Doppelklick-Rollback unten
-// durchgereicht: nur eine hier selbst frisch angelegte Firma darf beim Verlust der
-// Race überhaupt zur Löschung in Frage kommen, eine wiederverwendete nie.
-async function firmaFuerEingang(von: string, felder: ErkannteFelder): Promise<{ id: string; neuAngelegt: boolean }> {
-  const bestehende = await holeFirmaPerEmail(von)
-  if (bestehende) return { id: bestehende.id, neuAngelegt: false }
-  const neue = await legeFirmaAn({ name: firmenName(felder, von), branche: felder.branche, kontakt_email: von })
-  return { id: neue.id, neuAngelegt: true }
-}
-
+// Suchanfragen (Mail) und Objektanfragen (Website) teilen sich Speichern, Doppelklick-
+// Schutz und Verknüpfung; nur Felder und Firma werden je Kategorie anders abgeleitet.
 export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
     const eingang = await holeNachricht(idSchema.parse(nachrichtId))
     if (!eingang) throw new NutzerFehler("Nachricht nicht gefunden.")
-    if (eingang.anfrage_id || (eingang.kategorie !== "suchanfrage" && eingang.kategorie !== null)) {
+    const objektanfrage = eingang.kategorie === "objektanfrage"
+    if (eingang.anfrage_id || (!objektanfrage && eingang.kategorie !== "suchanfrage" && eingang.kategorie !== null)) {
       throw new NutzerFehler("Diese Nachricht wurde bereits verarbeitet.")
     }
 
-    const felder = eingang.erkannte_felder as ErkannteFelder | null
-    if (!felder) throw new NutzerFehler("Diese Nachricht hat keine erkannten Felder.")
-
-    // KEIN stiller Rateschritt bei fehlender nutzung: berechneMatch schliesst mit
-    // einem harten Gate (anfrage.nutzung !== objekt.nutzung -> null) jede Anfrage mit
-    // falscher nutzung dauerhaft und ohne Fehlermeldung vom Matching aus. Die von der
-    // Nutzerin in EingangDetail gewählte nutzungUeberschreibung gilt deshalb nur, wenn
-    // die KI selbst nichts erkannt hat -- felder.nutzung hat immer Vorrang und wird
-    // NICHT zurückgeschrieben, damit erkannte_felder die tatsächliche KI-Erkennung bleibt.
-    const nutzung = felder.nutzung ?? nutzungUeberschreibung
-    if (!nutzung) {
-      throw new NutzerFehler(
-        "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
-      )
-    }
-
-    const firma = await firmaFuerEingang(eingang.von, felder)
-    const neue = await legeAnfrageAn(baueAnfrageEinfuegung(felder, nutzung, firma.id))
+    const { firma, einfuegung } = objektanfrage
+      ? await objektanfrageVorbereiten(eingang)
+      : await suchanfrageVorbereiten(eingang, nutzungUeberschreibung)
+    const neue = await legeAnfrageAn(einfuegung)
 
     // Doppelklick-Schutz: nur der Aufruf, der die noch leere anfrage_id trifft, gewinnt --
     // ein zweiter, überlappender Aufruf für dieselbe Nachricht muss seine eigene, gerade
@@ -58,8 +35,8 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     if (!uebernommen) {
       await loescheAnfrage(neue.id)
       // Nur aufräumen, wenn WIR die Firma gerade erst angelegt haben (siehe
-      // firmaFuerEingang) -- eine wiederverwendete, bereits vorher existierende Firma
-      // wird nie gelöscht. loescheFirmaFallsUnbenutzt prüft zusätzlich selbst, ob der
+      // firmaFuer in anfrage-vorbereitung.ts) -- eine wiederverwendete, bereits
+      // vorher existierende Firma wird nie gelöscht. loescheFirmaFallsUnbenutzt prüft zusätzlich selbst, ob der
       // GEWINNER der Race dieselbe Firma inzwischen über holeFirmaPerEmail
       // übernommen hat, und lässt sie in dem Fall stehen. Ein Fehler beim Aufräumen
       // darf den eigentlichen, für die Nutzerin bereits feststehenden Fehlerfall

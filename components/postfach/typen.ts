@@ -37,3 +37,6 @@ export const FELD_LABELS = {
 } as const
 
 export const AUSWAHL_KLASSE = "w-full rounded-lg border border-line-2 bg-surface px-3 py-2 text-sm text-ink disabled:opacity-60"
+
+// Nur Titel + Ort für die Objekt-Auswahl (Mail-Bild als Objektfoto), keine Adresse.
+export type ObjektOption = { id: string; label: string }

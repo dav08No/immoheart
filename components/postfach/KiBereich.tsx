@@ -60,8 +60,10 @@ export function KiBereich({ nachricht, laufend, ausfuehren }: Props) {
           <option value="" disabled>
             nicht eingeordnet
           </option>
+          {/* Objektanfragen entstehen nur über das Website-Formular (mit Objekt); eine Mail
+              lässt sich nicht dazu umwandeln -- die Option dient nur der Anzeige. */}
           {KATEGORIE_CHIPS.map(({ wert, label }) => (
-            <option key={wert} value={wert}>
+            <option key={wert} value={wert} disabled={wert === "objektanfrage"}>
               {label}
             </option>
           ))}

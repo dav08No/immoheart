@@ -13,19 +13,21 @@ import { KiBereich } from "./KiBereich"
 import { AktionenSuchanfrage } from "./AktionenSuchanfrage"
 import { AktionenAntwort } from "./AktionenAntwort"
 import { AktionenObjektangebot } from "./AktionenObjektangebot"
+import { AktionenObjektanfrage } from "./AktionenObjektanfrage"
 import { useAktion } from "./useAktion"
-import type { AnfrageOption, EntwurfVerweis } from "./typen"
+import type { AnfrageOption, EntwurfVerweis, ObjektOption } from "./typen"
 
 type Props = {
   nachricht: PostfachNachricht
   entwuerfe: EntwurfVerweis[]
   anfragen: AnfrageOption[]
+  objekte: ObjektOption[]
   onRueckfrageOeffnen: () => void
 }
 
 // Wird mit key={nachricht.id} gerendert: ein Wechsel mountet neu, lokaler State
 // (laufende Aktion, Auswahlfelder, Anhang-Links) muss nicht zurückgesetzt werden.
-export function EingangDetail({ nachricht, entwuerfe, anfragen, onRueckfrageOeffnen }: Props) {
+export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueckfrageOeffnen }: Props) {
   const router = useRouter()
   const { laufend, ausfuehren } = useAktion()
   const block = aktionsBlock(nachricht)
@@ -67,6 +69,8 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, onRueckfrageOeff
           nachrichtId={nachricht.id}
           anzahl={nachricht.anhangTypen.length}
           nichtGespeichert={nichtGespeicherteAnhaenge(nachricht.anhaenge)}
+          objekte={objekte}
+          objektId={nachricht.objekt_id}
         />
         <KiBereich nachricht={nachricht} laufend={laufend} ausfuehren={ausfuehren} />
         {block === "suchanfrage" && (
@@ -81,21 +85,33 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, onRueckfrageOeff
           <AktionenAntwort nachricht={nachricht} anfragen={anfragen} laufend={laufend} ausfuehren={ausfuehren} />
         )}
         {block === "objektangebot" && <AktionenObjektangebot nachricht={nachricht} />}
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3.5">
-          {/* Gibt es schon einen offenen Entwurf (KI oder früher angelegt), wird dieser
-              geöffnet statt ein zweiter angelegt -- sonst stapeln sich Antworten. */}
-          {antwortEntwurf ? (
-            <Button onClick={() => router.push(`/admin/entwuerfe?id=${antwortEntwurf.id}`)}>
-              <FilePen className="size-4" aria-hidden />
-              Entwurf öffnen
-            </Button>
-          ) : (
-            <Button disabled={laufend !== null} onClick={() => void entwerfen()}>
-              <Reply className="size-4" aria-hidden />
-              {laufend === "entwerfen" ? "Wird angelegt…" : "Antwort entwerfen"}
-            </Button>
-          )}
-        </div>
+        {block === "objektanfrage" && (
+          <AktionenObjektanfrage
+            nachricht={nachricht}
+            objekte={objekte}
+            entwurf={antwortEntwurf}
+            laufend={laufend}
+            ausfuehren={ausfuehren}
+          />
+        )}
+        {/* Die Objektanfrage zeigt "Entwurf öffnen" schon im eigenen Block. */}
+        {!(block === "objektanfrage" && antwortEntwurf) && (
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3.5">
+            {/* Gibt es schon einen offenen Entwurf (KI oder früher angelegt), wird dieser
+                geöffnet statt ein zweiter angelegt -- sonst stapeln sich Antworten. */}
+            {antwortEntwurf ? (
+              <Button onClick={() => router.push(`/admin/entwuerfe?id=${antwortEntwurf.id}`)}>
+                <FilePen className="size-4" aria-hidden />
+                Entwurf öffnen
+              </Button>
+            ) : (
+              <Button disabled={laufend !== null} onClick={() => void entwerfen()}>
+                <Reply className="size-4" aria-hidden />
+                {laufend === "entwerfen" ? "Wird angelegt…" : "Antwort entwerfen"}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </article>
   )
