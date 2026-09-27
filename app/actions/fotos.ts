@@ -55,12 +55,12 @@ export async function uploadVorbereiten(
   groesse: number,
 ): Promise<Ergebnis & { ziel: UploadZiel | null }> {
   await holeEigenesProfil()
-  return alsErgebnis(async () => {
+  return alsErgebnis<{ ziel: UploadZiel | null }>(async () => {
     const id = pruefeId(objektId)
     const problem = pruefeFoto(mime, groesse)
     if (problem || !istFotoMime(mime)) throw new NutzerFehler(problem ?? "Ungültiges Format.")
     const { pfad, token } = await erstelleUploadZiel(id, mime)
-    return { ziel: { pfad, token } as UploadZiel | null }
+    return { ziel: { pfad, token } }
   }, { ziel: null })
 }
 

@@ -98,16 +98,26 @@ export async function holeAnzahlOeffentlicherObjekte(): Promise<number | null> {
   return count
 }
 
-// Eine Abfrage für alle Objekte statt einer je Karte; gezählt wird in JS.
+const SEITE = 1000
+
+// Eine Abfrage für alle Objekte statt einer je Karte; gezählt wird in JS. Seitenweise,
+// weil PostgREST höchstens 1000 Zeilen je Anfrage liefert.
 export async function zaehleDirektanfragen(): Promise<Record<string, number>> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase
-    .from("nachrichten")
-    .select("objekt_id")
-    .eq("kategorie", "objektanfrage")
-    .eq("richtung", "eingang")
-    .is("geloescht_am", null)
-    .not("objekt_id", "is", null)
-  if (error) throw error
-  return zaehleJeObjekt(data)
+  const zeilen: { objekt_id: string | null }[] = []
+  for (let von = 0; ; von += SEITE) {
+    const { data, error } = await supabase
+      .from("nachrichten")
+      .select("objekt_id")
+      .eq("kategorie", "objektanfrage")
+      .eq("richtung", "eingang")
+      .is("geloescht_am", null)
+      .not("objekt_id", "is", null)
+      .order("id")
+      .range(von, von + SEITE - 1)
+    if (error) throw error
+    zeilen.push(...data)
+    if (data.length < SEITE) break
+  }
+  return zaehleJeObjekt(zeilen)
 }

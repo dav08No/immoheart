@@ -14,6 +14,8 @@ import {
 export type Foto = { id: string; pfad: string; reihenfolge: number; url: string }
 
 const ID_PORTION = 50
+// PostgREST liefert höchstens 1000 Zeilen je Anfrage -- darüber hinaus seitenweise.
+const SEITE = 1000
 
 function oeffentlicheUrl(pfad: string): string {
   return erstelleAdminClient().storage.from(FOTO_BUCKET).getPublicUrl(pfad).data.publicUrl
@@ -37,14 +39,24 @@ export async function holeTitelbilder(objektIds: string[]): Promise<Record<strin
   const ergebnis: Record<string, string> = {}
   const eindeutig = [...new Set(objektIds)]
   for (let i = 0; i < eindeutig.length; i += ID_PORTION) {
-    const { data, error } = await supabase
-      .from("objekt_fotos")
-      .select("objekt_id, pfad")
-      .in("objekt_id", eindeutig.slice(i, i + ID_PORTION))
-      .order("reihenfolge")
-      .order("created_at")
-    if (error) throw error
-    for (const [objektId, foto] of erstesJeObjekt(data)) ergebnis[objektId] = oeffentlicheUrl(foto.pfad)
+    const portion = eindeutig.slice(i, i + ID_PORTION)
+    for (let von = 0; ; von += SEITE) {
+      const { data, error } = await supabase
+        .from("objekt_fotos")
+        .select("objekt_id, pfad")
+        .in("objekt_id", portion)
+        .order("objekt_id")
+        .order("reihenfolge")
+        .order("created_at")
+        .order("id")
+        .range(von, von + SEITE - 1)
+      if (error) throw error
+      // Sortiert nach objekt_id: das erste Foto eines Objekts kommt immer vor seinen übrigen.
+      for (const [objektId, foto] of erstesJeObjekt(data)) {
+        if (!(objektId in ergebnis)) ergebnis[objektId] = oeffentlicheUrl(foto.pfad)
+      }
+      if (data.length < SEITE) break
+    }
   }
   return ergebnis
 }
@@ -67,7 +79,9 @@ export async function erstelleUploadZiel(
   return { pfad, token: data.token, signedUrl: data.signedUrl }
 }
 
-async function fuegeFotoAn(objektId: string, pfad: string): Promise<void> {
+// Gibt "duplikat" zurück statt zu werfen: dann gehört die Datei bereits zu einer Zeile
+// und darf vom Aufrufer nicht gelöscht werden.
+async function fuegeFotoAn(objektId: string, pfad: string): Promise<"ok" | "duplikat"> {
   const supabase = await erstelleServerClient()
   const { data: vorhanden, error: lesefehler } = await supabase
     .from("objekt_fotos")
@@ -77,9 +91,12 @@ async function fuegeFotoAn(objektId: string, pfad: string): Promise<void> {
   const { error } = await supabase
     .from("objekt_fotos")
     .insert({ objekt_id: objektId, pfad, reihenfolge: naechsteReihenfolge(vorhanden) })
-  if (error?.code === "23505") throw new NutzerFehler("Dieses Foto ist bereits gespeichert.")
+  if (error?.code === "23505") return "duplikat"
   if (error) throw error
+  return "ok"
 }
+
+const DUPLIKAT_MELDUNG = "Dieses Foto ist bereits gespeichert."
 
 // Die Datei muss wirklich hochgeladen sein und den Regeln entsprechen -- der Bucket
 // prüft das zwar auch, aber metadata ist die einzige Stelle, die der Server selbst sieht.
@@ -100,8 +117,16 @@ export async function registriereFoto(objektId: string, pfad: string): Promise<v
     await entferneDatei(pfad)
     throw new NutzerFehler(problem)
   }
-  await pruefeObjekt(objektId)
-  await fuegeFotoAn(objektId, pfad)
+  let ergebnis: "ok" | "duplikat"
+  try {
+    await pruefeObjekt(objektId)
+    ergebnis = await fuegeFotoAn(objektId, pfad)
+  } catch (e) {
+    // Ohne Zeile wäre die Datei verwaist (öffentlich erreichbar, aber nirgends verwaltet).
+    await entferneDatei(pfad)
+    throw e
+  }
+  if (ergebnis === "duplikat") throw new NutzerFehler(DUPLIKAT_MELDUNG)
 }
 
 export async function setzeReihenfolge(objektId: string, ids: string[]): Promise<void> {
@@ -112,7 +137,9 @@ export async function setzeReihenfolge(objektId: string, ids: string[]): Promise
     throw new NutzerFehler("Die Fotos wurden inzwischen geändert. Bitte neu laden.")
   }
   const ergebnisse = await Promise.all(
-    ids.map((id, index) => supabase.from("objekt_fotos").update({ reihenfolge: index }).eq("id", id)),
+    ids.map((id, index) =>
+      supabase.from("objekt_fotos").update({ reihenfolge: index }).eq("id", id).eq("objekt_id", objektId),
+    ),
   )
   const fehler = ergebnisse.find((e) => e.error)?.error
   if (fehler) throw fehler
@@ -157,10 +184,13 @@ export async function kopiereAusMailAnhang(anhangId: string, objektId: string): 
     .from(FOTO_BUCKET)
     .upload(pfad, datei, { contentType: anhang.mime_type })
   if (hochladefehler) throw hochladefehler
-  try {
-    await fuegeFotoAn(objektId, pfad)
-  } catch (e) {
+  // Frischer Pfad: auch bei einem (praktisch unmöglichen) Duplikat gehört die Datei zu keiner Zeile.
+  const ergebnis = await fuegeFotoAn(objektId, pfad).catch(async (e: unknown) => {
     await entferneDatei(pfad)
     throw e
+  })
+  if (ergebnis === "duplikat") {
+    await entferneDatei(pfad)
+    throw new NutzerFehler(DUPLIKAT_MELDUNG)
   }
 }

@@ -15,16 +15,21 @@ export function ObjektFotos({ objektId }: { objektId: string }) {
   const [fotos, setFotos] = useState<Foto[] | null>(null)
   const [beschaeftigt, setBeschaeftigt] = useState(false)
   const [gezogen, setGezogen] = useState<number | null>(null)
+  const [ladefehler, setLadefehler] = useState<string | null>(null)
   const sperre = useRef(false)
   const dateiEingabe = useRef<HTMLInputElement>(null)
 
   const neuLaden = useCallback(async () => {
     try {
       const { fehler, fotos: geladen } = await fotosLaden(objektId)
-      if (fehler) toast.error(fehler)
-      else setFotos(geladen)
+      if (fehler) {
+        setLadefehler(fehler)
+      } else {
+        setFotos(geladen)
+        setLadefehler(null)
+      }
     } catch {
-      toast.error("Fotos konnten nicht geladen werden.")
+      setLadefehler("Fotos konnten nicht geladen werden.")
     }
   }, [objektId])
 
@@ -106,8 +111,16 @@ export function ObjektFotos({ objektId }: { objektId: string }) {
           {fortschritt.fertig}/{fortschritt.gesamt} hochgeladen
         </p>
       )}
+      {ladefehler && (
+        <p className="flex items-center gap-2 text-xs text-crit" role="alert">
+          {ladefehler}
+          <button type="button" onClick={() => void neuLaden()} className="text-brand underline">
+            Erneut laden
+          </button>
+        </p>
+      )}
       {fotos === null ? (
-        <p className="text-xs text-ink-3">Fotos werden geladen…</p>
+        !ladefehler && <p className="text-xs text-ink-3">Fotos werden geladen…</p>
       ) : fotos.length === 0 ? (
         <p className="text-xs text-ink-3">Noch keine Fotos.</p>
       ) : (

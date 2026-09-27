@@ -7,6 +7,7 @@ import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { MAX_BESCHREIBUNG } from "@/lib/objekt-fotos"
+import { NutzerFehler } from "@/lib/nutzer-fehler"
 import type { Database } from "@/types/database"
 
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
@@ -14,7 +15,7 @@ type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
 // Das Formular begrenzt bereits per maxLength; hier gegen direkte Action-Aufrufe.
 function pruefeBeschreibung(objekt: Partial<ObjektEinfuegen>) {
   if ((objekt.beschreibung?.length ?? 0) > MAX_BESCHREIBUNG) {
-    throw new Error(`Beschreibung ist länger als ${MAX_BESCHREIBUNG} Zeichen`)
+    throw new NutzerFehler(`Die Beschreibung ist länger als ${MAX_BESCHREIBUNG} Zeichen.`)
   }
 }
 
