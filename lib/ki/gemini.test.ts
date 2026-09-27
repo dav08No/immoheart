@@ -62,7 +62,7 @@ describe("generiereText", () => {
     expect(erzeuge).toHaveBeenCalledTimes(3)
     expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
     expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt", 20_000)
-    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.5-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.1-flash-lite", "Prompt", 20_000)
     expect(warte).toHaveBeenCalledWith(500)
     expect(warte).toHaveBeenCalledTimes(1)
   })
@@ -81,9 +81,9 @@ describe("generiereText", () => {
     expect(ergebnis).toBe("Antwort")
     expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(0))).toEqual([
       "gemini-3.8-flash",
+      "gemini-3.1-flash-lite",
       "gemini-3.5-flash",
       "gemini-flash-latest",
-      "gemini-flash-lite-latest",
     ])
     expect(warte).not.toHaveBeenCalled()
   })
@@ -109,7 +109,7 @@ describe("generiereText", () => {
     expect(ergebnis).toBe("Antwort vom Ersatzmodell")
     expect(erzeuge).toHaveBeenCalledTimes(2)
     expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.5-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.1-flash-lite", "Prompt", 20_000)
     expect(warte).not.toHaveBeenCalled()
   })
 

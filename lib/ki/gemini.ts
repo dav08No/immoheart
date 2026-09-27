@@ -13,13 +13,14 @@ import { GoogleGenAI } from "@google/genai"
 // Im Gratis-Tarif hat jedes Modell ein eigenes, kleines Tageskontingent (live:
 // 20 Anfragen/Tag für gemini-3.8-flash) -- weitere, live erreichbare Modelle
 // verlängern die Kette, damit ein erschöpftes Kontingent nicht die ganze
-// Verarbeitung stoppt.
+// Verarbeitung stoppt. Reihenfolge nach live gemessener Antwortzeit: 3.1-flash-lite
+// antwortete in ~2 s, flash-lite-latest brauchte ~27 s und steht deshalb am Schluss.
 const MODELLE = [
   "gemini-3.8-flash",
+  "gemini-3.1-flash-lite",
   "gemini-3.5-flash",
   "gemini-flash-latest",
   "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite",
 ] as const
 
 const VERSUCHE_PRO_MODELL = 2
