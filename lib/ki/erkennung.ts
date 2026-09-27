@@ -14,16 +14,28 @@ export type ErkannteFelder = {
 
 const NUTZUNGEN: Nutzung[] = ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"]
 
-function alsString(wert: unknown): string | null {
+// Exportiert, damit einordnung.ts dieselbe Feldvalidierung nutzen kann statt
+// sie für ObjektDaten/ErkannteFelder zu duplizieren.
+export function alsString(wert: unknown): string | null {
   return typeof wert === "string" && wert.length > 0 ? wert : null
 }
 
-function alsZahl(wert: unknown): number | null {
+export function alsZahl(wert: unknown): number | null {
   return typeof wert === "number" && Number.isFinite(wert) ? wert : null
 }
 
-function alsNutzung(wert: unknown): Nutzung | null {
+export function alsNutzung(wert: unknown): Nutzung | null {
   return typeof wert === "string" && (NUTZUNGEN as string[]).includes(wert) ? (wert as Nutzung) : null
+}
+
+// Google umschliesst JSON-Antworten manchmal mit Markdown-Codezäunen; beide
+// Parser (hier und in einordnung.ts) müssen das gleich behandeln.
+export function entferneCodeZaeune(antwort: string): string {
+  return antwort
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim()
 }
 
 export function baueErkennungsPrompt(text: string): string {
@@ -41,12 +53,7 @@ Werte, die im Text nicht vorkommen, werden null. Zahlen ohne Tausendertrennzeich
 }
 
 export function parseErkennungsAntwort(antwort: string): ErkannteFelder {
-  const bereinigt = antwort
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim()
-  const daten = JSON.parse(bereinigt) as Record<string, unknown>
+  const daten = JSON.parse(entferneCodeZaeune(antwort)) as Record<string, unknown>
   return {
     firma: alsString(daten.firma),
     flaeche_min: alsZahl(daten.flaeche_min),
