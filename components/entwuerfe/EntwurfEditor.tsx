@@ -1,13 +1,16 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/Button"
-import { entwurfLoeschen, entwurfSenden, entwurfSpeichern, reservierungFreigeben } from "@/app/actions/entwuerfe"
+import { entwurfLoeschen, entwurfSpeichern } from "@/app/actions/entwuerfe"
+import { entwurfSenden } from "@/app/actions/entwurf-senden"
+import { VersandBanner } from "./VersandBanner"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
-type Laufend = "speichern" | "senden" | "loeschen" | "freigeben" | null
-type Bestaetigung = "senden" | "loeschen" | "freigeben" | null
+type Laufend = "speichern" | "senden" | "loeschen" | null
+type Bestaetigung = "senden" | "loeschen" | null
 const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink disabled:opacity-60"
 
 // Wird von EntwuerfeAnsicht immer mit key={entwurf.id} gerendert -- ein
@@ -16,17 +19,19 @@ const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink disable
 // Bestätigungs-Dialoge, laufend) muss deshalb NICHT manuell beim Wechsel
 // zurückgesetzt werden.
 export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
+  const router = useRouter()
   const [an, setAn] = useState(entwurf.an)
   const [betreff, setBetreff] = useState(entwurf.betreff)
   const [body, setBody] = useState(entwurf.body)
   const [laufend, setLaufend] = useState<Laufend>(null)
-  // Nur EIN Bestätigungs-Panel gleichzeitig offen -- Senden/Löschen/Freigeben
-  // schliessen sich gegenseitig, statt sich zu überlagern.
+  // Nur EIN Bestätigungs-Panel gleichzeitig offen -- Senden/Löschen schliessen sich
+  // gegenseitig, statt sich zu überlagern. Die Freigeben-/Als-gesendet-Bestätigungen
+  // für einen reservierten Entwurf leben mit eigenem State in VersandBanner.
   const [bestaetigung, setBestaetigung] = useState<Bestaetigung>(null)
 
-  // gesendet_am gesetzt, aber richtung noch "entwurf": Versand-Ergebnis unklar
-  // (siehe reservierungFreigeben in app/actions/entwuerfe.ts). Bearbeiten/
-  // Senden/Löschen sind hier gesperrt, weil der Entwurf möglicherweise gerade
+  // gesendet_am gesetzt, aber richtung noch "entwurf": Versand-Ergebnis unklar oder noch
+  // im Gange (siehe VersandBanner und reservierungFreigeben in app/actions/entwuerfe.ts).
+  // Bearbeiten/Senden/Löschen sind hier gesperrt, weil der Entwurf möglicherweise gerade
   // wirklich unterwegs ist -- ein zweiter Versand könnte die Mail duplizieren.
   const reserviert = entwurf.gesendet_am !== null
   const geaendert = an !== entwurf.an || betreff !== entwurf.betreff || body !== entwurf.body
@@ -35,81 +40,50 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   async function speichern() {
     setLaufend("speichern")
     try {
-      await entwurfSpeichern(entwurf.id, { an, betreff, body })
-      toast.success("Gespeichert")
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Entwurf konnte nicht gespeichert werden.")
+      const { fehler } = await entwurfSpeichern(entwurf.id, { an, betreff, body })
+      if (fehler) toast.error(fehler)
+      else toast.success("Gespeichert")
     } finally {
       setLaufend(null)
+      router.refresh()
     }
   }
 
   async function senden() {
     setLaufend("senden")
     try {
-      await entwurfSpeichern(entwurf.id, { an, betreff, body })
-      await entwurfSenden(entwurf.id)
-      toast.success("Gesendet")
-      setBestaetigung(null)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Versand fehlgeschlagen.")
+      const speichernErgebnis = await entwurfSpeichern(entwurf.id, { an, betreff, body })
+      if (speichernErgebnis.fehler) {
+        toast.error(speichernErgebnis.fehler)
+        return
+      }
+      const { fehler } = await entwurfSenden(entwurf.id)
+      if (fehler) toast.error(fehler)
+      else {
+        toast.success("Gesendet")
+        setBestaetigung(null)
+      }
     } finally {
       setLaufend(null)
+      router.refresh()
     }
   }
 
   async function loeschen() {
     setLaufend("loeschen")
     try {
-      await entwurfLoeschen(entwurf.id)
-      toast.success("Gelöscht")
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Entwurf konnte nicht gelöscht werden.")
+      const { fehler } = await entwurfLoeschen(entwurf.id)
+      if (fehler) toast.error(fehler)
+      else toast.success("Gelöscht")
     } finally {
       setLaufend(null)
-    }
-  }
-
-  async function freigeben() {
-    setLaufend("freigeben")
-    try {
-      await reservierungFreigeben(entwurf.id)
-      toast.success("Reservierung freigegeben")
-      setBestaetigung(null)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Reservierung konnte nicht freigegeben werden.")
-    } finally {
-      setLaufend(null)
+      router.refresh()
     }
   }
 
   return (
     <div className="p-4">
-      {reserviert && (
-        <div className="mb-3.5 rounded-lg border border-warn bg-warn-bg p-3 text-sm text-warn">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex-1">
-              Versand unklar – bitte im Gmail-Ordner „Gesendet” prüfen, bevor Sie erneut senden.
-            </span>
-            {bestaetigung !== "freigeben" && (
-              <Button onClick={() => setBestaetigung("freigeben")} disabled={laufend !== null}>
-                Reservierung freigeben
-              </Button>
-            )}
-          </div>
-          {bestaetigung === "freigeben" && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-ink-2">
-              Wirklich freigeben? Nur tun, wenn die Mail im Gmail-Ordner „Gesendet“ NICHT vorhanden ist.
-              <Button onClick={freigeben} disabled={laufend !== null}>
-                {laufend === "freigeben" ? "Wird freigegeben…" : "Ja, freigeben"}
-              </Button>
-              <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
-                Abbrechen
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+      {reserviert && <VersandBanner entwurf={entwurf} />}
 
       {!reserviert && entwurf.versand_fehler && <p className="mb-3 text-sm text-crit">{entwurf.versand_fehler}</p>}
 

@@ -23,16 +23,19 @@ export function NeueMailDialog({ offen, onOpenChange }: { offen: boolean; onOpen
     ereignis.preventDefault()
     setLaedt(true)
     try {
-      const { id } = await neueMail({ an, betreff, body })
+      const { id, fehler } = await neueMail({ an, betreff, body })
+      if (fehler || !id) {
+        toast.error(fehler ?? "Entwurf konnte nicht angelegt werden.")
+        return
+      }
       setAn("")
       setBetreff("")
       setBody("")
       onOpenChange(false)
       router.push(`/admin/entwuerfe?id=${id}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Entwurf konnte nicht angelegt werden.")
     } finally {
       setLaedt(false)
+      router.refresh()
     }
   }
 
