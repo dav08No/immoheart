@@ -10,15 +10,24 @@ import { GoogleGenAI } from "@google/genai"
 // oder einen ungültigen Key). gemini-flash-latest ist ebenfalls live mit
 // diesem Key erreichbar bestätigt und dient als Ersatzmodell, falls
 // gemini-3.8-flash überlastet ist oder (künftig) selbst deprecatet wird.
-const MODELLE = ["gemini-3.8-flash", "gemini-flash-latest"] as const
+// Im Gratis-Tarif hat jedes Modell ein eigenes, kleines Tageskontingent (live:
+// 20 Anfragen/Tag für gemini-3.8-flash) -- weitere, live erreichbare Modelle
+// verlängern die Kette, damit ein erschöpftes Kontingent nicht die ganze
+// Verarbeitung stoppt.
+const MODELLE = [
+  "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite",
+] as const
 
-const VERSUCHE_PRO_MODELL = 3
+const VERSUCHE_PRO_MODELL = 2
 
-// Wartezeit vor dem jeweils nächsten Versuch auf demselben Modell (Index 0
-// vor Versuch 2, Index 1 vor Versuch 3). Nach dem letzten Versuch eines
-// Modells wird nicht mehr gewartet, sondern direkt zum nächsten Modell
-// gewechselt.
-const WARTEZEITEN_MS = [500, 1500]
+// Wartezeit vor dem zweiten Versuch auf demselben Modell. Nach dem letzten
+// Versuch eines Modells wird nicht mehr gewartet, sondern direkt zum nächsten
+// Modell gewechselt.
+const WARTEZEITEN_MS = [500]
 
 const VORUEBERGEHENDE_STATUS = [429, 500, 502, 503, 504]
 
@@ -53,6 +62,13 @@ export function istVoruebergehend(fehler: unknown): boolean {
 // das nächste Modell in der Liste kann trotzdem funktionieren.
 export function istModellNichtVerfuegbar(fehler: unknown): boolean {
   return holeStatus(fehler) === 404
+}
+
+// 429 heisst hier fast immer "Kontingent dieses Modells erschöpft" -- ein
+// erneuter Versuch auf demselben Modell scheitert identisch, das nächste
+// Modell hat ein eigenes Kontingent.
+export function istKontingentErschoepft(fehler: unknown): boolean {
+  return holeStatus(fehler) === 429
 }
 
 // Ein Client pro generiereText-Aufruf statt pro Versuch: der Client hält
@@ -109,7 +125,7 @@ export async function generiereText(
         return text
       } catch (fehler) {
         letzterFehler = fehler
-        if (istModellNichtVerfuegbar(fehler)) break
+        if (istModellNichtVerfuegbar(fehler) || istKontingentErschoepft(fehler)) break
         if (!istVoruebergehend(fehler)) throw fehler
         const wartezeit = WARTEZEITEN_MS[versuch]
         if (wartezeit !== undefined) await warte(wartezeit)
