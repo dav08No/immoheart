@@ -6,7 +6,6 @@ import { toast } from "sonner"
 import { NachrichtenListe, type PostfachFilter } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
 import { GesendetDetail } from "./GesendetDetail"
-import { MailEinfuegen } from "./MailEinfuegen"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 import type { Nutzung } from "@/types"
@@ -25,18 +24,9 @@ export function PostfachAnsicht({
   const router = useRouter()
   const [filter, setFilter] = useState<PostfachFilter>("alle")
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(nachrichten[0]?.id ?? null)
-  // alsAnfrageSpeichern (Task 39) wirft bewusst (siehe Kommentar dort), z.B. wenn
-  // nutzung trotz manueller Auswahl nicht bestimmt werden konnte. Ohne sichtbares
-  // Feedback landet der sorgfältig formulierte Fehlertext nur in der Browser-Konsole
-  // (Offener Punkt aus Task 39s Review, s. Plan). Milestone-Konvention (MailEinfuegen,
-  // EntwurfEditor): lokaler fehler-State, gerendert in text-crit.
-  const [fehler, setFehler] = useState<string | null>(null)
-  // Reviewer-Feedback Fix-Loop Runde 1: alsAnfrageSpeichern (app/actions/nachrichten.ts)
-  // macht holeNachricht -> legeAnfrageAn -> loescheUndGibNachrichtZurueck ohne
-  // Transaktion. Ohne Sperre könnte ein schneller Doppelklick auf "Als Anfrage
-  // speichern" zwei überlappende Aufrufe für dieselbe nachrichtId auslösen.
-  // speichernLaufend wird an EingangDetail durchgereicht, das seinen
-  // Speichern-Button damit sperrt.
+  // Ein schneller Doppelklick auf "Als Anfrage speichern" könnte sonst zwei
+  // überlappende Aufrufe für dieselbe nachrichtId auslösen; speichernLaufend wird an
+  // EingangDetail durchgereicht, das seinen Speichern-Button damit sperrt.
   const [speichernLaufend, setSpeichernLaufend] = useState(false)
   // Kurze, optionale Erfolgsbestätigung nach dem Speichern (Reviewer-Vorschlag,
   // Minor) -- ersetzt den "Nachricht wählen."-Platzhalter einmalig, bis die Nutzerin
@@ -60,7 +50,6 @@ export function PostfachAnsicht({
   function gesendeteRueckfrageAuswaehlen(id: string) {
     setFilter("alle")
     setAusgewaehlteId(id)
-    setFehler(null)
     setErfolg(null)
     setSpeichernLaufend(false)
   }
@@ -82,33 +71,31 @@ export function PostfachAnsicht({
     toast.info("Keine Rückfrage vorhanden.")
   }
 
-  // Nachtrag aus Task 42: EingangDetails onSpeichern reicht die von der Nutzerin
-  // manuell gewählte Nutzung als optionales Argument durch, falls die KI-Erkennung
-  // nutzung nicht bestimmen konnte -- das muss an alsAnfrageSpeichern weitergereicht
-  // werden. alsAnfrageSpeichern löscht bei Erfolg die Quelle-Nachricht -- die
-  // gespeicherte Nachricht verschwindet also aus der Liste. Die Auswahl wird
-  // deshalb explizit aufgehoben, statt darauf zu vertrauen, dass das
-  // `nachrichten`-Prop nach revalidatePath rechtzeitig nachzieht.
+  // EingangDetails onSpeichern reicht die von der Nutzerin manuell gewählte Nutzung
+  // als optionales Argument durch, falls die KI-Erkennung nutzung nicht bestimmen
+  // konnte -- das muss an alsAnfrageSpeichern weitergereicht werden. Der Eingang bleibt
+  // nach Erfolg bestehen (alsAnfrageSpeichern löscht nicht mehr), die Auswahl wird
+  // trotzdem aufgehoben, damit die Erfolgsmeldung sichtbar wird statt der unveränderten
+  // Detailansicht.
   async function speichernAlsAnfrage(nachrichtId: string, nutzungUeberschreibung?: Nutzung) {
-    setFehler(null)
     setErfolg(null)
     // Wird beim Klick unconditional gesetzt -- nachrichtId ist zu diesem Zeitpunkt
     // garantiert die gerade angezeigte Nachricht (der Klick kam von deren Button).
     setSpeichernLaufend(true)
     try {
-      await alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung)
-      if (ausgewaehlteIdRef.current === nachrichtId) {
+      const { fehler } = await alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung)
+      if (ausgewaehlteIdRef.current !== nachrichtId) return
+      if (fehler) toast.error(fehler)
+      else {
         setAusgewaehlteId(null)
         setErfolg("Anfrage gespeichert.")
       }
-    } catch (e) {
-      if (ausgewaehlteIdRef.current === nachrichtId) setFehler(e instanceof Error ? e.message : String(e))
+    } catch {
+      if (ausgewaehlteIdRef.current === nachrichtId) toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       // Nur zurücksetzen, wenn nachrichtId noch die aktuell ausgewählte ist -- wurde
       // in der Zwischenzeit weggewechselt, hat der onAuswahl-Handler speichernLaufend
-      // bereits synchron auf false gesetzt (siehe dort); ein verspätetes Zurücksetzen
-      // hier dürfte NICHT den Zustand einer inzwischen anders ausgewählten Nachricht
-      // überschreiben (analog zum fehler-Guard oben).
+      // bereits synchron auf false gesetzt (siehe dort).
       if (ausgewaehlteIdRef.current === nachrichtId) setSpeichernLaufend(false)
     }
   }
@@ -116,7 +103,6 @@ export function PostfachAnsicht({
   return (
     <div className="grid grid-cols-[minmax(0,340px)_minmax(0,1fr)] items-start gap-4">
       <div className="flex flex-col gap-3">
-        <MailEinfuegen />
         <NachrichtenListe
           nachrichten={nachrichten}
           filter={filter}
@@ -124,7 +110,6 @@ export function PostfachAnsicht({
           onFilterWechsel={setFilter}
           onAuswahl={(id) => {
             setAusgewaehlteId(id)
-            setFehler(null)
             setErfolg(null)
             // Siehe Kommentar in rueckfrageOeffnen: sofortiges Zurücksetzen,
             // unabhängig vom Ref-Guard in speichernAlsAnfrage, damit der
@@ -135,7 +120,6 @@ export function PostfachAnsicht({
         />
       </div>
       <div className="rounded-card border border-line bg-surface">
-        {fehler && <div className="border-b border-line p-3 text-sm text-crit">{fehler}</div>}
         {!ausgewaehlt &&
           (erfolg ? (
             <p className="p-10 text-center text-sm text-good">{erfolg}</p>

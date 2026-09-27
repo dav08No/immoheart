@@ -1,148 +1,75 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
-import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
-import { antwortBetreff } from "@/lib/mail/verlauf"
+import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { Nutzung } from "@/types"
-import {
-  holeNachricht,
-  legeNachrichtAn,
-  aktualisiereNachricht,
-  loescheUndGibNachrichtZurueck,
-} from "@/lib/queries/nachrichten"
-import { legeAnfrageAn } from "@/lib/queries/anfragen"
+import { holeEigenesProfil } from "@/lib/queries/profile"
+import { holeNachricht, setzeAnfrageIdFallsLeer, verknuepfeAntwortenMitAnfrage } from "@/lib/queries/nachrichten"
+import { legeAnfrageAn, loescheAnfrage } from "@/lib/queries/anfragen"
+import { holeFirmaPerEmail, legeFirmaAn } from "@/lib/queries/firmen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
+import { baueAnfrageEinfuegung, firmenName } from "@/lib/eingang/anfrage-aus-eingang"
+import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
-export async function nachrichtEingegangen(text: string, von: string, betreff: string): Promise<void> {
-  // Rohtext IMMER zuerst und unbedingt persistieren, bevor die KI angefragt wird.
-  // erkenneFelder (Task 37) und entwurfRueckfrage/parseMailAntwort (Task 38) sind
-  // bewusst so gebaut, dass sie bei einer fehlerhaften oder unerwarteten KI-Antwort
-  // werfen (Netzwerkfehler, kaputtes JSON, "Unerwartete Antwort der KI") statt still
-  // leere Werte zu liefern. Würde die eingehende Nachricht erst NACH diesem Aufruf
-  // gespeichert, ginge eine echte Geschäftsanfrage bei jedem KI-Fehler spurlos
-  // verloren -- kein Datensatz, nur ein geworfener Fehler, keine Möglichkeit für den
-  // Menschen, den Text erneut zu verarbeiten. Erkennung und Rückfrage-Entwurf laufen
-  // deshalb als separater, fehlbarer zweiter Schritt NACH dem gesicherten Speichern
-  // des Rohtexts. Schlägt dieser zweite Schritt fehl, bleibt die Nachricht im
-  // Postfach sichtbar (ohne erkannte Felder); "Als Anfrage speichern" wirft dann
-  // ohnehin schon den vorhandenen Guard weiter unten in alsAnfrageSpeichern.
-  const nachricht = await legeNachrichtAn({
-    richtung: "eingang",
-    typ: "anfrage",
-    von,
-    an: process.env.GMAIL_USER ?? "",
-    betreff,
-    body: text,
-    erkannte_felder: null,
-  })
-  revalidatePath("/admin/postfach")
-
-  const felder = await erkenneFelder(text)
-  await aktualisiereNachricht(nachricht.id, { erkannte_felder: felder })
-
-  const luecken = Object.values(felder).some((wert) => wert === null)
-  if (luecken) {
-    const entwurf = await entwurfRueckfrage(felder)
-    // Betreff der Eingangsmail (mit Re:-Präfix) statt des von der KI erfundenen
-    // Betreffs -- der Verlauf im Mailprogramm der Firma soll an ihre eigene
-    // Anfrage anschliessen, nicht an einen neuen, nicht wiedererkennbaren Titel.
-    await legeNachrichtAn({
-      richtung: "entwurf",
-      typ: "rueckfrage",
-      von: process.env.GMAIL_USER ?? "",
-      an: von,
-      betreff: antwortBetreff(betreff),
-      body: entwurf.body,
-      antwort_auf: nachricht.id,
-    })
-  }
-
-  revalidatePath("/admin/postfach")
+// Firma per Absenderadresse wiederverwenden statt bei jeder Mail derselben Firma eine
+// neue Zeile anzulegen.
+async function firmaFuerEingang(von: string, felder: ErkannteFelder): Promise<string> {
+  const bestehende = await holeFirmaPerEmail(von)
+  if (bestehende) return bestehende.id
+  const neue = await legeFirmaAn({ name: firmenName(felder, von), branche: felder.branche, kontakt_email: von })
+  return neue.id
 }
 
-export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<void> {
-  const nachricht = await holeNachricht(nachrichtId)
-  if (!nachricht) throw new Error("Nachricht nicht gefunden")
+export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<Ergebnis> {
+  await holeEigenesProfil()
+  try {
+    const eingang = await holeNachricht(idSchema.parse(nachrichtId))
+    if (!eingang) throw new NutzerFehler("Nachricht nicht gefunden.")
+    if (eingang.anfrage_id || (eingang.kategorie !== "suchanfrage" && eingang.kategorie !== null)) {
+      throw new NutzerFehler("Diese Nachricht wurde bereits verarbeitet.")
+    }
 
-  const felder = nachricht.erkannte_felder as ErkannteFelder | null
-  if (!felder) throw new Error("Diese Nachricht hat keine erkannten Felder")
+    const felder = eingang.erkannte_felder as ErkannteFelder | null
+    if (!felder) throw new NutzerFehler("Diese Nachricht hat keine erkannten Felder.")
 
-  // KEIN stiller Rateschritt bei fehlender nutzung: anfragen.nutzung ist zwar nicht
-  // nullbar, aber berechneMatch (M2) schliesst mit einem harten Gate
-  // (anfrage.nutzung !== objekt.nutzung -> null) JEDE Anfrage mit falscher nutzung
-  // dauerhaft und ohne Fehlermeldung vom Matching aus. Task 37 hat nutzung genau
-  // deshalb als achtes KI-Feld ergänzt, um diesen stillen Rateschritt in der Server
-  // Action zu vermeiden ("... ohne KI-Schätzung sonst ein stiller Rateschritt in der
-  // Server Action nötig wäre"). Ein Default wie "gewerbe" würde genau das wieder
-  // einführen und eine echte Anfrage unauffindbar machen.
-  //
-  // Task 42 hat EingangDetail um ein Pflicht-Auswahlfeld für nutzung ergänzt,
-  // sichtbar/Pflicht genau dann, wenn felder.nutzung null ist. Der dort von der
-  // Nutzerin gewählte Wert kommt hier als nutzungUeberschreibung an und wird NUR
-  // verwendet, wenn die KI selbst nichts erkannt hat -- felder.nutzung hat immer
-  // Vorrang. Die Überschreibung wird bewusst NICHT in erkannte_felder
-  // zurückgeschrieben: erkannte_felder bleibt die ungefilterte Aufzeichnung dessen,
-  // was die KI tatsächlich erkannt hat (die Oberfläche zeigt fehlende Werte weiterhin
-  // korrekt als "?"), während die menschliche Korrektur nur in die neu angelegte
-  // Anfrage einfliesst.
-  const nutzung = felder.nutzung ?? nutzungUeberschreibung
-  if (!nutzung) {
-    throw new Error(
-      "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
-    )
+    // KEIN stiller Rateschritt bei fehlender nutzung: berechneMatch schliesst mit
+    // einem harten Gate (anfrage.nutzung !== objekt.nutzung -> null) jede Anfrage mit
+    // falscher nutzung dauerhaft und ohne Fehlermeldung vom Matching aus. Die von der
+    // Nutzerin in EingangDetail gewählte nutzungUeberschreibung gilt deshalb nur, wenn
+    // die KI selbst nichts erkannt hat -- felder.nutzung hat immer Vorrang und wird
+    // NICHT zurückgeschrieben, damit erkannte_felder die tatsächliche KI-Erkennung bleibt.
+    const nutzung = felder.nutzung ?? nutzungUeberschreibung
+    if (!nutzung) {
+      throw new NutzerFehler(
+        "Nutzung konnte nicht erkannt werden. Bitte Nutzung manuell bestimmen, bevor die Anfrage gespeichert wird."
+      )
+    }
+
+    const firmaId = await firmaFuerEingang(eingang.von, felder)
+    const neue = await legeAnfrageAn(baueAnfrageEinfuegung(felder, nutzung, firmaId))
+
+    // Doppelklick-Schutz: nur der Aufruf, der die noch leere anfrage_id trifft, gewinnt --
+    // ein zweiter, überlappender Aufruf für dieselbe Nachricht muss seine eigene, gerade
+    // erst angelegte Anfrage wieder verwerfen statt eine Dublette stehen zu lassen.
+    const uebernommen = await setzeAnfrageIdFallsLeer(eingang.id, neue.id)
+    if (!uebernommen) {
+      await loescheAnfrage(neue.id)
+      throw new NutzerFehler("Diese Nachricht wurde bereits verarbeitet.")
+    }
+
+    // Rückfrage-Entwürfe (und bereits gesendete Rückfragen) zu diesem Eingang auf die
+    // neue Anfrage umhängen, damit Senden letzter_kontakt pflegt und Folgemails der
+    // Firma über den Verlauf wieder bei dieser Anfrage landen.
+    await verknuepfeAntwortenMitAnfrage(eingang.id, neue.id)
+    await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
+
+    revalidatePath("/admin/postfach")
+    revalidatePath("/admin/anfragen")
+    revalidatePath("/admin", "layout")
+    return { fehler: null }
+  } catch (e) {
+    if (e instanceof NutzerFehler) return { fehler: e.message }
+    throw e
   }
-
-  // Fix-Loop Runde 2 (Task 44): holeNachricht oben + legeAnfrageAn + loescheNachricht
-  // GETRENNT bedeutete, dass zwei überlappende Aufrufe für dieselbe nachrichtId
-  // (z.B. ein Doppelklick, der die clientseitige speichernLaufend-Sperre in
-  // PostfachAnsicht umgeht, weil zwischen den beiden Klicks kurz weg- und wieder
-  // hinnavigiert wurde) beide dieselbe, noch nicht gelöschte Zeile lesen und beide
-  // legeAnfrageAn aufrufen konnten -- zwei doppelte Anfragen aus einer
-  // Quelle-Nachricht. Der Lösch-Schritt ist deshalb JETZT ein atomarer
-  // Lösch-und-Rückgabe-Aufruf (loescheUndGibNachrichtZurueck): Postgres
-  // serialisiert konkurrierende DELETEs auf dieselbe Zeile, nur EINER der beiden
-  // Aufrufe bekommt die Zeile zurück, der andere erhält `null` und wirft --
-  // statt einer zweiten, doppelten Anfrage.
-  //
-  // WICHTIG: dieser Aufruf steht bewusst HIER, unmittelbar vor legeAnfrageAn, NICHT
-  // am Anfang der Funktion anstelle von holeNachricht oben. Der nutzung-Check
-  // darüber muss zwingend VOR jedem Löschen passieren -- der ganze Sinn des Throws
-  // bei fehlender nutzung ist es, dass die Nutzerin über die EingangDetail-UI
-  // (Task 42) zurückkehren und die Nutzung manuell nachtragen kann, was voraussetzt,
-  // dass die Quelle-Nachricht dafür noch existiert. Würde zuerst gelöscht und erst
-  // danach auf nutzung geprüft, würde ausgerechnet ein fehlschlagender
-  // Speichern-Versuch (mangels nutzung) die einzige Möglichkeit zerstören, ihn zu
-  // korrigieren. Das lässt ein sehr kurzes Fenster zwischen dem nutzung-Check oben
-  // und diesem Aufruf offen (zwei schnelle, aufeinanderfolgende DB-Zugriffe ohne
-  // Nutzerinteraktion dazwischen) -- deutlich enger als das ursprüngliche Fenster
-  // über den gesamten Funktionsverlauf, und der atomare Lösch-und-Rückgabe-Aufruf
-  // selbst garantiert weiterhin, dass nur EIN Aufruf jemals legeAnfrageAn erreichen
-  // kann.
-  const geloescht = await loescheUndGibNachrichtZurueck(nachrichtId)
-  if (!geloescht) {
-    throw new Error("Nachricht wurde bereits verarbeitet oder existiert nicht mehr")
-  }
-
-  const neue = await legeAnfrageAn({
-    ort: felder.ort,
-    nutzung,
-    flaeche_min: felder.flaeche_min,
-    flaeche_max: felder.flaeche_max,
-    budget_pro_m2: felder.budget_pro_m2,
-    bezug: felder.bezug,
-  })
-
-  // Fix-Loop Task 48: AnfrageDetail (Task 50) berechnet Matches nicht selbst
-  // bei jedem Aufruf, sondern liest ausschliesslich vorab gespeicherte Zeilen
-  // über holeBesterMatchFuerAnfrage. War die KI-Erkennung bereits vollständig
-  // (keine "?"-Lücken, die eine Vermittlerin erst im Formular schliessen und
-  // damit über anfrageAktualisieren ein Rematching auslösen müsste), gäbe es
-  // ohne diesen Aufruf hier nie einen Auslöser für den ersten Match-Durchlauf
-  // -- der Bereich "Bester Treffer" bliebe für eine aus einer Mail angelegte
-  // Anfrage dauerhaft leer.
-  await berechneUndSpeichereMatchesFuerAnfrage(neue.id)
-
-  revalidatePath("/admin/postfach")
-  revalidatePath("/admin/anfragen")
 }
