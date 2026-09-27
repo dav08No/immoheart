@@ -4,10 +4,23 @@ import {
   MAX_ANHANG_BYTES,
   absender,
   anhangErlaubt,
+  eingangFelderAusMail,
   htmlZuText,
   referenzListe,
   sichererDateiname,
+  type GeparsteMail,
 } from "./eingang"
+
+const LEERE_MAIL: GeparsteMail = {
+  messageId: undefined,
+  inReplyTo: undefined,
+  references: undefined,
+  from: undefined,
+  subject: undefined,
+  text: undefined,
+  html: false,
+  date: undefined,
+}
 
 describe("htmlZuText", () => {
   it("entfernt script-Blöcke samt Inhalt", () => {
@@ -141,5 +154,69 @@ describe("absender", () => {
     expect(absender(undefined)).toBeNull()
     expect(absender({ value: [] })).toBeNull()
     expect(absender({ value: [{ name: "Ohne Adresse" }] })).toBeNull()
+  })
+})
+
+describe("eingangFelderAusMail", () => {
+  it("bevorzugt den Klartext-Body vor der HTML-Umwandlung", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, text: "Klartext", html: "<p>HTML</p>" })
+    expect(felder.body).toBe("Klartext")
+  })
+
+  it("wandelt HTML in Text um, wenn kein Klartext vorhanden ist", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, text: undefined, html: "<p>Nur HTML</p>" })
+    expect(felder.body).toBe("Nur HTML")
+  })
+
+  it("kürzt den Body auf 50000 Zeichen", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, text: "x".repeat(50_010) })
+    expect(felder.body.length).toBe(50_000)
+  })
+
+  it("fällt bei fehlendem Betreff auf '(ohne Betreff)' zurück", () => {
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, subject: undefined }).betreff).toBe("(ohne Betreff)")
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, subject: "  " }).betreff).toBe("(ohne Betreff)")
+  })
+
+  it("trimmt einen vorhandenen Betreff", () => {
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, subject: "  Anfrage  " }).betreff).toBe("Anfrage")
+  })
+
+  it("fällt bei fehlendem Absender auf 'unbekannt' zurück", () => {
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, from: undefined }).von).toBe("unbekannt")
+  })
+
+  it("übernimmt die Absenderadresse klein geschrieben", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, from: { value: [{ address: "Firma@Beispiel.CH" }] } })
+    expect(felder.von).toBe("firma@beispiel.ch")
+  })
+
+  it("übernimmt message_id unverändert und liefert null ohne Header", () => {
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, messageId: "<a@x>" }).message_id).toBe("<a@x>")
+    expect(eingangFelderAusMail(LEERE_MAIL).message_id).toBeNull()
+  })
+
+  it("extrahiert die erste Id aus In-Reply-To", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, inReplyTo: "<a@x> <b@x>" })
+    expect(felder.in_reply_to).toBe("<a@x>")
+  })
+
+  it("liefert null für in_reply_to ohne Header", () => {
+    expect(eingangFelderAusMail(LEERE_MAIL).in_reply_to).toBeNull()
+  })
+
+  it("kombiniert In-Reply-To und References zu referenzen, space-getrennt", () => {
+    const felder = eingangFelderAusMail({ ...LEERE_MAIL, inReplyTo: "<a@x>", references: "<a@x> <b@x>" })
+    expect(felder.referenzen).toBe("<a@x> <b@x>")
+  })
+
+  it("liefert null für referenzen ohne Header", () => {
+    expect(eingangFelderAusMail(LEERE_MAIL).referenzen).toBeNull()
+  })
+
+  it("formatiert empfangen_am als ISO-String, sonst null", () => {
+    const datum = new Date("2026-01-02T03:04:05.000Z")
+    expect(eingangFelderAusMail({ ...LEERE_MAIL, date: datum }).empfangen_am).toBe(datum.toISOString())
+    expect(eingangFelderAusMail(LEERE_MAIL).empfangen_am).toBeNull()
   })
 })

@@ -76,3 +76,51 @@ export function absender(
   if (!erste?.address) return null
   return { adresse: erste.address.toLowerCase(), name: erste.name?.trim() || null }
 }
+
+// Eigene, minimale Sicht auf ein von mailparser geparstes Mail-Objekt statt des
+// Pakets selbst zu importieren (wie schon bei absender oben) -- so bleibt diese
+// Datei ohne server-only-Abhängigkeit unit-testbar; ParsedMail von mailparser
+// erfüllt diese Form strukturell, holeNeueMails (Task 3) kann sie direkt übergeben.
+export type GeparsteMail = {
+  messageId?: string | undefined
+  inReplyTo?: string | undefined
+  references?: string | string[] | undefined
+  from?: { value: { address?: string; name?: string }[] } | undefined
+  subject?: string | undefined
+  text?: string | undefined
+  html?: string | false | undefined
+  date?: Date | undefined
+}
+
+export type EingangFelder = {
+  message_id: string | null
+  in_reply_to: string | null
+  referenzen: string | null
+  von: string
+  betreff: string
+  body: string
+  empfangen_am: string | null
+}
+
+const MAX_BODY_ZEICHEN = 50_000
+
+// Bildet die reine Zuordnungslogik ab, die aus einer geparsten Mail die an
+// speichereEingang übergebenen Felder macht -- ausgelagert aus holeNeueMails
+// (lib/mail/abruf.ts, server-only, ohne echte Mailbox nicht testbar), damit diese
+// nicht ganz triviale Zuordnung (Text/HTML-Fallback, Kürzung, Referenz-Extraktion,
+// Absender-/Betreff-Fallback) eigene Tests bekommt.
+export function eingangFelderAusMail(mail: GeparsteMail): EingangFelder {
+  const abs = absender(mail.from)
+  const rohtext = mail.text ?? htmlZuText(mail.html || "")
+  const referenzen = referenzListe(mail.inReplyTo, mail.references)
+  const inReplyToId = mail.inReplyTo?.match(MESSAGE_ID_REGEX)?.[0] ?? null
+  return {
+    message_id: mail.messageId ?? null,
+    in_reply_to: inReplyToId,
+    referenzen: referenzen.length > 0 ? referenzen.join(" ") : null,
+    von: abs?.adresse ?? "unbekannt",
+    betreff: mail.subject?.trim() || "(ohne Betreff)",
+    body: rohtext.length > MAX_BODY_ZEICHEN ? rohtext.slice(0, MAX_BODY_ZEICHEN) : rohtext,
+    empfangen_am: mail.date ? mail.date.toISOString() : null,
+  }
+}
