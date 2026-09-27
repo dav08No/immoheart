@@ -23,12 +23,20 @@ type Props = { filter: ObjektFilter; optionen: FilterOptionen; anzahl: number; c
 // Ein Client-Rahmen um das serverseitig gerenderte Raster: Seitenleiste, Sheet und
 // Sortierung teilen sich so denselben Filter-Entwurf (kein Wettlauf zweier Timer).
 export function ObjektSuche({ filter, optionen, anzahl, children }: Props) {
-  const [entwurf, setze] = useFilterUrl(filter)
+  const { entwurf, setze, zuruecksetzen: filterZuruecksetzen } = useFilterUrl(filter)
   const sortId = useId()
   const aktiv = anzahlAktiverFilter(entwurf)
 
   const zuruecksetzen = aktiv > 0 && (
-    <Link href="/objekte" scroll={false} className="text-sm font-medium text-brand underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    <Link
+      href="/objekte"
+      scroll={false}
+      onClick={(e) => {
+        // Ohne JS bleibt es ein normaler Link; mit JS über den Hook (Timer abbrechen).
+        e.preventDefault()
+        filterZuruecksetzen()
+      }}
+      className="text-sm font-medium text-brand underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
       Filter zurücksetzen
     </Link>
   )

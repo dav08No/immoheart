@@ -2,16 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { filterZuSuchparametern, type ObjektFilter } from "@/lib/objektsuche"
+import { filterZuSuchparametern, leseFilter, type ObjektFilter } from "@/lib/objektsuche"
 
 const VERZOEGERUNG_MS = 300
 
 export type SetzeFilter = (teil: Partial<ObjektFilter>, verzoegert?: boolean) => void
 
+export type FilterSteuerung = { entwurf: ObjektFilter; setze: SetzeFilter; zuruecksetzen: () => void }
+
+const LEERER_FILTER = leseFilter({}, [], [])
+
 // Der Filter lebt in der URL; die Seite liest ihn serverseitig neu. Bis die neue
 // Antwort da ist, zeigt der Entwurf die Auswahl schon an -- und zwei schnelle Klicks
 // bauen aufeinander auf statt auf dem alten Server-Stand.
-export function useFilterUrl(filter: ObjektFilter): [ObjektFilter, SetzeFilter] {
+export function useFilterUrl(filter: ObjektFilter): FilterSteuerung {
   const router = useRouter()
   const [entwurf, setEntwurf] = useState(filter)
   const aktuell = useRef(filter)
@@ -45,5 +49,15 @@ export function useFilterUrl(filter: ObjektFilter): [ObjektFilter, SetzeFilter] 
     [navigiere]
   )
 
-  return [entwurf, setze]
+  // Über den Hook statt nur per Link: ein noch laufender Timer würde sonst den alten
+  // Filter nach dem Zurücksetzen wieder in die URL schreiben.
+  const zuruecksetzen = useCallback(() => {
+    if (timer.current !== null) clearTimeout(timer.current)
+    timer.current = null
+    aktuell.current = LEERER_FILTER
+    setEntwurf(LEERER_FILTER)
+    router.replace("/objekte", { scroll: false })
+  }, [router])
+
+  return { entwurf, setze, zuruecksetzen }
 }

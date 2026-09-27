@@ -51,12 +51,11 @@ export default async function ObjektePage({ searchParams }: Props) {
             <p className="max-w-xl text-ink-2">
               Hinterlegen Sie einen Suchauftrag – wir melden uns, sobald eine passende Fläche frei wird.
             </p>
-            <div className="flex flex-wrap gap-4 text-sm font-medium">
-              <Link href="/suchauftrag" className="text-brand underline-offset-4 hover:underline">Suchauftrag erfassen</Link>
-              {alle.length > 0 && (
-                <Link href="/objekte" className="text-brand underline-offset-4 hover:underline">Filter zurücksetzen</Link>
-              )}
-            </div>
+            {/* Kein eigener Zurücksetzen-Link hier: der in der Filterleiste bricht auch
+                einen laufenden Timer ab. */}
+            <Link href="/suchauftrag" className="text-sm font-medium text-brand underline-offset-4 hover:underline">
+              Suchauftrag erfassen
+            </Link>
           </div>
         )}
       </ObjektSuche>

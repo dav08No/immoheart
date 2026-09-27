@@ -1,7 +1,7 @@
 "use client"
 
 import { useId, useState } from "react"
-import type { ObjektFilter } from "@/lib/objektsuche"
+import { MAX_FLAECHE, MAX_PREIS_PRO_M2, type ObjektFilter } from "@/lib/objektsuche"
 import { Checkbox } from "@/components/shadcn/checkbox"
 import { Input } from "@/components/shadcn/input"
 import { Label } from "@/components/shadcn/label"
@@ -45,7 +45,10 @@ function CheckboxGruppe({ titel, werte, gewaehlt, label, onWechsel }: {
 
 export function FilterFormular({ filter, optionen, setze }: Props) {
   const id = useId()
-  const bereich = optionen.flaeche
+  // Grösser als MAX_FLAECHE würde leseFilter verwerfen -- der Slider bleibt darunter.
+  const bereich = optionen.flaeche && optionen.flaeche.min < MAX_FLAECHE
+    ? { min: optionen.flaeche.min, max: Math.min(optionen.flaeche.max, MAX_FLAECHE) }
+    : null
   const flaeche: [number, number] = bereich
     ? [filter.flaecheMin ?? bereich.min, filter.flaecheMax ?? bereich.max]
     : [0, 0]
@@ -68,7 +71,7 @@ export function FilterFormular({ filter, optionen, setze }: Props) {
 
   function preisGeaendert(text: string) {
     setPreis(text)
-    const zahl = /^\d+$/.test(text) && Number(text) <= 10000 ? Number(text) : null
+    const zahl = /^\d+$/.test(text) && Number(text) <= MAX_PREIS_PRO_M2 ? Number(text) : null
     // Eigene Eingabe gilt schon als übernommen, sonst würde der Sync sie überschreiben.
     setPreisVorher(zahl)
     setze({ preisMax: zahl }, true)
@@ -122,7 +125,7 @@ export function FilterFormular({ filter, optionen, setze }: Props) {
           type="number"
           inputMode="numeric"
           min={0}
-          max={10000}
+          max={MAX_PREIS_PRO_M2}
           step={1}
           placeholder="beliebig"
           value={preis}

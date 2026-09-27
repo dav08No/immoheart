@@ -31,6 +31,10 @@ export type OeffentlichesObjekt = {
   titelbild: string | null
 }
 
+// Obergrenzen der URL-Parameter; die Filter-Oberfläche nutzt dieselben Werte.
+export const MAX_FLAECHE = 100000
+export const MAX_PREIS_PRO_M2 = 10000
+
 const NUTZUNG_WERTE = new Set<string>(Constants.public.Enums.nutzung_enum)
 
 type RohParams = Record<string, string | string[] | undefined>
@@ -69,8 +73,8 @@ export function leseFilter(params: RohParams, bekannteOrte: string[], bekannteEi
   const orte = alsListe(params, "ort").filter((o) => bekannteOrte.includes(o))
   const eigenschaften = alsListe(params, "eig").filter((e) => bekannteEigenschaften.includes(e))
 
-  let flaecheMin = ganzzahlImBereich(ersterWert(params, "flaeche_min"), 0, 100000)
-  let flaecheMax = ganzzahlImBereich(ersterWert(params, "flaeche_max"), 0, 100000)
+  let flaecheMin = ganzzahlImBereich(ersterWert(params, "flaeche_min"), 0, MAX_FLAECHE)
+  let flaecheMax = ganzzahlImBereich(ersterWert(params, "flaeche_max"), 0, MAX_FLAECHE)
   if (flaecheMin !== null && flaecheMax !== null && flaecheMin > flaecheMax) {
     ;[flaecheMin, flaecheMax] = [flaecheMax, flaecheMin]
   }
@@ -83,7 +87,7 @@ export function leseFilter(params: RohParams, bekannteOrte: string[], bekannteEi
     orte,
     flaecheMin,
     flaecheMax,
-    preisMax: ganzzahlImBereich(ersterWert(params, "preis_max"), 0, 10000),
+    preisMax: ganzzahlImBereich(ersterWert(params, "preis_max"), 0, MAX_PREIS_PRO_M2),
     verfuegbarBis: gueltigesDatum(ersterWert(params, "verfuegbar_bis")),
     eigenschaften,
     sortierung,
