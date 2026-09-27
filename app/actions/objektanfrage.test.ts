@@ -7,6 +7,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { erstelleZeitToken } from "@/lib/formular-schutz"
 
+// lib/website-speichern.ts (gemeinsamer Ablauf) importiert "server-only" selbst --
+// ausserhalb von Next.js wirft das Paket beim Import, daher leer mocken.
+vi.mock("server-only", () => ({}))
 vi.mock("@/lib/formular-geheimnis", () => ({ formularGeheimnis: () => "test-geheimnis" }))
 vi.mock("@/lib/queries/formular-limits", () => ({ zaehleEinsendung: vi.fn() }))
 vi.mock("@/lib/queries/oeffentlich", () => ({ holeOeffentlichesObjekt: vi.fn() }))

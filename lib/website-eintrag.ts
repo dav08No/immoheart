@@ -4,24 +4,30 @@
 import { z } from "zod"
 import type { Database } from "@/types/database"
 
-type NachrichtEinfuegen = Database["public"]["Tables"]["nachrichten"]["Insert"]
+export type NachrichtEinfuegen = Database["public"]["Tables"]["nachrichten"]["Insert"]
 
 const EMAIL_MELDUNG = "Bitte geben Sie eine gültige E-Mail-Adresse an."
 
+// Gemeinsame Felder aller öffentlichen Formulare (Objektanfrage, Suchauftrag).
+export const firmaFeld = z.string().trim().min(1, "Bitte geben Sie Ihre Firma an.").max(120, "Höchstens 120 Zeichen.")
+export const nameFeld = z.string().trim().min(1, "Bitte geben Sie Ihren Namen an.").max(120, "Höchstens 120 Zeichen.")
+export const emailFeld = z.string().trim().toLowerCase().pipe(z.email(EMAIL_MELDUNG).max(200, EMAIL_MELDUNG))
+// Ziffern, +, Leerzeichen, Klammern, Bindestrich, Schrägstrich -- keine Buchstaben.
+// Ein leeres Feld ("") wird zu undefined -- das Formular liefert "" statt fehlendem
+// Feld, wenn die Nutzerin nichts einträgt.
+export const telefonFeld = z
+  .string()
+  .trim()
+  .max(40, "Höchstens 40 Zeichen.")
+  .regex(/^[0-9+\s()/-]*$/, "Bitte nur Ziffern, +, Leerzeichen, Klammern, / und - verwenden.")
+  .optional()
+  .transform((wert) => (wert === "" ? undefined : wert))
+
 export const objektanfrageSchema = z.object({
-  firma: z.string().trim().min(1, "Bitte geben Sie Ihre Firma an.").max(120, "Höchstens 120 Zeichen."),
-  name: z.string().trim().min(1, "Bitte geben Sie Ihren Namen an.").max(120, "Höchstens 120 Zeichen."),
-  email: z.string().trim().toLowerCase().pipe(z.email(EMAIL_MELDUNG).max(200, EMAIL_MELDUNG)),
-  // Ziffern, +, Leerzeichen, Klammern, Bindestrich, Schrägstrich -- keine Buchstaben.
-  // Ein leeres Feld ("") wird zu undefined -- das Formular liefert "" statt fehlendem
-  // Feld, wenn die Nutzerin nichts einträgt.
-  telefon: z
-    .string()
-    .trim()
-    .max(40, "Höchstens 40 Zeichen.")
-    .regex(/^[0-9+\s()/-]*$/, "Bitte nur Ziffern, +, Leerzeichen, Klammern, / und - verwenden.")
-    .optional()
-    .transform((wert) => (wert === "" ? undefined : wert)),
+  firma: firmaFeld,
+  name: nameFeld,
+  email: emailFeld,
+  telefon: telefonFeld,
   nachricht: z.string().trim().min(1, "Bitte schreiben Sie eine Nachricht.").max(2000, "Höchstens 2000 Zeichen."),
   // z.guid statt z.uuid: Postgres nimmt jede 8-4-4-4-12-Hex-ID, auch ohne RFC-Variante
   // (z.B. die Seed-Objekte 22222222-…); z.uuid() würde sie als ungültig abweisen.
