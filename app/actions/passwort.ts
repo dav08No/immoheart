@@ -33,10 +33,18 @@ export async function passwortVergessen(email: string): Promise<void> {
   // dieses Limit könnte ein Angreifer beliebig viele generateLink-Aufrufe (und damit
   // Mail-Versände) über dasselbe Formular auslösen. Läuft vor after() und damit noch
   // synchron in der Antwortzeit -- das verrät nichts über die E-Mail, da die Dauer nur
-  // von der IP abhängt, nicht davon, ob das Konto existiert.
-  const ipHash = hashIp(`pw:${clientIp(kopf)}`, formularGeheimnis())
-  const anzahl = await zaehleEinsendung(ipHash, stundenFenster(Date.now()))
-  if (anzahl > LIMIT_PRO_STUNDE) return
+  // von der IP abhängt, nicht davon, ob das Konto existiert. Ein Fehler bei der
+  // Prüfung selbst (z.B. RPC nicht erreichbar) darf den Reset-Versuch nicht blockieren
+  // oder als Serverfehler durchschlagen -- er wird geloggt, die Funktion kehrt aber
+  // wie bei jeder anderen unbekannten/ungültigen Eingabe still zurück.
+  try {
+    const ipHash = hashIp(`pw:${clientIp(kopf)}`, formularGeheimnis())
+    const anzahl = await zaehleEinsendung(ipHash, stundenFenster(Date.now()))
+    if (anzahl > LIMIT_PRO_STUNDE) return
+  } catch (fehler) {
+    console.error("passwortVergessen: Limit-Prüfung fehlgeschlagen", fehler)
+    return
+  }
 
   after(async () => {
     try {

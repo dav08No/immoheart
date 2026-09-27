@@ -25,8 +25,16 @@ describe("objektanfrageSchema", () => {
     expect(objektanfrageSchema.safeParse(ohneTelefon).success).toBe(true)
   })
 
-  it("lehnt eine ungültige E-Mail ab", () => {
-    expect(objektanfrageSchema.safeParse({ ...GUELTIG, email: "keine-email" }).success).toBe(false)
+  it("lehnt eine ungültige E-Mail ab mit deutscher Meldung", () => {
+    const ergebnis = objektanfrageSchema.safeParse({ ...GUELTIG, email: "keine-email" })
+    expect(ergebnis.success).toBe(false)
+    if (ergebnis.success) return
+    expect(ergebnis.error.issues[0]?.message).toBe("Bitte geben Sie eine gültige E-Mail-Adresse an.")
+  })
+
+  it("macht ein leeres Telefon zu undefined", () => {
+    const ergebnis = objektanfrageSchema.parse({ ...GUELTIG, telefon: "" })
+    expect(ergebnis.telefon).toBeUndefined()
   })
 
   it("lehnt eine zu lange Nachricht ab", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
-import { feldFehlerAus, limitErgebnis, zeitTokenErgebnis } from "./objektanfrage-ergebnis"
+import { feldFehlerAus, limitErgebnis, zeitTokenErgebnis, zodFehlerErgebnis } from "./objektanfrage-ergebnis"
+import { objektanfrageSchema } from "./website-eintrag"
 
 describe("feldFehlerAus", () => {
   const schema = z.object({ email: z.email(), nachricht: z.string().min(1) })
@@ -34,6 +35,35 @@ describe("zeitTokenErgebnis", () => {
     const ungueltig = zeitTokenErgebnis("ungueltig")
     expect(zuSchnell).toEqual({ ok: false, fehler: "Bitte versuchen Sie es in ein paar Sekunden erneut." })
     expect(ungueltig).toEqual(zuSchnell)
+  })
+})
+
+const GUELTIGE_ANFRAGE = {
+  firma: "Muster AG",
+  name: "Anna Muster",
+  email: "anna@muster.ch",
+  nachricht: "Wir interessieren uns für dieses Objekt.",
+  objektId: "550e8400-e29b-41d4-a716-446655440000",
+}
+
+describe("zodFehlerErgebnis", () => {
+  it("liefert die deutsche E-Mail-Meldung im feldFehler", () => {
+    const geprueft = objektanfrageSchema.safeParse({ ...GUELTIGE_ANFRAGE, email: "keine-email" })
+    expect(geprueft.success).toBe(false)
+    if (geprueft.success) return
+    const ergebnis = zodFehlerErgebnis(geprueft.error)
+    expect(ergebnis).toEqual({
+      ok: false,
+      fehler: "Bitte prüfen Sie Ihre Eingaben.",
+      feldFehler: { email: "Bitte geben Sie eine gültige E-Mail-Adresse an." },
+    })
+  })
+
+  it("meldet eine ungültige objektId als 'Objekt nicht mehr verfügbar', ohne feldFehler", () => {
+    const geprueft = objektanfrageSchema.safeParse({ ...GUELTIGE_ANFRAGE, objektId: "keine-uuid" })
+    expect(geprueft.success).toBe(false)
+    if (geprueft.success) return
+    expect(zodFehlerErgebnis(geprueft.error)).toEqual({ ok: false, fehler: "Dieses Objekt ist nicht mehr verfügbar." })
   })
 })
 

@@ -6,18 +6,23 @@ import type { Database } from "@/types/database"
 
 type NachrichtEinfuegen = Database["public"]["Tables"]["nachrichten"]["Insert"]
 
+const EMAIL_MELDUNG = "Bitte geben Sie eine gültige E-Mail-Adresse an."
+
 export const objektanfrageSchema = z.object({
-  firma: z.string().trim().min(1).max(120),
-  name: z.string().trim().min(1).max(120),
-  email: z.string().trim().toLowerCase().pipe(z.email().max(200)),
+  firma: z.string().trim().min(1, "Bitte geben Sie Ihre Firma an.").max(120, "Höchstens 120 Zeichen."),
+  name: z.string().trim().min(1, "Bitte geben Sie Ihren Namen an.").max(120, "Höchstens 120 Zeichen."),
+  email: z.string().trim().toLowerCase().pipe(z.email(EMAIL_MELDUNG).max(200, EMAIL_MELDUNG)),
   // Ziffern, +, Leerzeichen, Klammern, Bindestrich, Schrägstrich -- keine Buchstaben.
+  // Ein leeres Feld ("") wird zu undefined -- das Formular liefert "" statt fehlendem
+  // Feld, wenn die Nutzerin nichts einträgt.
   telefon: z
     .string()
     .trim()
-    .max(40)
-    .regex(/^[0-9+\s()/-]*$/)
-    .optional(),
-  nachricht: z.string().trim().min(1).max(2000),
+    .max(40, "Höchstens 40 Zeichen.")
+    .regex(/^[0-9+\s()/-]*$/, "Bitte nur Ziffern, +, Leerzeichen, Klammern, / und - verwenden.")
+    .optional()
+    .transform((wert) => (wert === "" ? undefined : wert)),
+  nachricht: z.string().trim().min(1, "Bitte schreiben Sie eine Nachricht.").max(2000, "Höchstens 2000 Zeichen."),
   objektId: z.uuid(),
 })
 

@@ -1,8 +1,9 @@
 // Geheimnis für Zeit-Token und IP-Hash der öffentlichen Formulare: keine eigene
 // Umgebungsvariable, sondern eine feste HMAC-Ableitung aus dem ohnehin nur
 // serverseitig bekannten Service-Role-Key. Der Kontext trennt sie kryptografisch
-// von anderen Verwendungen desselben Keys ("server-only" verhindert den Import aus
-// einer Server Action, die auch im Client-Bundle landen könnte).
+// von anderen Verwendungen desselben Keys ("server-only" sorgt dafür, dass der Build
+// abbricht, würde dieses Modul je aus einer Client-Component heraus importiert --
+// der Service-Role-Key darf nie im Browser-Bundle landen).
 import "server-only"
 import { createHmac } from "node:crypto"
 

@@ -22,6 +22,17 @@ export function zeitTokenErgebnis(status: "ok" | "zu_schnell" | "ungueltig"): Ob
   return status === "ok" ? null : { ok: false, fehler: "Bitte versuchen Sie es in ein paar Sekunden erneut." }
 }
 
+// objektId ist ein verstecktes Feld (aus der URL vorbefüllt, nie von Hand editiert) --
+// ein Fehler dort ist kein Tippfehler der Besucherin, sondern eine veraltete/manipulierte
+// ID. Dafür ein Feld im Formular rot zu markieren wäre irreführend; die zutreffende
+// Meldung ist dieselbe wie bei einem später nicht mehr gefundenen Objekt.
+export function zodFehlerErgebnis(fehler: ZodError): ObjektAnfrageErgebnis {
+  if (fehler.issues.some((issue) => issue.path[0] === "objektId")) {
+    return { ok: false, fehler: "Dieses Objekt ist nicht mehr verfügbar." }
+  }
+  return { ok: false, fehler: "Bitte prüfen Sie Ihre Eingaben.", feldFehler: feldFehlerAus(fehler) }
+}
+
 export function limitErgebnis(anzahl: number, limit: number): ObjektAnfrageErgebnis | null {
   return anzahl > limit ? { ok: false, fehler: "Zu viele Anfragen. Bitte später erneut versuchen." } : null
 }

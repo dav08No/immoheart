@@ -1,6 +1,7 @@
 // Datenzugriff für öffentliche Seiten: ausschliesslich der normale Server-Client
 // (Rolle anon), nie der Admin-Client -- Konstraint N5 verbietet erhöhte Rechte auf
 // öffentlichen Seiten, damit nie mehr als objekte_oeffentlich/objekt_fotos sichtbar wird.
+import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
