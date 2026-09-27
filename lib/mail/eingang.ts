@@ -20,7 +20,15 @@ export function htmlZuText(html: string): string {
   return dekodiert.replace(/\n{3,}/g, "\n\n").trim()
 }
 
-export const ERLAUBTE_ANHANG_TYPEN: readonly string[] = ["image/jpeg", "image/png", "application/pdf"]
+// Deckt sich exakt mit den allowed_mime_types des Storage-Buckets.
+export const ERLAUBTE_ANHANG_TYPEN: readonly string[] = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+]
 export const MAX_ANHANG_BYTES = 10 * 1024 * 1024
 
 export function anhangErlaubt(mime: string, groesse: number): boolean {

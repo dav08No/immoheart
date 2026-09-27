@@ -54,6 +54,14 @@ describe("anhangErlaubt", () => {
     expect(anhangErlaubt("IMAGE/PNG", 1024)).toBe(true)
   })
 
+  it("erlaubt webp bis 1 MB", () => {
+    expect(anhangErlaubt("image/webp", 1024 * 1024)).toBe(true)
+  })
+
+  it("erlaubt heic bis 1 MB", () => {
+    expect(anhangErlaubt("image/heic", 1024 * 1024)).toBe(true)
+  })
+
   it("erlaubt pdf bis genau 10 MB", () => {
     expect(anhangErlaubt("application/pdf", MAX_ANHANG_BYTES)).toBe(true)
   })
