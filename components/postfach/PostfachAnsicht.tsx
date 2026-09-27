@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { NachrichtenListe, type PostfachFilter } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
 import { GesendetDetail } from "./GesendetDetail"
@@ -77,7 +78,8 @@ export function PostfachAnsicht({
     )
     if (legacyGesendet) return gesendeteRueckfrageAuswaehlen(legacyGesendet.id)
     const legacyEntwurf = rueckfragen.find((r) => r.typ === "rueckfrage" && r.an === eingang.von)
-    if (legacyEntwurf) router.push(`/admin/entwuerfe?id=${legacyEntwurf.id}`)
+    if (legacyEntwurf) return router.push(`/admin/entwuerfe?id=${legacyEntwurf.id}`)
+    toast.info("Keine Rückfrage vorhanden.")
   }
 
   // Nachtrag aus Task 42: EingangDetails onSpeichern reicht die von der Nutzerin

@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache"
 import { entwurfAngebot, entwurfNachfass } from "@/lib/ki/entwuerfe"
-import { holeGesendeteIdsFuerAnfrage, holeLetztenGesendetenBetreff, legeNachrichtAn } from "@/lib/queries/nachrichten"
+import { legeNachrichtAn } from "@/lib/queries/nachrichten"
+import { holeGesendeteIdsFuerAnfrage, holeLetztenGesendetenBetreff } from "@/lib/queries/versand"
 import { antwortBetreff } from "@/lib/mail/verlauf"
 import { holeAnfrage, holeFirma, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
+import { holeEigenesProfil } from "@/lib/queries/profile"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Kriterium } from "@/types"
 
@@ -46,9 +48,14 @@ async function aktualisiereMatchStatus(matchId: string, status: "gesendet" | "ve
 }
 
 export async function matchSenden(matchId: string): Promise<{ entwurfId: string }> {
+  await holeEigenesProfil()
   const supabase = await erstelleServerClient()
   const { data: matchRow, error } = await supabase.from("matches").select("*").eq("id", matchId).single()
   if (error) throw error
+  // Verhindert einen zweiten KI-Aufruf (teuer, siehe entwurfAngebot) und einen zweiten
+  // Angebotsentwurf für ein bereits bearbeitetes Match -- z.B. bei einem Doppelklick
+  // oder wenn dieselbe Karte in zwei Tabs offen ist. Läuft VOR jedem KI-/DB-Zugriff.
+  if (matchRow.status !== "neu") throw new Error("Dieses Match wurde bereits bearbeitet.")
 
   const [anfrageRow, objektRow] = await Promise.all([holeAnfrage(matchRow.anfrage_id), holeObjekt(matchRow.objekt_id)])
   if (!anfrageRow || !objektRow) throw new Error("Anfrage oder Objekt nicht gefunden")
@@ -81,11 +88,13 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
 }
 
 export async function matchVerwerfen(matchId: string): Promise<void> {
+  await holeEigenesProfil()
   await aktualisiereMatchStatus(matchId, "verworfen")
   revalidatePath("/admin")
 }
 
 export async function anfrageNachfragen(anfrageId: string): Promise<{ entwurfId: string }> {
+  await holeEigenesProfil()
   const anfrageRow = await holeAnfrage(anfrageId)
   if (!anfrageRow) throw new Error("Anfrage nicht gefunden")
 

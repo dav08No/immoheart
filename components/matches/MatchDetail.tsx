@@ -9,10 +9,11 @@ const STATUS_ZEICHEN: Record<KriteriumStatus, string> = { ok: "✓", teilweise: 
 const STATUS_FARBE: Record<KriteriumStatus, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
 
 export function MatchDetail({
-  match, offen, onSchliessen, onSenden, onVerwerfen,
+  match, offen, laufend, onSchliessen, onSenden, onVerwerfen,
 }: {
   match: NeuerMatch | null
   offen: boolean
+  laufend: boolean
   onSchliessen: () => void
   onSenden: () => void
   onVerwerfen: () => void
@@ -67,10 +68,18 @@ export function MatchDetail({
       </table>
       <p className="text-xs text-ink-2">{letzterMatch.hinweis}</p>
       <div className="flex gap-2">
-        <button onClick={onSenden} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand">
-          Angebot entwerfen
+        <button
+          onClick={onSenden}
+          disabled={laufend}
+          className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand disabled:opacity-60"
+        >
+          {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
         </button>
-        <button onClick={onVerwerfen} className="rounded-lg border border-line-2 px-3 py-1.5 text-sm text-ink">
+        <button
+          onClick={onVerwerfen}
+          disabled={laufend}
+          className="rounded-lg border border-line-2 px-3 py-1.5 text-sm text-ink disabled:opacity-60"
+        >
           Verwerfen
         </button>
       </div>

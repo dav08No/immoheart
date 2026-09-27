@@ -12,9 +12,10 @@ const STATUS_ZEICHEN: Record<KriteriumStatus, string> = { ok: "✓", teilweise: 
 const STATUS_FARBE: Record<KriteriumStatus, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
 
 export function MatchCard({
-  match, onOeffnen, onSenden, onVerwerfen,
+  match, laufend, onOeffnen, onSenden, onVerwerfen,
 }: {
   match: NeuerMatch
+  laufend: boolean
   onOeffnen: () => void
   onSenden: () => void
   onVerwerfen: () => void
@@ -73,13 +74,15 @@ export function MatchCard({
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); onSenden() }}
-          className="rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-on-brand hover:bg-brand-2"
+          disabled={laufend}
+          className="rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-on-brand hover:bg-brand-2 disabled:opacity-60"
         >
-          Angebot entwerfen
+          {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onVerwerfen() }}
-          className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface"
+          disabled={laufend}
+          className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface disabled:opacity-60"
         >
           Verwerfen
         </button>
