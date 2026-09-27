@@ -6,19 +6,21 @@ import type { Nutzung } from "@/types"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeNachricht, setzeAnfrageIdFallsLeer, verknuepfeAntwortenMitAnfrage } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn, loescheAnfrage } from "@/lib/queries/anfragen"
-import { holeFirmaPerEmail, legeFirmaAn } from "@/lib/queries/firmen"
+import { holeFirmaPerEmail, legeFirmaAn, loescheFirmaFallsUnbenutzt } from "@/lib/queries/firmen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
 import { baueAnfrageEinfuegung, firmenName } from "@/lib/eingang/anfrage-aus-eingang"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
 // Firma per Absenderadresse wiederverwenden statt bei jeder Mail derselben Firma eine
-// neue Zeile anzulegen.
-async function firmaFuerEingang(von: string, felder: ErkannteFelder): Promise<string> {
+// neue Zeile anzulegen. neuAngelegt wird an den Doppelklick-Rollback unten
+// durchgereicht: nur eine hier selbst frisch angelegte Firma darf beim Verlust der
+// Race überhaupt zur Löschung in Frage kommen, eine wiederverwendete nie.
+async function firmaFuerEingang(von: string, felder: ErkannteFelder): Promise<{ id: string; neuAngelegt: boolean }> {
   const bestehende = await holeFirmaPerEmail(von)
-  if (bestehende) return bestehende.id
+  if (bestehende) return { id: bestehende.id, neuAngelegt: false }
   const neue = await legeFirmaAn({ name: firmenName(felder, von), branche: felder.branche, kontakt_email: von })
-  return neue.id
+  return { id: neue.id, neuAngelegt: true }
 }
 
 export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschreibung?: Nutzung): Promise<Ergebnis> {
@@ -46,8 +48,8 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
       )
     }
 
-    const firmaId = await firmaFuerEingang(eingang.von, felder)
-    const neue = await legeAnfrageAn(baueAnfrageEinfuegung(felder, nutzung, firmaId))
+    const firma = await firmaFuerEingang(eingang.von, felder)
+    const neue = await legeAnfrageAn(baueAnfrageEinfuegung(felder, nutzung, firma.id))
 
     // Doppelklick-Schutz: nur der Aufruf, der die noch leere anfrage_id trifft, gewinnt --
     // ein zweiter, überlappender Aufruf für dieselbe Nachricht muss seine eigene, gerade
@@ -55,6 +57,20 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     const uebernommen = await setzeAnfrageIdFallsLeer(eingang.id, neue.id)
     if (!uebernommen) {
       await loescheAnfrage(neue.id)
+      // Nur aufräumen, wenn WIR die Firma gerade erst angelegt haben (siehe
+      // firmaFuerEingang) -- eine wiederverwendete, bereits vorher existierende Firma
+      // wird nie gelöscht. loescheFirmaFallsUnbenutzt prüft zusätzlich selbst, ob der
+      // GEWINNER der Race dieselbe Firma inzwischen über holeFirmaPerEmail
+      // übernommen hat, und lässt sie in dem Fall stehen. Ein Fehler beim Aufräumen
+      // darf den eigentlichen, für die Nutzerin bereits feststehenden Fehlerfall
+      // ("bereits verarbeitet") nicht überdecken -- nur loggen, nicht werfen.
+      if (firma.neuAngelegt) {
+        try {
+          await loescheFirmaFallsUnbenutzt(firma.id)
+        } catch (aufraeumFehler) {
+          console.error("alsAnfrageSpeichern: verwaiste Firma konnte nicht aufgeräumt werden", firma.id, aufraeumFehler)
+        }
+      }
       throw new NutzerFehler("Diese Nachricht wurde bereits verarbeitet.")
     }
 

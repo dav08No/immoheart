@@ -24,3 +24,22 @@ export async function legeFirmaAn(firma: FirmaEinfuegen): Promise<FirmaRow> {
   if (error) throw error
   return data
 }
+
+// Rollback-Pfad für alsAnfrageSpeichern (verlorene Doppelklick-Race): löscht eine
+// gerade erst angelegte Firma nur, wenn wirklich keine Anfrage (mehr) auf sie zeigt --
+// der GEWINNER der Race kann dieselbe Firma über holeFirmaPerEmail bereits
+// übernommen und mit seiner Anfrage verknüpft haben, bevor der Verlierer aufräumt.
+// Zählen+Löschen bleiben zwei Schritte (kein Constraint/Trigger dafür); das enge
+// verbleibende Zeitfenster nimmt der Aufrufer bewusst in Kauf (best effort, siehe
+// dortiger Kommentar).
+export async function loescheFirmaFallsUnbenutzt(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { count, error: zaehlFehler } = await supabase
+    .from("anfragen")
+    .select("id", { count: "exact", head: true })
+    .eq("firma_id", id)
+  if (zaehlFehler) throw zaehlFehler
+  if ((count ?? 0) > 0) return
+  const { error } = await supabase.from("firmen").delete().eq("id", id)
+  if (error) throw error
+}
