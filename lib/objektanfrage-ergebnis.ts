@@ -5,7 +5,11 @@
 // Funktionen exportieren, diese reinen Helfer also nicht enthalten.
 import type { ZodError } from "zod"
 
-export type ObjektAnfrageErgebnis = { ok: true } | { ok: false; fehler: string; feldFehler?: Record<string, string> }
+// tokenErneuern: das Zeit-Token ist abgelaufen/ungültig; das Formular holt ein neues,
+// statt die Besucherin mit einem nie mehr gültigen Token festzuhalten.
+export type ObjektAnfrageErgebnis =
+  | { ok: true }
+  | { ok: false; fehler: string; feldFehler?: Record<string, string>; tokenErneuern?: true }
 
 // Nur der erste Fehler je Feld -- ein zweiter (z.B. sowohl "zu kurz" als auch
 // "falsches Format") würde ohnehin nur den ersten sichtbaren Hinweis ersetzen.
@@ -19,7 +23,9 @@ export function feldFehlerAus(fehler: ZodError): Record<string, string> {
 }
 
 export function zeitTokenErgebnis(status: "ok" | "zu_schnell" | "ungueltig"): ObjektAnfrageErgebnis | null {
-  return status === "ok" ? null : { ok: false, fehler: "Bitte versuchen Sie es in ein paar Sekunden erneut." }
+  if (status === "ok") return null
+  const fehler = "Bitte in ein paar Sekunden erneut senden."
+  return status === "ungueltig" ? { ok: false, fehler, tokenErneuern: true } : { ok: false, fehler }
 }
 
 // objektId ist ein verstecktes Feld (aus der URL vorbefüllt, nie von Hand editiert) --

@@ -13,9 +13,11 @@ function bildText(titel: string, i: number, anzahl: number): string {
 }
 
 export function Galerie({ fotos, titel }: Props) {
-  const [aktiv, setAktiv] = useState(0)
+  const [gewaehlt, setGewaehlt] = useState(0)
   const [offen, setOffen] = useState(false)
   const anzahl = fotos.length
+  // Nach einer Revalidierung kann die Liste kürzer sein: auf das letzte Bild begrenzen.
+  const aktiv = Math.min(gewaehlt, Math.max(anzahl - 1, 0))
   const foto = fotos[aktiv]
 
   if (!foto) {
@@ -27,7 +29,7 @@ export function Galerie({ fotos, titel }: Props) {
   }
 
   // Ringförmig blättern: nach dem letzten Bild kommt wieder das erste.
-  const blaettern = (schritt: number) => setAktiv((i) => (i + schritt + anzahl) % anzahl)
+  const blaettern = (schritt: number) => setGewaehlt((aktiv + schritt + anzahl) % anzahl)
 
   function tasten(e: KeyboardEvent) {
     if (e.key === "ArrowRight") { e.preventDefault(); blaettern(1) }
@@ -56,7 +58,7 @@ export function Galerie({ fotos, titel }: Props) {
             <li key={f.id} className="shrink-0">
               <button
                 type="button"
-                onClick={() => setAktiv(i)}
+                onClick={() => setGewaehlt(i)}
                 aria-label={bildText(titel, i, anzahl)}
                 aria-current={i === aktiv ? "true" : undefined}
                 className="block h-16 w-24 overflow-hidden rounded-md border-2 border-transparent outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60 aria-[current=true]:border-brand"

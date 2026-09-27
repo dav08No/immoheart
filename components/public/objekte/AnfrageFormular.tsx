@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition, type FormEvent } from "react"
 import { CircleCheck } from "lucide-react"
-import { objektAnfragen } from "@/app/actions/objektanfrage"
+import { objektAnfragen, zeitTokenHolen } from "@/app/actions/objektanfrage"
 import { Button } from "@/components/shadcn/button"
 import { AnfrageFeld } from "./AnfrageFeld"
 
@@ -13,8 +13,19 @@ type FeldName = keyof Felder
 
 const ALLGEMEINER_FEHLER = "Ihre Anfrage konnte gerade nicht gesendet werden. Bitte versuchen Sie es später erneut."
 
-export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage }: Props) {
+// Ein neues Token startet die Mindestzeit neu; scheitert der Abruf, bleibt das alte
+// und die nächste Einsendung meldet erneut den Token-Fehler.
+async function neuesToken(): Promise<string | null> {
+  try {
+    return await zeitTokenHolen()
+  } catch {
+    return null
+  }
+}
+
+export function AnfrageFormular({ objektId, zeitToken: startToken, nachrichtVorlage }: Props) {
   const id = useId()
+  const [zeitToken, setZeitToken] = useState(startToken)
   const [felder, setFelder] = useState<Felder>({ firma: "", name: "", email: "", telefon: "", nachricht: nachrichtVorlage })
   const [webseite, setWebseite] = useState("")
   const [fehler, setFehler] = useState<string | null>(null)
@@ -32,6 +43,13 @@ export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage }: Props
   useEffect(() => {
     if (gesendet) dankeRef.current?.focus()
   }, [gesendet])
+  // Konnte der Server beim Rendern kein Token erzeugen, jetzt eines nachholen.
+  useEffect(() => {
+    if (startToken) return
+    void neuesToken().then((token) => {
+      if (token) setZeitToken(token)
+    })
+  }, [startToken])
 
   const setze = (feld: FeldName) => (wert: string) => setFelder((f) => ({ ...f, [feld]: wert }))
 
@@ -45,6 +63,11 @@ export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage }: Props
         if (ergebnis.ok) {
           setGesendet(true)
           return
+        }
+        // Eingaben bleiben stehen; nur das Token wird für den nächsten Versuch ersetzt.
+        if (ergebnis.tokenErneuern) {
+          const token = await neuesToken()
+          if (token) setZeitToken(token)
         }
         setFeldFehler(ergebnis.feldFehler ?? {})
         setFehler(ergebnis.fehler)

@@ -39,7 +39,7 @@ describe("objektAnfragen -- Prüfreihenfolge", () => {
 
   it("prüft Limit/DB nicht bei ungültigem Zeit-Token", async () => {
     const ergebnis = await objektAnfragen({ webseite: "", zeitToken: "nicht-geparsbar", ...GUELTIGE_FELDER })
-    expect(ergebnis.ok).toBe(false)
+    expect(ergebnis).toMatchObject({ ok: false, tokenErneuern: true })
     expect(zaehleEinsendung).not.toHaveBeenCalled()
     expect(erstelleAdminClient).not.toHaveBeenCalled()
   })

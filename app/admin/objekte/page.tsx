@@ -18,9 +18,14 @@ async function ladeVorbelegung(aus: string | undefined): Promise<ObjektVorbelegu
   return werte ? { nachrichtId: geprueft.data, werte } : null
 }
 
-export default async function ObjektePage({ searchParams }: { searchParams: Promise<{ aus?: string }> }) {
-  const [objekte, { aus }] = await Promise.all([holeObjekte(), searchParams])
+type Parameter = Promise<{ aus?: string; id?: string }>
+
+export default async function ObjektePage({ searchParams }: { searchParams: Parameter }) {
+  const [objekte, { aus, id }] = await Promise.all([holeObjekte(), searchParams])
   const vorbelegung = await ladeVorbelegung(aus)
+  // ?id= aus dem Postfach: nur eine gültige, bekannte id öffnet den Drawer.
+  const geprueftId = idSchema.safeParse(id)
+  const oeffnenId = geprueftId.success && objekte.some((o) => o.id === geprueftId.data) ? geprueftId.data : null
   // zaehleNeueMatchesFuerObjekt (nicht das ungefilterte zaehleMatchesFuerObjekt)
   // -- ObjektRaster erwartet laut eigenem JSDoc-Kommentar eine status='neu'-
   // gefilterte Zählung fuer sein "N neue Treffer"-Badge, siehe dortiger Kommentar.
@@ -43,6 +48,7 @@ export default async function ObjektePage({ searchParams }: { searchParams: Prom
           titelbilder={titelbilder}
           direktanfragen={direktanfragen}
           vorbelegung={vorbelegung}
+          oeffnenId={oeffnenId}
         />
       </main>
     </>

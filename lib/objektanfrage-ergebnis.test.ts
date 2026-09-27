@@ -30,11 +30,16 @@ describe("zeitTokenErgebnis", () => {
     expect(zeitTokenErgebnis("ok")).toBeNull()
   })
 
-  it("meldet denselben Fehler bei 'zu_schnell' und 'ungueltig'", () => {
-    const zuSchnell = zeitTokenErgebnis("zu_schnell")
-    const ungueltig = zeitTokenErgebnis("ungueltig")
-    expect(zuSchnell).toEqual({ ok: false, fehler: "Bitte versuchen Sie es in ein paar Sekunden erneut." })
-    expect(ungueltig).toEqual(zuSchnell)
+  it("meldet bei 'zu_schnell' nur die Wartebitte, das Token bleibt gültig", () => {
+    expect(zeitTokenErgebnis("zu_schnell")).toEqual({ ok: false, fehler: "Bitte in ein paar Sekunden erneut senden." })
+  })
+
+  it("verlangt bei 'ungueltig' ein neues Token mit derselben Meldung", () => {
+    expect(zeitTokenErgebnis("ungueltig")).toEqual({
+      ok: false,
+      fehler: "Bitte in ein paar Sekunden erneut senden.",
+      tokenErneuern: true,
+    })
   })
 })
 

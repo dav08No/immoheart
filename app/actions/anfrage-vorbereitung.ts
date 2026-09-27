@@ -5,7 +5,7 @@ import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { Nutzung } from "@/types"
 import type { Database } from "@/types/database"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
-import { holeFirmaPerEmail, legeFirmaAn } from "@/lib/queries/firmen"
+import { ergaenzeKontaktName, holeFirmaPerEmail, legeFirmaAn } from "@/lib/queries/firmen"
 import { holeObjekt } from "@/lib/queries/objekte"
 import { baueAnfrageEinfuegung, firmenName } from "@/lib/eingang/anfrage-aus-eingang"
 import { baueObjektanfrageEinfuegung, objektanfrageFelder, objektanfrageFirma } from "@/lib/eingang/anfrage-aus-objektanfrage"
@@ -19,9 +19,14 @@ export type VorbereiteteAnfrage = { firma: FirmaWahl; einfuegung: Tabellen["anfr
 // Firma per Adresse wiederverwenden statt bei jeder Mail derselben Firma eine neue Zeile
 // anzulegen. neuAngelegt geht an den Doppelklick-Rollback: nur eine hier frisch angelegte
 // Firma darf beim Verlust der Race überhaupt zur Löschung in Frage kommen.
+// Bei Wiederverwendung wird nur ein fehlender Kontaktname ergänzt, sonst nichts geändert.
 async function firmaFuer(email: string, neu: () => Tabellen["firmen"]["Insert"]): Promise<FirmaWahl> {
   const bestehende = await holeFirmaPerEmail(email)
-  if (bestehende) return { id: bestehende.id, neuAngelegt: false }
+  if (bestehende) {
+    const kontaktName = neu().kontakt_name
+    if (bestehende.kontakt_name === null && kontaktName) await ergaenzeKontaktName(bestehende.id, kontaktName)
+    return { id: bestehende.id, neuAngelegt: false }
+  }
   const angelegt = await legeFirmaAn(neu())
   return { id: angelegt.id, neuAngelegt: true }
 }

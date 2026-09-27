@@ -26,8 +26,8 @@ const ladeObjekt = cache(async (id: string) => {
   return holeOeffentlichesObjekt(id)
 })
 
-// Fehlt das Geheimnis, soll die Seite trotzdem erscheinen; die Action meldet
-// dann beim Senden einen freundlichen Fehler statt einer Fehlerseite.
+// Fehlt das Geheimnis, soll die Seite trotzdem erscheinen; das Formular holt bei
+// leerem Token beim Laden ein neues nach (zeitTokenHolen).
 function neuesZeitToken(): string {
   try {
     return erstelleZeitToken(Date.now(), formularGeheimnis())

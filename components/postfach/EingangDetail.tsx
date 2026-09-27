@@ -72,7 +72,10 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueck
           objekte={objekte}
           objektId={nachricht.objekt_id}
         />
-        <KiBereich nachricht={nachricht} laufend={laufend} ausfuehren={ausfuehren} />
+        {/* Website-Einträge sind schon strukturiert; eine Umkategorisierung würde sie überschreiben. */}
+        {nachricht.quelle !== "website" && (
+          <KiBereich nachricht={nachricht} laufend={laufend} ausfuehren={ausfuehren} />
+        )}
         {block === "suchanfrage" && (
           <AktionenSuchanfrage
             nachricht={nachricht}

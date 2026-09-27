@@ -119,7 +119,7 @@ export function FilterFormular({ filter, optionen, setze }: Props) {
       )}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor={`${id}-preis`} className="font-semibold text-ink">Preis max. (CHF/m² pro Jahr)</Label>
+        <Label htmlFor={`${id}-preis`} className="font-semibold text-ink">Preis max. (CHF/m²)</Label>
         <Input
           id={`${id}-preis`}
           type="number"

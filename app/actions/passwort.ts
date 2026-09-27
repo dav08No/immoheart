@@ -34,9 +34,9 @@ export async function passwortVergessen(email: string): Promise<void> {
   // Mail-Versände) über dasselbe Formular auslösen. Läuft vor after() und damit noch
   // synchron in der Antwortzeit -- das verrät nichts über die E-Mail, da die Dauer nur
   // von der IP abhängt, nicht davon, ob das Konto existiert. Ein Fehler bei der
-  // Prüfung selbst (z.B. RPC nicht erreichbar) darf den Reset-Versuch nicht blockieren
-  // oder als Serverfehler durchschlagen -- er wird geloggt, die Funktion kehrt aber
-  // wie bei jeder anderen unbekannten/ungültigen Eingabe still zurück.
+  // Prüfung selbst (z.B. RPC nicht erreichbar) blockiert bewusst (fail-closed): ohne
+  // Limit kein Versand. Er wird geloggt, die Funktion kehrt still zurück, ohne
+  // Serverfehler an den Client.
   try {
     const ipHash = hashIp(`pw:${clientIp(kopf)}`, formularGeheimnis())
     const anzahl = await zaehleEinsendung(ipHash, stundenFenster(Date.now()))

@@ -36,6 +36,13 @@ export async function mailAbrufen(): Promise<{ neu: number; fehler: string | nul
 
 const kategorieSchema = z.enum(["suchanfrage", "antwort", "objektangebot", "sonstiges"])
 
+// Website-Einträge tragen strukturierte Formularfelder; eine KI-Einordnung würde sie
+// überschreiben und die Kategorie liesse sich nicht zurücksetzen (Final-Review I1).
+async function pruefeKeinWebsiteEintrag(id: string): Promise<void> {
+  const nachricht = await holeNachricht(id)
+  if (nachricht?.quelle === "website") throw new NutzerFehler("Website-Einträge werden nicht von der KI eingeordnet.")
+}
+
 async function kiFehlerVon(id: string): Promise<string | null> {
   const nachher = await holeNachricht(id)
   return nachher?.ki_status === "fehler" ? (nachher.ki_fehler ?? "Verarbeitung fehlgeschlagen.") : null
@@ -56,7 +63,9 @@ export async function verarbeiteNaechste(): Promise<{ verarbeitet: boolean; fehl
 export async function erneutVerarbeiten(id: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
-    const nachricht = await claimNachricht(idSchema.parse(id), "abgeschlossen")
+    const geprueftId = idSchema.parse(id)
+    await pruefeKeinWebsiteEintrag(geprueftId)
+    const nachricht = await claimNachricht(geprueftId, "abgeschlossen")
     if (!nachricht) throw new NutzerFehler("Wird gerade verarbeitet")
     await verarbeite(nachricht)
     pfadeNeuLaden()
@@ -72,7 +81,9 @@ export async function kategorieAendern(id: string, kategorie: string): Promise<E
   try {
     const geprueft = kategorieSchema.safeParse(kategorie)
     if (!geprueft.success) throw new NutzerFehler("Unbekannte Kategorie")
-    const nachricht = await claimNachricht(idSchema.parse(id), "nicht_laufend")
+    const geprueftId = idSchema.parse(id)
+    await pruefeKeinWebsiteEintrag(geprueftId)
+    const nachricht = await claimNachricht(geprueftId, "nicht_laufend")
     if (!nachricht) throw new NutzerFehler("Wird gerade verarbeitet")
     await verarbeite(nachricht, geprueft.data)
     pfadeNeuLaden()

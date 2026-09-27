@@ -48,7 +48,7 @@ function Inhalt({ anhang, objekte, vorauswahl, onSchliessen }: Props & { anhang:
         return
       }
       toast.success("Foto zum Objekt hinzugefügt.", {
-        action: { label: "Objekt öffnen", onClick: () => router.push("/admin/objekte") },
+        action: { label: "Objekt öffnen", onClick: () => router.push(`/admin/objekte?id=${auswahl}`) },
       })
       onSchliessen()
     } catch {

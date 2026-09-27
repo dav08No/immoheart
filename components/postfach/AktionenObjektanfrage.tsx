@@ -37,7 +37,7 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
             <Feld label="Firma" wert={felder.firma} />
             <Feld label="Name" wert={felder.name} />
             <Feld label="E-Mail" wert={felder.email} />
-            <Feld label="Telefon" wert={felder.telefon} />
+            <Feld label="Telefon" wert={felder.telefon} optional />
           </div>
           {/* Nur Text, nie HTML: die Besucherin hat das frei eingetippt. */}
           <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line p-3 text-sm text-ink-2">{felder.nachricht}</p>
@@ -47,7 +47,7 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
       )}
       <div className="mt-2.5">
         {objekt ? (
-          <Link href="/admin/objekte" className={`${LINK} text-brand`}>
+          <Link href={`/admin/objekte?id=${objekt.id}`} className={`${LINK} text-brand`}>
             Objekt: {objekt.label} · öffnen
           </Link>
         ) : (

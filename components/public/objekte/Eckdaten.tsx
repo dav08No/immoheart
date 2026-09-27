@@ -7,7 +7,7 @@ type Props = { objekt: OeffentlichesObjekt; heute: string }
 export function Eckdaten({ objekt, heute }: Props) {
   const zeilen: [string, string][] = [
     ["Fläche", `${formatZahl(objekt.flaeche)} m²`],
-    ["Preis pro m²/Jahr", preisText(objekt.preis_pro_m2)],
+    ["Preis pro m²", preisText(objekt.preis_pro_m2)],
     ["Nutzung", nutzungLabel(objekt.nutzung) ?? objekt.nutzung],
     ["Verfügbar ab", verfuegbarText(objekt.verfuegbar_ab, heute)],
     ["Ort", objekt.ort],
