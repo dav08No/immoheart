@@ -1,7 +1,6 @@
 import "server-only"
 import { ordneEin, type Einordnung, type Kategorie } from "@/lib/ki/einordnung"
 import { entwurfAntwort, entwurfObjektangebot, entwurfRueckfrage, type Mailentwurf } from "@/lib/ki/entwuerfe"
-import { referenzListe } from "@/lib/mail/eingang"
 import { antwortBetreff } from "@/lib/mail/verlauf"
 import { legeNachrichtAn, type NachrichtRow } from "@/lib/queries/nachrichten"
 import { aktualisiereAnfrage, holeAnfrage } from "@/lib/queries/anfragen"
@@ -10,10 +9,11 @@ import {
   hatOffenenEntwurfZu,
   holeGesendeteMitAnfrage,
   holeOffeneAnfragenNachAbsender,
-  setzeKiErgebnis,
   setzeKiFehler,
+  setzeKiFertig,
+  speichereKiErgebnis,
 } from "@/lib/queries/verarbeitung"
-import { anfrageKurz, findeAnfrageFuerAntwort } from "./zuordnung"
+import { anfrageKurz, findeAnfrageFuerAntwort, referenzenAeltesteZuerst } from "./zuordnung"
 import { kiFehlerText } from "./ki-fehler"
 
 type EntwurfTyp = "rueckfrage" | "antwort"
@@ -42,25 +42,29 @@ async function legeEntwurfAn(
 }
 
 async function verarbeiteSuchanfrage(eingang: NachrichtRow, e: Einordnung): Promise<void> {
-  await setzeKiErgebnis(eingang.id, { kategorie: "suchanfrage", erkannte_felder: e.felder })
+  await speichereKiErgebnis(eingang.id, { kategorie: "suchanfrage", erkannte_felder: e.felder })
   if (!Object.values(e.felder).some((wert) => wert === null)) return
   await legeEntwurfAn(eingang, "rueckfrage", null, () => entwurfRueckfrage(e.felder))
 }
 
+// Vorrang: Verlauf (eindeutiger Beleg) vor manueller Zuordnung vor blosser Absenderadresse.
+async function anfrageFuerAntwort(eingang: NachrichtRow, verlaufId: string | null): Promise<string | null> {
+  if (verlaufId) return verlaufId
+  if (eingang.anfrage_id) return eingang.anfrage_id
+  const perAbsender = findeAnfrageFuerAntwort({
+    referenzen: [],
+    gesendete: [],
+    absender: eingang.von,
+    offeneNachAbsender: await holeOffeneAnfragenNachAbsender(),
+  })
+  return perAbsender?.anfrageId ?? null
+}
+
 async function verarbeiteAntwort(eingang: NachrichtRow, e: Einordnung, verlaufId: string | null): Promise<void> {
-  const zuordnung = verlaufId
-    ? { anfrageId: verlaufId }
-    : findeAnfrageFuerAntwort({
-        referenzen: [],
-        gesendete: [],
-        absender: eingang.von,
-        offeneNachAbsender: await holeOffeneAnfragenNachAbsender(),
-      })
-  // Eine bereits (manuell) gesetzte Zuordnung bleibt bestehen, wenn die Automatik nichts findet.
-  const anfrageId = zuordnung?.anfrageId ?? eingang.anfrage_id
-  await setzeKiErgebnis(eingang.id, { kategorie: "antwort", erkannte_felder: e.felder, anfrage_id: anfrageId })
+  const anfrageId = await anfrageFuerAntwort(eingang, verlaufId)
+  await speichereKiErgebnis(eingang.id, { kategorie: "antwort", erkannte_felder: e.felder, anfrage_id: anfrageId })
   if (!anfrageId) return
-  if (zuordnung) await aktualisiereAnfrage(anfrageId, { letzter_kontakt: new Date().toISOString() })
+  await aktualisiereAnfrage(anfrageId, { letzter_kontakt: new Date().toISOString() })
   const anfrage = await holeAnfrage(anfrageId)
   await legeEntwurfAn(eingang, "antwort", anfrageId, () =>
     entwurfAntwort({ eingangBetreff: eingang.betreff, eingangText: eingang.body, anfrageKurz: anfrageKurz(anfrage) })
@@ -68,7 +72,7 @@ async function verarbeiteAntwort(eingang: NachrichtRow, e: Einordnung, verlaufId
 }
 
 async function verarbeiteObjektangebot(eingang: NachrichtRow, e: Einordnung): Promise<void> {
-  await setzeKiErgebnis(eingang.id, { kategorie: "objektangebot", erkannte_felder: { objekt: e.objekt } })
+  await speichereKiErgebnis(eingang.id, { kategorie: "objektangebot", erkannte_felder: { objekt: e.objekt } })
   const hatBilder = await hatBildAnhang(eingang.id)
   await legeEntwurfAn(eingang, "antwort", null, () =>
     entwurfObjektangebot({ betreff: eingang.betreff, text: eingang.body, hatBilder })
@@ -76,7 +80,9 @@ async function verarbeiteObjektangebot(eingang: NachrichtRow, e: Einordnung): Pr
 }
 
 async function verarbeiteIntern(eingang: NachrichtRow, erzwungeneKategorie?: Kategorie): Promise<void> {
-  const referenzen = referenzListe(eingang.in_reply_to ?? undefined, eingang.referenzen ?? undefined)
+  // Vorab, damit die Wahl der Nutzerin auch bei einem KI-Fehler sichtbar bleibt.
+  if (erzwungeneKategorie) await speichereKiErgebnis(eingang.id, { kategorie: erzwungeneKategorie })
+  const referenzen = referenzenAeltesteZuerst(eingang.in_reply_to, eingang.referenzen)
   const verlauf = findeAnfrageFuerAntwort({
     referenzen,
     gesendete: await holeGesendeteMitAnfrage(referenzen),
@@ -87,10 +93,11 @@ async function verarbeiteIntern(eingang: NachrichtRow, erzwungeneKategorie?: Kat
   const einordnung = await ordneEin(eingang.betreff, eingang.body)
   const kategorie = erzwungeneKategorie ?? (verlauf ? "antwort" : einordnung.kategorie)
 
-  if (kategorie === "suchanfrage") return verarbeiteSuchanfrage(eingang, einordnung)
-  if (kategorie === "antwort") return verarbeiteAntwort(eingang, einordnung, verlauf?.anfrageId ?? null)
-  if (kategorie === "objektangebot") return verarbeiteObjektangebot(eingang, einordnung)
-  await setzeKiErgebnis(eingang.id, { kategorie: "sonstiges", erkannte_felder: null })
+  if (kategorie === "suchanfrage") await verarbeiteSuchanfrage(eingang, einordnung)
+  else if (kategorie === "antwort") await verarbeiteAntwort(eingang, einordnung, verlauf?.anfrageId ?? null)
+  else if (kategorie === "objektangebot") await verarbeiteObjektangebot(eingang, einordnung)
+  else await speichereKiErgebnis(eingang.id, { kategorie: "sonstiges", erkannte_felder: null })
+  await setzeKiFertig(eingang.id)
 }
 
 // Fehler werfen nicht weiter: die Mail bleibt mit ki_status 'fehler' im Postfach

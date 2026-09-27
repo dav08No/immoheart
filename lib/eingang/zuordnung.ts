@@ -1,4 +1,13 @@
+import { referenzListe } from "@/lib/mail/eingang"
 import type { Nutzung } from "@/types"
+
+// Gespeichert steht In-Reply-To vorne (referenzListe); für "neueste gewinnt" muss die
+// direkte Vorgängermail aber ans Ende der chronologischen References-Reihe.
+export function referenzenAeltesteZuerst(inReplyTo: string | null, referenzen: string | null): string[] {
+  const ids = referenzListe(undefined, referenzen ?? undefined)
+  if (!inReplyTo) return ids
+  return [...ids.filter((id) => id !== inReplyTo), inReplyTo]
+}
 
 export type Zuordnung = { anfrageId: string; grund: "verlauf" | "absender" }
 

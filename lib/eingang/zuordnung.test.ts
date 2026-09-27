@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { anfrageKurz, findeAnfrageFuerAntwort } from "./zuordnung"
+import { anfrageKurz, findeAnfrageFuerAntwort, referenzenAeltesteZuerst } from "./zuordnung"
+import { referenzListe } from "@/lib/mail/eingang"
 
 const gesendete = [
   { message_id: "<a@x>", anfrage_id: "anfrage-1" },
@@ -79,5 +80,30 @@ describe("anfrageKurz", () => {
   })
   it("gibt ohne Anfrage null zurück", () => {
     expect(anfrageKurz(null)).toBeNull()
+  })
+})
+
+describe("referenzenAeltesteZuerst", () => {
+  it("stellt die direkte Vorgängermail ans Ende, damit sie als neueste gewinnt", () => {
+    // So wie Task 3 speichert: referenzListe setzt In-Reply-To an den Anfang.
+    const gespeichert = referenzListe("<eltern@x>", "<alt@x> <eltern@x>").join(" ")
+    const referenzen = referenzenAeltesteZuerst("<eltern@x>", gespeichert)
+    expect(referenzen).toEqual(["<alt@x>", "<eltern@x>"])
+    expect(
+      findeAnfrageFuerAntwort({
+        referenzen,
+        gesendete: [
+          { message_id: "<alt@x>", anfrage_id: "anfrage-alt" },
+          { message_id: "<eltern@x>", anfrage_id: "anfrage-eltern" },
+        ],
+        absender: "x@firma.ch",
+        offeneNachAbsender: {},
+      })
+    ).toEqual({ anfrageId: "anfrage-eltern", grund: "verlauf" })
+  })
+  it("kommt ohne In-Reply-To und ohne Referenzen aus", () => {
+    expect(referenzenAeltesteZuerst(null, "<a@x> <b@x>")).toEqual(["<a@x>", "<b@x>"])
+    expect(referenzenAeltesteZuerst(null, null)).toEqual([])
+    expect(referenzenAeltesteZuerst("<p@x>", null)).toEqual(["<p@x>"])
   })
 })

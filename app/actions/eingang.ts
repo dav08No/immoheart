@@ -5,7 +5,7 @@ import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeNeueMails } from "@/lib/mail/abruf"
 import { abrufErfolg, abrufFehler, sperreAbruf } from "@/lib/queries/eingang"
 import { claimNachricht, claimNaechsteOffene } from "@/lib/queries/verarbeitung"
-import { aktualisiereNachricht, holeNachricht } from "@/lib/queries/nachrichten"
+import { holeNachricht } from "@/lib/queries/nachrichten"
 import { verarbeite } from "@/lib/eingang/verarbeitung"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import { idSchema, pfadeNeuLaden, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
@@ -74,9 +74,7 @@ export async function kategorieAendern(id: string, kategorie: string): Promise<E
     if (!geprueft.success) throw new NutzerFehler("Unbekannte Kategorie")
     const nachricht = await claimNachricht(idSchema.parse(id), "nicht_laufend")
     if (!nachricht) throw new NutzerFehler("Wird gerade verarbeitet")
-    // Vorab speichern, damit die Wahl der Nutzerin auch bei einem KI-Fehler sichtbar bleibt.
-    await aktualisiereNachricht(nachricht.id, { kategorie: geprueft.data })
-    await verarbeite({ ...nachricht, kategorie: geprueft.data }, geprueft.data)
+    await verarbeite(nachricht, geprueft.data)
     pfadeNeuLaden()
     return { fehler: await kiFehlerVon(nachricht.id) }
   } catch (e) {

@@ -64,15 +64,20 @@ export async function claimNachricht(id: string, erlaubt: "abgeschlossen" | "nic
   return claimMitFilter(id, `${status},${veraltetLaeuft()}`)
 }
 
-export async function setzeKiErgebnis(
+// Status bleibt 'laeuft': erst setzeKiFertig gibt die Sperre frei, nachdem auch der
+// Entwurf steht -- sonst könnte ein paralleles "erneut verarbeiten" einen zweiten anlegen.
+export async function speichereKiErgebnis(
   id: string,
-  felder: { kategorie: Kategorie; erkannte_felder: Json | null; anfrage_id?: string | null }
+  felder: { kategorie?: Kategorie; erkannte_felder?: Json | null; anfrage_id?: string | null }
 ): Promise<void> {
   const supabase = await erstelleServerClient()
-  const { error } = await supabase
-    .from("nachrichten")
-    .update({ ...felder, ki_status: "fertig", ki_fehler: null })
-    .eq("id", id)
+  const { error } = await supabase.from("nachrichten").update(felder).eq("id", id)
+  if (error) throw error
+}
+
+export async function setzeKiFertig(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase.from("nachrichten").update({ ki_status: "fertig", ki_fehler: null }).eq("id", id)
   if (error) throw error
 }
 
