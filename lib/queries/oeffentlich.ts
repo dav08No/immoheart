@@ -5,10 +5,20 @@ import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
+import { erstesJeObjekt, FOTO_BUCKET } from "@/lib/objekt-fotos"
 
 type OeffentlichesObjektRow = Database["public"]["Views"]["objekte_oeffentlich"]["Row"]
 
-const FOTO_BUCKET = "objekt-fotos"
+type Supabase = Awaited<ReturnType<typeof erstelleServerClient>>
+
+// Portionen halten den id-Filter in der URL kurz; PostgREST liefert je Anfrage
+// höchstens 1000 Zeilen, darum zusätzlich seitenweise.
+const ID_PORTION = 50
+const SEITE = 1000
+
+function fotoUrl(supabase: Supabase, pfad: string): string {
+  return supabase.storage.from(FOTO_BUCKET).getPublicUrl(pfad).data.publicUrl
+}
 
 // Die generierten View-Typen erlauben null in jeder Spalte (Postgres kennt bei Views
 // keine NOT-NULL-Garantie), tatsächlich sind alle Basisspalten der Tabelle objekte
@@ -46,7 +56,54 @@ export async function holeOeffentlichesObjekt(id: string): Promise<Oeffentliches
     .limit(1)
     .maybeSingle()
   if (fotoFehler) throw fotoFehler
-  const titelbild = foto ? supabase.storage.from(FOTO_BUCKET).getPublicUrl(foto.pfad).data.publicUrl : null
+  const titelbild = foto ? fotoUrl(supabase, foto.pfad) : null
 
   return zuOeffentlichesObjekt(objekt, titelbild)
+}
+
+export async function holeOeffentlicheObjekte(): Promise<OeffentlichesObjekt[]> {
+  const supabase = await erstelleServerClient()
+  const { data: objekte, error } = await supabase.from("objekte_oeffentlich").select("*")
+  if (error) throw error
+
+  const ids = objekte.map((o) => o.id).filter((id): id is string => id !== null)
+  const titelbilder = new Map<string, string>()
+  for (let i = 0; i < ids.length; i += ID_PORTION) {
+    const portion = ids.slice(i, i + ID_PORTION)
+    for (let von = 0; ; von += SEITE) {
+      const { data, error: fotoFehler } = await supabase
+        .from("objekt_fotos")
+        .select("objekt_id, pfad")
+        .in("objekt_id", portion)
+        .order("objekt_id")
+        .order("reihenfolge")
+        .order("id")
+        .range(von, von + SEITE - 1)
+      if (fotoFehler) throw fotoFehler
+      // Sortiert nach objekt_id: das erste Foto eines Objekts kommt vor seinen übrigen.
+      for (const [objektId, foto] of erstesJeObjekt(data)) {
+        if (!titelbilder.has(objektId)) titelbilder.set(objektId, fotoUrl(supabase, foto.pfad))
+      }
+      if (data.length < SEITE) break
+    }
+  }
+
+  return objekte.map((o) => zuOeffentlichesObjekt(o, titelbilder.get(o.id!) ?? null))
+}
+
+export type OeffentlichesFoto = { id: string; url: string }
+
+// Nur mit ids aus objekte_oeffentlich aufrufen: eingeloggte Konten sehen per Policy
+// alle Fotos, auch die nicht gelisteter Objekte. Kein created_at -- anon hat nur
+// Spaltenrechte auf id, objekt_id, pfad, reihenfolge.
+export async function holeOeffentlicheFotos(objektId: string): Promise<OeffentlichesFoto[]> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("objekt_fotos")
+    .select("id, pfad")
+    .eq("objekt_id", objektId)
+    .order("reihenfolge")
+    .order("id")
+  if (error) throw error
+  return data.map((f) => ({ id: f.id, url: fotoUrl(supabase, f.pfad) }))
 }

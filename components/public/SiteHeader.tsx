@@ -9,7 +9,11 @@ export function SiteHeader() {
         <Link href="/" aria-label="immoheart Startseite">
           <HerzLogo />
         </Link>
-        <span className="flex-1" />
+        <nav aria-label="Hauptnavigation" className="flex-1">
+          <Link href="/objekte" className="rounded-md px-2 py-1 text-sm font-medium text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            Objekte
+          </Link>
+        </nav>
         <Link
           href="/login"
           className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
