@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { z } from "zod"
+import { idSchema } from "@/app/actions/entwuerfe-hilfen"
 import { legeObjektAn, aktualisiereObjekt } from "@/lib/queries/objekte"
 import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
@@ -35,7 +35,7 @@ export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId
   const neues = await legeObjektAn(objekt)
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
   if (herkunftNachrichtId) {
-    const geprueft = z.uuid().safeParse(herkunftNachrichtId)
+    const geprueft = idSchema.safeParse(herkunftNachrichtId)
     if (geprueft.success) await verknuepfeObjektMitEingang(geprueft.data, neues.id)
   }
   revalidatePath("/admin/objekte")

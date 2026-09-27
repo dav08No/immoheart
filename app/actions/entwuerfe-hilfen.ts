@@ -8,7 +8,9 @@ import { z } from "zod"
 import { holeNachricht } from "@/lib/queries/nachrichten"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 
-export const idSchema = z.uuid()
+// z.guid statt z.uuid: die Seed-Objekte/-Anfragen haben IDs wie 22222222-…-222222222201,
+// die das strikte RFC-Format von z.uuid() abweist.
+export const idSchema = z.guid()
 
 export type Ergebnis = { fehler: string | null }
 

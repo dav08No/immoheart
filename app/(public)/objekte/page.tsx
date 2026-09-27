@@ -7,7 +7,7 @@ import { ObjektSuche } from "@/components/public/objekte/ObjektSuche"
 import type { FilterOptionen } from "@/components/public/objekte/anzeige"
 
 export const metadata: Metadata = {
-  title: "Objekte · immoheart",
+  title: "Objekte",
   description: "Freie Büro-, Gewerbe-, Produktions- und Lagerflächen in der Region Solothurn – filtern nach Nutzung, Ort, Fläche und Preis.",
 }
 
