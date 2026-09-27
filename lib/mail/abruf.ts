@@ -104,8 +104,9 @@ async function holeKandidaten(client: ImapFlow): Promise<Kandidat[]> {
   const uids = Array.isArray(gefunden) ? gefunden : []
   if (uids.length === 0) return []
   const uidValidity = client.mailbox ? String(client.mailbox.uidValidity) : "0"
+  // imapflow liefert eine fehlende Message-ID als "" statt undefined, daher || statt ??.
   const umschlaege = await client.fetchAll(uids, { envelope: true }, { uid: true })
-  return umschlaege.map((m) => ({ uid: m.uid, messageId: m.envelope?.messageId ?? ersatzMessageId(uidValidity, m.uid) }))
+  return umschlaege.map((m) => ({ uid: m.uid, messageId: m.envelope?.messageId || ersatzMessageId(uidValidity, m.uid) }))
 }
 
 export async function holeNeueMails(max: number): Promise<{ gespeichert: number; duplikate: number }> {

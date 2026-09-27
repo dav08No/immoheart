@@ -7,6 +7,7 @@ import type { BestehenderEingang } from "@/lib/mail/eingang"
 
 const DUPLIKAT_CODE = "23505"
 const BUCKET = "mail-anhaenge"
+const ID_PORTION = 50
 
 export type EingangEintrag = {
   message_id: string | null
@@ -107,13 +108,16 @@ export async function holeBekannteMessageIds(ids: string[]): Promise<Map<string,
   const bekannt = new Map<string, BestehenderEingang>()
   if (ids.length === 0) return bekannt
   const supabase = erstelleAdminClient()
-  const { data, error } = await supabase
-    .from("nachrichten")
-    .select("id, richtung, ki_status, message_id")
-    .in("message_id", ids)
-  if (error) throw error
-  for (const zeile of data) {
-    if (zeile.message_id) bekannt.set(zeile.message_id, { id: zeile.id, richtung: zeile.richtung, ki_status: zeile.ki_status })
+  // In Portionen: die IDs landen in der URL, ein volles 3-Tage-Fenster sprengte sonst deren Länge.
+  for (let start = 0; start < ids.length; start += ID_PORTION) {
+    const { data, error } = await supabase
+      .from("nachrichten")
+      .select("id, richtung, ki_status, message_id")
+      .in("message_id", ids.slice(start, start + ID_PORTION))
+    if (error) throw error
+    for (const zeile of data) {
+      if (zeile.message_id) bekannt.set(zeile.message_id, { id: zeile.id, richtung: zeile.richtung, ki_status: zeile.ki_status })
+    }
   }
   return bekannt
 }
