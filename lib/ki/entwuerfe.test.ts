@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   baueRueckfragePrompt, baueAngebotPrompt, baueNachfassPrompt, parseMailAntwort,
-  baueAntwortPrompt, baueObjektangebotPrompt, FOTO_BITTE, FOTOS_VORHANDEN,
+  baueAntwortPrompt, baueObjektangebotPrompt, FOTO_BITTE, FOTOS_VORHANDEN, ANTWORT_ROLLE,
 } from "./entwuerfe"
 import type { ErkannteFelder } from "./erkennung"
 import type { Anfrage, Objekt } from "@/types"
@@ -67,6 +67,7 @@ describe("baueAntwortPrompt", () => {
     })
     expect(prompt).toContain("Re: Büro Altstadt")
     expect(prompt).toContain("Wir möchten gerne besichtigen.")
+    expect(prompt).toContain(ANTWORT_ROLLE)
     expect(prompt).toContain("Büro, 200 m², Solothurn")
   })
   it("kommt ohne Anfrage aus", () => {
