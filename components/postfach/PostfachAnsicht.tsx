@@ -12,16 +12,17 @@ import { alsGelesenMarkieren } from "@/app/actions/eingang-aktionen"
 import { filtereNachrichten, istUngelesen, zaehleChips, type KategorieChip, type PostfachFilter as Filter } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 import type { AbrufStatus } from "@/lib/queries/eingang"
-import type { AnfrageOption, EntwurfVerweis } from "./typen"
+import type { AnfrageOption, EntwurfVerweis, ObjektOption } from "./typen"
 
 type Props = {
   nachrichten: PostfachNachricht[]
   entwuerfe: EntwurfVerweis[]
   abrufStatus: AbrufStatus
   anfragen: AnfrageOption[]
+  objekte: ObjektOption[]
 }
 
-export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen }: Props) {
+export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen, objekte }: Props) {
   const router = useRouter()
   const [filter, setFilter] = useState<Filter>("alle")
   const [chip, setChip] = useState<KategorieChip | null>(null)
@@ -99,6 +100,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen 
               nachricht={ausgewaehlt}
               entwuerfe={entwuerfe}
               anfragen={anfragen}
+              objekte={objekte}
               onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
             />
           )}

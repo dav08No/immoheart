@@ -1,14 +1,29 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { z } from "zod"
+import { idSchema } from "@/app/actions/entwuerfe-hilfen"
 import { legeObjektAn, aktualisiereObjekt } from "@/lib/queries/objekte"
 import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeEigenesProfil } from "@/lib/queries/profile"
+import { MAX_BESCHREIBUNG } from "@/lib/objekt-fotos"
+import { NutzerFehler } from "@/lib/nutzer-fehler"
 import type { Database } from "@/types/database"
 
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
+
+// Das Formular begrenzt bereits per maxLength; hier gegen direkte Action-Aufrufe.
+function pruefeBeschreibung(objekt: Partial<ObjektEinfuegen>) {
+  if ((objekt.beschreibung?.length ?? 0) > MAX_BESCHREIBUNG) {
+    throw new NutzerFehler(`Die Beschreibung ist länger als ${MAX_BESCHREIBUNG} Zeichen.`)
+  }
+}
+
+// Öffentliche Liste und Detailseiten zeigen Titel, Beschreibung und Sichtbarkeit mit.
+function oeffentlicheSeitenNeuLaden() {
+  revalidatePath("/objekte")
+  revalidatePath("/objekte/[id]", "page")
+}
 
 // Ruling R3 (Task 7): objektAnlegen bleibt void. herkunftNachrichtId ist nur die
 // optionale Brücke zurück zur Mail, aus der das Objekt übernommen wurde (Link "Als
@@ -16,15 +31,17 @@ type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
 // deshalb ein eigener Parameter statt eines Felds in ObjektEinfuegen.
 export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId?: string): Promise<void> {
   await holeEigenesProfil()
+  pruefeBeschreibung(objekt)
   const neues = await legeObjektAn(objekt)
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
   if (herkunftNachrichtId) {
-    const geprueft = z.uuid().safeParse(herkunftNachrichtId)
+    const geprueft = idSchema.safeParse(herkunftNachrichtId)
     if (geprueft.success) await verknuepfeObjektMitEingang(geprueft.data, neues.id)
   }
   revalidatePath("/admin/objekte")
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
+  oeffentlicheSeitenNeuLaden()
 }
 
 // Gleiches Muster wie MATCH_RELEVANTE_FELDER in app/actions/anfragen.ts (M6
@@ -61,10 +78,12 @@ const MATCH_RELEVANTE_FELDER = [
 
 export async function objektAktualisieren(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
   await holeEigenesProfil()
+  pruefeBeschreibung(aenderung)
   await aktualisiereObjekt(id, aenderung)
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerObjekt(id)
   }
   revalidatePath("/admin/objekte")
   revalidatePath("/admin")
+  oeffentlicheSeitenNeuLaden()
 }

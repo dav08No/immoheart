@@ -13,17 +13,21 @@ type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
 export type ObjektVorbelegung = { nachrichtId: string; werte: ObjektVorbelegungWerte }
 
 export function ObjekteAnsicht({
-  objekte, treffer, vorbelegung,
+  objekte, treffer, titelbilder, direktanfragen, vorbelegung, oeffnenId,
 }: {
   objekte: ObjektRow[]
   treffer: Record<string, number>
+  titelbilder: Record<string, string>
+  direktanfragen: Record<string, number>
   vorbelegung?: ObjektVorbelegung | null
+  oeffnenId?: string | null
 }) {
   const router = useRouter()
   // ?aus=<Eingangs-id> (Link "Als Objekt übernehmen" im Postfach, Task 7) öffnet das
   // Formular beim ersten Rendern direkt im Neu-Modus -- nur der Startwert, spätere
   // Klicks auf "Objekt anlegen"/eine Karte steuern modus danach ganz normal weiter.
-  const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : null)
+  // ?id=<Objekt-id> (Links aus dem Postfach) öffnet dieses Objekt direkt.
+  const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : (oeffnenId ?? null))
   const bearbeitetesObjekt = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
 
   // Nach Speichern UND nach Abbrechen ?aus= entfernen: sonst öffnet ein Reload den
@@ -31,7 +35,7 @@ export function ObjekteAnsicht({
   // und würde sie still verknüpfen (Final-Review I5).
   function schliessen() {
     setModus(null)
-    if (vorbelegung) router.replace("/admin/objekte")
+    if (vorbelegung || oeffnenId) router.replace("/admin/objekte")
   }
 
   return (
@@ -41,7 +45,13 @@ export function ObjekteAnsicht({
           Objekt anlegen
         </Button>
       </div>
-      <ObjektRaster objekte={objekte} treffer={treffer} onKarteWahl={setModus} />
+      <ObjektRaster
+        objekte={objekte}
+        treffer={treffer}
+        titelbilder={titelbilder}
+        direktanfragen={direktanfragen}
+        onKarteWahl={setModus}
+      />
 
       <Drawer
         offen={modus !== null}

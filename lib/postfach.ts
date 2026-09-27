@@ -1,6 +1,7 @@
 // Reine Postfach-Logik (Filter, Zähler, Badges, welcher Aktionsblock) ohne React und
 // ohne DB -- so testbar ohne Rendering, siehe postfach.test.ts.
 import type { ObjektDaten } from "@/lib/ki/einordnung"
+import { istFotoMime } from "@/lib/objekt-fotos"
 import type { Database, Json } from "@/types/database"
 
 type Tabellen = Database["public"]["Tables"]
@@ -8,24 +9,22 @@ type Nachricht = Tabellen["nachrichten"]["Row"]
 type Kategorie = Database["public"]["Enums"]["nachricht_kategorie_enum"]
 
 export type PostfachFilter = "alle" | "eingang" | "website" | "gesendet"
-export type KategorieChip = "suchanfrage" | "antwort" | "objektangebot" | "sonstiges"
-export type AktionsBlock = "suchanfrage" | "antwort" | "objektangebot" | null
+export type KategorieChip = "suchanfrage" | "antwort" | "objektangebot" | "objektanfrage" | "sonstiges"
+export type AktionsBlock = "suchanfrage" | "antwort" | "objektangebot" | "objektanfrage" | null
 export type KiAnzeige = "wartet" | "laeuft" | "fehler" | null
 
 export const KATEGORIE_CHIPS: { wert: KategorieChip; label: string }[] = [
   { wert: "suchanfrage", label: "Suchanfrage" },
   { wert: "antwort", label: "Antwort" },
   { wert: "objektangebot", label: "Objektangebot" },
+  { wert: "objektanfrage", label: "Objektanfrage" },
   { wert: "sonstiges", label: "Sonstiges" },
 ]
 
 type Filterbar = Pick<Nachricht, "richtung" | "quelle" | "kategorie">
 
-// "objektanfrage" steht im DB-Enum, wird von der KI aber (noch) nicht vergeben -- landet
-// unter Sonstiges, damit keine Zeile über die Chips unerreichbar wird.
+// Seit N5 gibt es für jede DB-Kategorie einen eigenen Chip (Objektanfragen von der Website).
 export function chipVon(kategorie: Kategorie | null): KategorieChip | null {
-  if (kategorie === null) return null
-  if (kategorie === "objektanfrage") return "sonstiges"
   return kategorie
 }
 
@@ -46,7 +45,13 @@ export function filtereNachrichten<T extends Filterbar>(
 
 // Gezählt wird innerhalb des gewählten Filters, damit die Zahl am Chip zur Liste passt.
 export function zaehleChips(nachrichten: Filterbar[], filter: PostfachFilter): Record<KategorieChip, number> {
-  const zaehler: Record<KategorieChip, number> = { suchanfrage: 0, antwort: 0, objektangebot: 0, sonstiges: 0 }
+  const zaehler: Record<KategorieChip, number> = {
+    suchanfrage: 0,
+    antwort: 0,
+    objektangebot: 0,
+    objektanfrage: 0,
+    sonstiges: 0,
+  }
   for (const n of nachrichten) {
     const chip = chipVon(n.kategorie)
     if (chip && passtZuFilter(n, filter)) zaehler[chip] += 1
@@ -81,9 +86,16 @@ export function aktionsBlock(
 ): AktionsBlock {
   if (n.richtung !== "eingang") return null
   if (n.ki_status === "offen" || n.ki_status === "laeuft") return null
-  if (n.kategorie === "suchanfrage" || n.kategorie === "antwort" || n.kategorie === "objektangebot") return n.kategorie
-  if (n.kategorie === null && n.erkannte_felder !== null) return "suchanfrage"
-  return null
+  if (n.kategorie === null) return n.erkannte_felder !== null ? "suchanfrage" : null
+  return n.kategorie === "sonstiges" ? null : n.kategorie
+}
+
+export type FotoUebernahme = "moeglich" | "heic" | "nein"
+
+// HEIC/HEIF bekommt einen eigenen Hinweis statt still zu fehlen: iPhones schicken das oft.
+export function fotoUebernahme(mime: string): FotoUebernahme {
+  if (istFotoMime(mime)) return "moeglich"
+  return mime === "image/heic" || mime === "image/heif" ? "heic" : "nein"
 }
 
 // anhaenge ist Json (string[] laut Abruf); defensiv gelesen, weil jsonb alles halten kann.

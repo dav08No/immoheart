@@ -2,10 +2,10 @@
 
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeNachricht, legeNachrichtAn } from "@/lib/queries/nachrichten"
-import { holeAnhangLinks, type AnhangLink } from "@/lib/queries/postfach"
+import { holeAnhangLinks, loescheAnhang, type AnhangLink } from "@/lib/queries/postfach"
 import { antwortBetreff } from "@/lib/mail/verlauf"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
-import { idSchema, pfadeNeuLaden } from "@/app/actions/entwuerfe-hilfen"
+import { idSchema, pfadeNeuLaden, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
 // Ohne KI: ein leerer Antwort-Entwurf mit "Re:" und Verlauf-Bezug (antwort_auf), den die
 // Nutzerin im Editor selbst schreibt. typ "antwort" statt "frei", damit er in der
@@ -46,4 +46,16 @@ export async function anhangLinks(nachrichtId: string): Promise<{ fehler: string
   const nachricht = await holeNachricht(geprueft.data)
   if (!nachricht || nachricht.geloescht_am) return { fehler: "Nachricht nicht gefunden.", links: [] }
   return { fehler: null, links: await holeAnhangLinks(nachricht.id) }
+}
+
+// Endgültig: Datei im privaten Bucket und Zeile weg (z.B. Signaturbilder, Werbe-PDFs).
+export async function anhangLoeschen(anhangId: string): Promise<Ergebnis> {
+  await holeEigenesProfil()
+  const geprueft = idSchema.safeParse(anhangId)
+  if (!geprueft.success) return { fehler: "Anhang nicht gefunden." }
+  const geloescht = await loescheAnhang(geprueft.data.toLowerCase())
+  if (!geloescht) return { fehler: "Anhang nicht gefunden." }
+  // Die Anhang-Badges in der Liste zählen die Zeilen mit.
+  pfadeNeuLaden()
+  return { fehler: null }
 }

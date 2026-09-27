@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header"
 import { ObjekteAnsicht, type ObjektVorbelegung } from "@/components/objekte/ObjekteAnsicht"
-import { holeObjekte, zaehleNeueMatchesFuerObjekt } from "@/lib/queries/objekte"
+import { holeObjekte, zaehleDirektanfragen, zaehleNeueMatchesFuerObjekt } from "@/lib/queries/objekte"
+import { holeTitelbilder } from "@/lib/queries/fotos"
 import { holeNachricht } from "@/lib/queries/nachrichten"
 import { objektVorbelegung } from "@/lib/objekt-vorbelegung"
 import { idSchema } from "@/app/actions/entwuerfe-hilfen"
@@ -17,9 +18,14 @@ async function ladeVorbelegung(aus: string | undefined): Promise<ObjektVorbelegu
   return werte ? { nachrichtId: geprueft.data, werte } : null
 }
 
-export default async function ObjektePage({ searchParams }: { searchParams: Promise<{ aus?: string }> }) {
-  const [objekte, { aus }] = await Promise.all([holeObjekte(), searchParams])
+type Parameter = Promise<{ aus?: string; id?: string }>
+
+export default async function ObjektePage({ searchParams }: { searchParams: Parameter }) {
+  const [objekte, { aus, id }] = await Promise.all([holeObjekte(), searchParams])
   const vorbelegung = await ladeVorbelegung(aus)
+  // ?id= aus dem Postfach: nur eine gültige, bekannte id öffnet den Drawer.
+  const geprueftId = idSchema.safeParse(id)
+  const oeffnenId = geprueftId.success && objekte.some((o) => o.id === geprueftId.data) ? geprueftId.data : null
   // zaehleNeueMatchesFuerObjekt (nicht das ungefilterte zaehleMatchesFuerObjekt)
   // -- ObjektRaster erwartet laut eigenem JSDoc-Kommentar eine status='neu'-
   // gefilterte Zählung fuer sein "N neue Treffer"-Badge, siehe dortiger Kommentar.
@@ -27,12 +33,23 @@ export default async function ObjektePage({ searchParams }: { searchParams: Prom
     objekte.map(async (o) => [o.id, await zaehleNeueMatchesFuerObjekt(o.id)] as const),
   )
   const treffer = Object.fromEntries(trefferPaare)
+  const [titelbilder, direktanfragen] = await Promise.all([
+    holeTitelbilder(objekte.map((o) => o.id)),
+    zaehleDirektanfragen(),
+  ])
 
   return (
     <>
       <Header titel="Objekte" untertitel={`${objekte.length} im Bestand`} />
       <main className="flex-1 overflow-y-auto p-5">
-        <ObjekteAnsicht objekte={objekte} treffer={treffer} vorbelegung={vorbelegung} />
+        <ObjekteAnsicht
+          objekte={objekte}
+          treffer={treffer}
+          titelbilder={titelbilder}
+          direktanfragen={direktanfragen}
+          vorbelegung={vorbelegung}
+          oeffnenId={oeffnenId}
+        />
       </main>
     </>
   )

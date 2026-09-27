@@ -26,7 +26,9 @@ export type Database = {
           id: string
           letzter_kontakt: string
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
+          objekt_id: string | null
           ort: string | null
+          quelle: string
           status: Database["public"]["Enums"]["anfrage_status_enum"]
         }
         Insert: {
@@ -40,7 +42,9 @@ export type Database = {
           id?: string
           letzter_kontakt?: string
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
+          objekt_id?: string | null
           ort?: string | null
+          quelle?: string
           status?: Database["public"]["Enums"]["anfrage_status_enum"]
         }
         Update: {
@@ -54,7 +58,9 @@ export type Database = {
           id?: string
           letzter_kontakt?: string
           nutzung?: Database["public"]["Enums"]["nutzung_enum"]
+          objekt_id?: string | null
           ort?: string | null
+          quelle?: string
           status?: Database["public"]["Enums"]["anfrage_status_enum"]
         }
         Relationships: [
@@ -63,6 +69,20 @@ export type Database = {
             columns: ["firma_id"]
             isOneToOne: false
             referencedRelation: "firmen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anfragen_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anfragen_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte_oeffentlich"
             referencedColumns: ["id"]
           },
         ]
@@ -94,6 +114,24 @@ export type Database = {
           kontakt_name?: string | null
           name?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      formular_limits: {
+        Row: {
+          fenster_start: string
+          ip_hash: string
+          zaehler: number
+        }
+        Insert: {
+          fenster_start: string
+          ip_hash: string
+          zaehler?: number
+        }
+        Update: {
+          fenster_start?: string
+          ip_hash?: string
+          zaehler?: number
         }
         Relationships: []
       }
@@ -346,9 +384,49 @@ export type Database = {
           },
         ]
       }
+      objekt_fotos: {
+        Row: {
+          created_at: string
+          id: string
+          objekt_id: string
+          pfad: string
+          reihenfolge: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          objekt_id: string
+          pfad: string
+          reihenfolge?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          objekt_id?: string
+          pfad?: string
+          reihenfolge?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objekt_fotos_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objekt_fotos_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte_oeffentlich"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       objekte: {
         Row: {
           adresse: string
+          beschreibung: string | null
           created_at: string
           eigenschaften: Json
           eigentuemer: string
@@ -356,6 +434,7 @@ export type Database = {
           foto_url: string | null
           id: string
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
+          oeffentlich: boolean
           ort: string
           preis_pro_m2: number | null
           status: Database["public"]["Enums"]["objekt_status_enum"]
@@ -364,6 +443,7 @@ export type Database = {
         }
         Insert: {
           adresse: string
+          beschreibung?: string | null
           created_at?: string
           eigenschaften?: Json
           eigentuemer: string
@@ -371,6 +451,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nutzung: Database["public"]["Enums"]["nutzung_enum"]
+          oeffentlich?: boolean
           ort: string
           preis_pro_m2?: number | null
           status?: Database["public"]["Enums"]["objekt_status_enum"]
@@ -379,6 +460,7 @@ export type Database = {
         }
         Update: {
           adresse?: string
+          beschreibung?: string | null
           created_at?: string
           eigenschaften?: Json
           eigentuemer?: string
@@ -386,6 +468,7 @@ export type Database = {
           foto_url?: string | null
           id?: string
           nutzung?: Database["public"]["Enums"]["nutzung_enum"]
+          oeffentlich?: boolean
           ort?: string
           preis_pro_m2?: number | null
           status?: Database["public"]["Enums"]["objekt_status_enum"]
@@ -425,6 +508,7 @@ export type Database = {
     Views: {
       objekte_oeffentlich: {
         Row: {
+          beschreibung: string | null
           created_at: string | null
           eigenschaften: Json | null
           flaeche: number | null
@@ -437,6 +521,7 @@ export type Database = {
           verfuegbar_ab: string | null
         }
         Insert: {
+          beschreibung?: string | null
           created_at?: string | null
           eigenschaften?: Json | null
           flaeche?: number | null
@@ -449,6 +534,7 @@ export type Database = {
           verfuegbar_ab?: string | null
         }
         Update: {
+          beschreibung?: string | null
           created_at?: string | null
           eigenschaften?: Json | null
           flaeche?: number | null
@@ -464,6 +550,10 @@ export type Database = {
       }
     }
     Functions: {
+      formular_zaehlen: {
+        Args: { p_fenster: string; p_ip_hash: string }
+        Returns: number
+      }
       ist_aktives_konto: { Args: never; Returns: boolean }
     }
     Enums: {

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
+import { BeschreibungFeld, SelectFeld, SichtbarkeitFeld, TextFeld } from "./ObjektFelder"
+import { ObjektFotos } from "./ObjektFotos"
 import { objektAnlegen, objektAktualisieren } from "@/app/actions/objekte"
 import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
 import type { Database } from "@/types/database"
@@ -21,12 +23,12 @@ const STATUS_OPTIONEN: { wert: ObjektStatus; label: string }[] = [
 
 type Werte = {
   titel: string; adresse: string; ort: string; flaeche: string; preis: string
-  nutzung: Nutzung; verfuegbarAb: string; eigentuemer: string; fotoUrl: string
+  nutzung: Nutzung; verfuegbarAb: string; eigentuemer: string; beschreibung: string; oeffentlich: boolean
 }
 
 const LEER: Werte = {
   titel: "", adresse: "", ort: "", flaeche: "", preis: "",
-  nutzung: "gewerbe", verfuegbarAb: "", eigentuemer: "", fotoUrl: "",
+  nutzung: "gewerbe", verfuegbarAb: "", eigentuemer: "", beschreibung: "", oeffentlich: true,
 }
 
 // objekt (Bearbeiten) schlägt vorbelegung (aus einer Mail übernommen, Task 7) schlägt
@@ -41,43 +43,9 @@ function startwerte(objekt: ObjektRow | undefined, vorbelegung: ObjektVorbelegun
     nutzung: objekt?.nutzung ?? vorbelegung?.nutzung ?? LEER.nutzung,
     verfuegbarAb: objekt?.verfuegbar_ab ?? vorbelegung?.verfuegbarAb ?? LEER.verfuegbarAb,
     eigentuemer: objekt?.eigentuemer ?? vorbelegung?.eigentuemer ?? LEER.eigentuemer,
-    fotoUrl: objekt?.foto_url ?? LEER.fotoUrl,
+    beschreibung: objekt?.beschreibung ?? LEER.beschreibung,
+    oeffentlich: objekt?.oeffentlich ?? LEER.oeffentlich,
   }
-}
-
-// Ein <input> je einfachem Textfeld statt Copy-Paste (Titel/Adresse/Ort/Eigentümer/
-// Foto-URL sehen bis auf Platzhalter und Breite identisch aus).
-function TextFeld({
-  placeholder, wert, setWert, disabled, halb,
-}: {
-  placeholder: string; wert: string; setWert: (v: string) => void; disabled: boolean; halb?: boolean
-}) {
-  return (
-    <input
-      placeholder={placeholder}
-      value={wert}
-      onChange={(e) => setWert(e.target.value)}
-      disabled={disabled}
-      className={`${halb ? "w-1/2" : ""} rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60`}
-    />
-  )
-}
-
-function SelectFeld<T extends string>({
-  wert, setWert, optionen, disabled,
-}: { wert: T; setWert: (v: T) => void; optionen: { wert: T; label: string }[]; disabled: boolean }) {
-  return (
-    <select
-      value={wert}
-      onChange={(e) => setWert(e.target.value as T)}
-      disabled={disabled}
-      className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-    >
-      {optionen.map((o) => (
-        <option key={o.wert} value={o.wert}>{o.label}</option>
-      ))}
-    </select>
-  )
 }
 
 // Kein Eingabefeld für `eigenschaften` (freies jsonb-Objekt, kein fester Schlüssel/Wert-
@@ -101,7 +69,8 @@ export function ObjektFormular({
   const [nutzung, setNutzung] = useState<Nutzung>(start.nutzung)
   const [verfuegbarAb, setVerfuegbarAb] = useState(start.verfuegbarAb)
   const [eigentuemer, setEigentuemer] = useState(start.eigentuemer)
-  const [fotoUrl, setFotoUrl] = useState(start.fotoUrl)
+  const [beschreibung, setBeschreibung] = useState(start.beschreibung)
+  const [oeffentlich, setOeffentlich] = useState(start.oeffentlich)
   // Nur im Bearbeiten-Modus gepflegt -- beim Anlegen greift der DB-Default 'verfuegbar'.
   const [status, setStatus] = useState<ObjektStatus>(objekt?.status ?? "verfuegbar")
   const [speichert, setSpeichert] = useState(false)
@@ -110,7 +79,7 @@ export function ObjektFormular({
   function setzeFelder(w: Werte) {
     setTitel(w.titel); setAdresse(w.adresse); setOrt(w.ort); setFlaeche(w.flaeche)
     setPreis(w.preis); setNutzung(w.nutzung); setVerfuegbarAb(w.verfuegbarAb)
-    setEigentuemer(w.eigentuemer); setFotoUrl(w.fotoUrl)
+    setEigentuemer(w.eigentuemer); setBeschreibung(w.beschreibung); setOeffentlich(w.oeffentlich)
   }
 
   // Fallback-Reset, falls diese Komponente je ohne key-Wechsel weiterläuft (siehe
@@ -139,7 +108,9 @@ export function ObjektFormular({
         nutzung,
         verfuegbar_ab: verfuegbarAb,
         eigentuemer,
-        foto_url: fotoUrl || null,
+        // foto_url wird nicht mehr gepflegt, bleibt aber als Fallback-Titelbild stehen.
+        beschreibung: beschreibung.trim() || null,
+        oeffentlich,
         ...(objekt ? { status } : {}),
       }
       if (objekt) {
@@ -185,7 +156,8 @@ export function ObjektFormular({
         className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
       />
       <TextFeld placeholder="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
-      <TextFeld placeholder="Foto-URL (optional)" wert={fotoUrl} setWert={setFotoUrl} disabled={speichert} />
+      <BeschreibungFeld wert={beschreibung} setWert={setBeschreibung} disabled={speichert} />
+      <SichtbarkeitFeld wert={oeffentlich} setWert={setOeffentlich} disabled={speichert} />
       {objekt && (
         <SelectFeld wert={status} setWert={setStatus} optionen={STATUS_OPTIONEN} disabled={speichert} />
       )}
@@ -193,6 +165,11 @@ export function ObjektFormular({
       <Button variante="primaer" onClick={absenden} disabled={speichert || !gueltig}>
         {speichert ? "Wird gespeichert…" : objekt ? "Änderungen speichern" : "Objekt anlegen"}
       </Button>
+      {objekt ? (
+        <ObjektFotos objektId={objekt.id} />
+      ) : (
+        <p className="border-t border-line pt-3 text-xs text-ink-3">Fotos nach dem Speichern hinzufügen.</p>
+      )}
     </div>
   )
 }

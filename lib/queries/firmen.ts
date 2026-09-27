@@ -28,6 +28,13 @@ export async function legeFirmaAn(firma: FirmaEinfuegen): Promise<FirmaRow> {
   return data
 }
 
+// Bedingt auf "is null": ein inzwischen gesetzter Kontaktname wird nie überschrieben.
+export async function ergaenzeKontaktName(id: string, kontaktName: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase.from("firmen").update({ kontakt_name: kontaktName }).eq("id", id).is("kontakt_name", null)
+  if (error) throw error
+}
+
 // Rollback-Pfad für alsAnfrageSpeichern (verlorene Doppelklick-Race): löscht eine
 // gerade erst angelegte Firma nur, wenn wirklich keine Anfrage (mehr) auf sie zeigt --
 // der GEWINNER der Race kann dieselbe Firma über holeFirmaPerEmail bereits

@@ -5,6 +5,10 @@ import { Download, FileText, ImageOff, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
 import type { AnhangLink } from "@/lib/queries/postfach"
 import { useAnhangLinks } from "./useAnhangLinks"
+import { AnhangKnoepfe } from "./AnhangKnoepfe"
+import { AnhangLoeschenDialog } from "./AnhangLoeschenDialog"
+import { ObjektfotoDialog } from "./ObjektfotoDialog"
+import type { ObjektOption } from "./typen"
 
 const LINK = "inline-flex items-center gap-1 text-xs text-brand hover:underline focus-visible:outline-2 focus-visible:outline-ring"
 
@@ -12,13 +16,22 @@ function groesseText(bytes: number): string {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-type Props = { nachrichtId: string; anzahl: number; nichtGespeichert: string[] }
+type Props = {
+  nachrichtId: string
+  anzahl: number
+  nichtGespeichert: string[]
+  objekte: ObjektOption[]
+  // Mit der Mail verknüpftes Objekt (Objektangebot/-anfrage) -- im Dialog vorausgewählt.
+  objektId: string | null
+}
 
 // Wird mit key={nachricht.id} gerendert (EingangDetail) -- ein Wechsel lädt frische
 // signierte URLs statt veraltete weiterzuverwenden.
-export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert }: Props) {
+export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, objektId }: Props) {
   const { laden, neuLaden, frisch, istVeraltet } = useAnhangLinks(nachrichtId, anzahl)
   const [grossId, setGrossId] = useState<string | null>(null)
+  const [fotoFuer, setFotoFuer] = useState<AnhangLink | null>(null)
+  const [loeschenFuer, setLoeschenFuer] = useState<AnhangLink | null>(null)
   // HEIC u.ä. zeigen viele Browser nicht an -- dann Platzhalter statt kaputtem Bild.
   const [ohneVorschau, setOhneVorschau] = useState<Set<string>>(new Set())
   // Pro Bild genau ein Neuladen nach einem Ladefehler (abgelaufene URL); scheitert es
@@ -105,6 +118,7 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert }: Props) 
                 {bild.dateiname}
               </span>
               {downloadLink(bild)}
+              <AnhangKnoepfe anhang={bild} onFoto={() => setFotoFuer(bild)} onLoeschen={() => setLoeschenFuer(bild)} />
             </div>
           ))}
         </div>
@@ -123,11 +137,15 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert }: Props) 
           </a>
           <span className="flex-none text-[11px] text-ink-3">{groesseText(pdf.groesse)}</span>
           {downloadLink(pdf)}
+          <AnhangKnoepfe anhang={pdf} onFoto={() => setFotoFuer(pdf)} onLoeschen={() => setLoeschenFuer(pdf)} />
         </div>
       ))}
       {nichtGespeichert.length > 0 && (
         <p className="text-xs text-ink-3">Nicht übernommen (nur Name): {nichtGespeichert.join(", ")}</p>
       )}
+      <ObjektfotoDialog anhang={fotoFuer} objekte={objekte} vorauswahl={objektId} onSchliessen={() => setFotoFuer(null)} />
+      {/* Explizit neu laden: bei null verbleibenden Anhängen lädt useAnhangLinks nicht von selbst. */}
+      <AnhangLoeschenDialog anhang={loeschenFuer} onSchliessen={() => setLoeschenFuer(null)} onGeloescht={() => void neuLaden()} />
       <Dialog open={gross !== null} onOpenChange={(offen) => !offen && setGrossId(null)}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>

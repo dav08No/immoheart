@@ -64,3 +64,18 @@ export async function holeAnhangLinks(nachrichtId: string): Promise<AnhangLink[]
     return [{ id: z.id, dateiname: z.dateiname, mime_type: z.mime_type, groesse: z.groesse, url, downloadUrl }]
   })
 }
+
+// Erst die Datei, dann die Zeile: scheitert das Löschen der Zeile, kann die Nutzerin es
+// einfach erneut versuchen (remove auf eine fehlende Datei ist kein Fehler). Umgekehrt
+// bliebe eine unsichtbare, nie mehr auffindbare Datei im Bucket liegen.
+export async function loescheAnhang(id: string): Promise<boolean> {
+  const supabase = erstelleAdminClient()
+  const { data: anhang, error } = await supabase.from("nachricht_anhaenge").select("pfad").eq("id", id).maybeSingle()
+  if (error) throw error
+  if (!anhang) return false
+  const { error: dateiFehler } = await supabase.storage.from("mail-anhaenge").remove([anhang.pfad])
+  if (dateiFehler) throw dateiFehler
+  const { error: zeilenFehler } = await supabase.from("nachricht_anhaenge").delete().eq("id", id)
+  if (zeilenFehler) throw zeilenFehler
+  return true
+}

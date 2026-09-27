@@ -5,6 +5,7 @@ import {
   anhangBadges,
   chipVon,
   filtereNachrichten,
+  fotoUebernahme,
   istUngelesen,
   kiAnzeige,
   nichtGespeicherteAnhaenge,
@@ -15,16 +16,17 @@ import {
 const mail = { richtung: "eingang", quelle: "mail", kategorie: "suchanfrage" } as const
 const web = { richtung: "eingang", quelle: "website", kategorie: "antwort" } as const
 const gesendet = { richtung: "gesendet", quelle: "mail", kategorie: null } as const
-const sonstig = { richtung: "eingang", quelle: "mail", kategorie: "objektanfrage" } as const
-const alle = [mail, web, gesendet, sonstig]
+const sonstig = { richtung: "eingang", quelle: "mail", kategorie: "sonstiges" } as const
+const objektanfrage = { richtung: "eingang", quelle: "website", kategorie: "objektanfrage" } as const
+const alle = [mail, web, gesendet, sonstig, objektanfrage]
 
 describe("filtereNachrichten", () => {
   it("Alle zeigt alles", () => {
-    expect(filtereNachrichten(alle, "alle", null)).toHaveLength(4)
+    expect(filtereNachrichten(alle, "alle", null)).toHaveLength(5)
   })
   it("Eingang zeigt nur Mails, Website nur Website-Eingänge", () => {
     expect(filtereNachrichten(alle, "eingang", null)).toEqual([mail, sonstig])
-    expect(filtereNachrichten(alle, "website", null)).toEqual([web])
+    expect(filtereNachrichten(alle, "website", null)).toEqual([web, objektanfrage])
   })
   it("Gesendet zeigt nur gesendete", () => {
     expect(filtereNachrichten(alle, "gesendet", null)).toEqual([gesendet])
@@ -33,17 +35,31 @@ describe("filtereNachrichten", () => {
     expect(filtereNachrichten(alle, "alle", "antwort")).toEqual([web])
     expect(filtereNachrichten(alle, "eingang", "antwort")).toEqual([])
     expect(filtereNachrichten(alle, "alle", "sonstiges")).toEqual([sonstig])
+    expect(filtereNachrichten(alle, "website", "objektanfrage")).toEqual([objektanfrage])
   })
 })
 
 describe("chipVon / zaehleChips", () => {
-  it("objektanfrage zählt als Sonstiges, null als keine Kategorie", () => {
-    expect(chipVon("objektanfrage")).toBe("sonstiges")
+  it("objektanfrage hat einen eigenen Chip, null ist keine Kategorie", () => {
+    expect(chipVon("objektanfrage")).toBe("objektanfrage")
+    expect(chipVon("sonstiges")).toBe("sonstiges")
     expect(chipVon(null)).toBeNull()
   })
   it("zählt nur innerhalb des Filters", () => {
-    expect(zaehleChips(alle, "alle")).toEqual({ suchanfrage: 1, antwort: 1, objektangebot: 0, sonstiges: 1 })
-    expect(zaehleChips(alle, "website")).toEqual({ suchanfrage: 0, antwort: 1, objektangebot: 0, sonstiges: 0 })
+    expect(zaehleChips(alle, "alle")).toEqual({
+      suchanfrage: 1,
+      antwort: 1,
+      objektangebot: 0,
+      objektanfrage: 1,
+      sonstiges: 1,
+    })
+    expect(zaehleChips(alle, "website")).toEqual({
+      suchanfrage: 0,
+      antwort: 1,
+      objektangebot: 0,
+      objektanfrage: 1,
+      sonstiges: 0,
+    })
   })
 })
 
@@ -76,6 +92,7 @@ describe("aktionsBlock", () => {
   it("folgt der Kategorie", () => {
     expect(aktionsBlock({ ...basis, kategorie: "antwort" })).toBe("antwort")
     expect(aktionsBlock({ ...basis, kategorie: "objektangebot" })).toBe("objektangebot")
+    expect(aktionsBlock({ ...basis, kategorie: "objektanfrage" })).toBe("objektanfrage")
     expect(aktionsBlock({ ...basis, kategorie: "sonstiges" })).toBeNull()
   })
   it("keine Aktionen, solange die KI noch arbeitet", () => {
@@ -120,5 +137,19 @@ describe("abrufAnzeige", () => {
   it("zeigt den Fehler, wenn es noch nie einen Erfolg gab", () => {
     const s = { letzterErfolg: null, letzterFehler: "x", letzterFehlerAm: erfolg }
     expect(abrufAnzeige(s).fehler?.text).toBe("x")
+  })
+})
+
+describe("fotoUebernahme", () => {
+  it("erlaubt nur JPEG, PNG und WebP", () => {
+    expect(fotoUebernahme("image/jpeg")).toBe("moeglich")
+    expect(fotoUebernahme("image/png")).toBe("moeglich")
+    expect(fotoUebernahme("image/webp")).toBe("moeglich")
+    expect(fotoUebernahme("image/gif")).toBe("nein")
+    expect(fotoUebernahme("application/pdf")).toBe("nein")
+  })
+  it("erkennt HEIC/HEIF für den Hinweis", () => {
+    expect(fotoUebernahme("image/heic")).toBe("heic")
+    expect(fotoUebernahme("image/heif")).toBe("heic")
   })
 })
