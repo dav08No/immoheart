@@ -4,14 +4,15 @@ import { Suspense, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
+import { loginHinweis } from "@/lib/routen"
 
 // useSearchParams verlangt einen Suspense-Grenzwert, sonst schlägt der Build fehl.
 // Der eigentliche Hinweistext ist deshalb in eine kleine innere Komponente
 // ausgelagert; das restliche Formular bleibt unverändert und muss nicht warten.
-function KontoDeaktiviertHinweis() {
-  const searchParams = useSearchParams()
-  if (searchParams.get("grund") !== "inaktiv") return null
-  return <p className="text-sm text-crit">Dieses Konto ist deaktiviert.</p>
+function LoginHinweis() {
+  const hinweis = loginHinweis(useSearchParams().get("grund"))
+  if (!hinweis) return null
+  return <p className="text-sm text-ink-2">{hinweis}</p>
 }
 
 export default function LoginPage() {
@@ -51,7 +52,7 @@ export default function LoginPage() {
       >
         <h1 className="font-display text-xl font-bold text-ink">immoheart</h1>
         <Suspense fallback={null}>
-          <KontoDeaktiviertHinweis />
+          <LoginHinweis />
         </Suspense>
         <input
           type="email"
@@ -79,6 +80,9 @@ export default function LoginPage() {
         >
           {laedt ? "…" : "Anmelden"}
         </button>
+        <Link href="/passwort-vergessen" className="text-center text-sm text-ink-2 hover:text-brand">
+          Passwort vergessen?
+        </Link>
         <Link href="/" className="text-center text-sm text-ink-2 hover:text-brand">
           ← Zur Website
         </Link>

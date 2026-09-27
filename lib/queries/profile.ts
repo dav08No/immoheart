@@ -17,3 +17,9 @@ export async function holeEigenesProfil(): Promise<Profil> {
   if (!data || !data.aktiv) redirect("/abmelden?grund=inaktiv")
   return data
 }
+
+export async function holeBerechtigtesProfil(): Promise<Profil> {
+  const profil = await holeEigenesProfil()
+  if (!profil.darf_nutzer_anlegen) throw new Error("Keine Berechtigung")
+  return profil
+}
