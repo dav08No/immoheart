@@ -91,7 +91,12 @@ export async function holeVerlaufFuerAnfrage(anfrageId: string): Promise<Verlauf
   ] = await Promise.all([
     supabase.from("anfragen").select("created_at").eq("id", anfrageId).maybeSingle(),
     supabase.from("matches").select("created_at, objekte(titel)").eq("anfrage_id", anfrageId),
-    supabase.from("nachrichten").select("typ, gesendet_am").eq("anfrage_id", anfrageId).not("gesendet_am", "is", null),
+    supabase
+      .from("nachrichten")
+      .select("typ, gesendet_am")
+      .eq("anfrage_id", anfrageId)
+      .eq("richtung", "gesendet")
+      .not("gesendet_am", "is", null),
   ])
   if (anfrageError) throw anfrageError
   if (matchesError) throw matchesError
@@ -99,7 +104,12 @@ export async function holeVerlaufFuerAnfrage(anfrageId: string): Promise<Verlauf
   if (!anfrageData?.created_at) throw new Error("Anfrage nicht gefunden")
 
   const TYP_TEXT: Record<string, string> = {
-    angebot: "Angebot gesendet", rueckfrage: "Rückfrage gesendet", nachfass: "Nachfass gesendet", anfrage: "Gesendet",
+    angebot: "Angebot gesendet",
+    rueckfrage: "Rückfrage gesendet",
+    nachfass: "Nachfass gesendet",
+    anfrage: "Gesendet",
+    antwort: "Antwort gesendet",
+    frei: "Mail gesendet",
   }
 
   const eintraege: VerlaufEintrag[] = [{ zeitpunkt: anfrageData.created_at, text: "Angelegt" }]

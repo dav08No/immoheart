@@ -20,15 +20,20 @@ export async function holeZahlenKennzahlen(): Promise<ZahlenKennzahlen> {
   // von nachrichten aus gesehen many-to-one ist, liefert der generierte Typ ein
   // einzelnes nullable Objekt (n.anfragen: { created_at: string } | null), kein
   // Array -- passend zum n.anfragen?.created_at-Zugriff unten.
+  // .eq("richtung", "gesendet") + gesendet_am statt created_at (N3-Review, Fund 4):
+  // ein Angebots-ENTWURF (richtung "entwurf") ist noch keine tatsächliche Reaktion auf
+  // die Anfrage, und created_at wäre der Zeitpunkt der Entwurfserstellung, nicht des
+  // tatsächlichen Versands -- beides hätte die Kennzahl "Tage bis Erstangebot" verzerrt.
   const { data: angeboteData, error: angeboteError } = await supabase
     .from("nachrichten")
-    .select("created_at, anfragen(created_at)")
+    .select("gesendet_am, anfragen(created_at)")
     .eq("typ", "angebot")
+    .eq("richtung", "gesendet")
   if (angeboteError) throw angeboteError
   const tageBisAngebot = angeboteData
     .map((n) => {
-      if (!n.anfragen) return null
-      const differenz = new Date(n.created_at).getTime() - new Date(n.anfragen.created_at).getTime()
+      if (!n.anfragen || !n.gesendet_am) return null
+      const differenz = new Date(n.gesendet_am).getTime() - new Date(n.anfragen.created_at).getTime()
       return differenz / 86_400_000
     })
     .filter((wert): wert is number => wert !== null && wert >= 0)
