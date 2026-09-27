@@ -127,7 +127,7 @@ export function eingangFelderAusMail(mail: GeparsteMail): EingangFelder {
 
 // Nach ~30 s keine weitere Mail mehr anfangen: eine angefangene Mail (Download, Anhänge)
 // braucht Zeit, und die Server Action wird nach 60 s beendet (Final-Review I3). Die
-// übrigen Mails bleiben ungelesen und kommen im nächsten Abruf dran.
+// übrigen Mails kommen im nächsten Abruf dran.
 export const ABRUF_ZEITBUDGET_MS = 30_000
 
 export function zeitFuerWeitereMail(startMs: number, jetztMs: number): boolean {

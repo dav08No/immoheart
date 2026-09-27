@@ -100,3 +100,20 @@ export async function verwerfeEingang(nachrichtId: string): Promise<void> {
   const { error } = await supabase.from("nachrichten").delete().eq("id", nachrichtId)
   if (error) throw error
 }
+
+// Für die Auswahl vor dem Herunterladen: welche Message-IDs kennt immoheart schon
+// (Eingänge wie auch selbst gesendete Mails, die Gmail ebenfalls im Posteingang zeigt)?
+export async function holeBekannteMessageIds(ids: string[]): Promise<Map<string, BestehenderEingang>> {
+  const bekannt = new Map<string, BestehenderEingang>()
+  if (ids.length === 0) return bekannt
+  const supabase = erstelleAdminClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .select("id, richtung, ki_status, message_id")
+    .in("message_id", ids)
+  if (error) throw error
+  for (const zeile of data) {
+    if (zeile.message_id) bekannt.set(zeile.message_id, { id: zeile.id, richtung: zeile.richtung, ki_status: zeile.ki_status })
+  }
+  return bekannt
+}

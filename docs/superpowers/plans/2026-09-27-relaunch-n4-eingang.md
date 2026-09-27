@@ -5,7 +5,7 @@
 **Goal:** Mails an `immoheart.business@gmail.com` werden automatisch abgeholt, solange ein Admin-Tab offen und sichtbar ist, samt Bild-/PDF-Anhängen gespeichert, von der KI eingeordnet (Suchanfrage, Antwort, Objektangebot, Sonstiges) und im neuen Postfach mit passenden Aktionen angezeigt. Nichts wird automatisch gesendet — Reaktionen sind Entwürfe.
 
 **Architecture:** Zwei getrennte Schritte, damit ein Lauf die 60-s-Grenze nie reisst:
-1. **Abruf** (`mailAbrufen`): höchstens 5 ungelesene Mails per IMAP holen, Rohdaten + erlaubte Anhänge speichern (`ki_status = 'offen'`), dann in Gmail als gelesen markieren. Eine Sperrzeile `mail_abruf` lässt höchstens einen Lauf pro 60 s zu.
+1. **Abruf** (`mailAbrufen`): höchstens 5 noch unbekannte Mails der letzten 3 Tage per IMAP holen (Auswahl über die Message-ID, nicht über "ungelesen" -- Nachtrag Live-Test), Rohdaten + erlaubte Anhänge speichern (`ki_status = 'offen'`), dann in Gmail als gelesen markieren. Eine Sperrzeile `mail_abruf` lässt höchstens einen Lauf pro 60 s zu.
 2. **Verarbeitung** (`verarbeiteNaechste`): nimmt genau eine `offen`-Mail atomar in Arbeit (`laeuft`), ordnet sie zu (erst deterministisch über Mail-Header, dann KI) und legt Entwürfe an. Der Client ruft das so lange auf, bis nichts mehr offen ist.
 Ein unsichtbarer Client-Baustein im Admin-Layout (`MailAbrufer`) stösst beides alle 2 Minuten an, nur bei sichtbarem Tab.
 
