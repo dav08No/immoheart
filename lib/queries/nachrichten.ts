@@ -4,18 +4,6 @@ import type { Database } from "@/types/database"
 export type NachrichtRow = Database["public"]["Tables"]["nachrichten"]["Row"]
 type NachrichtEinfuegen = Database["public"]["Tables"]["nachrichten"]["Insert"]
 
-export async function holeNachrichten(): Promise<NachrichtRow[]> {
-  const supabase = await erstelleServerClient()
-  const { data, error } = await supabase
-    .from("nachrichten")
-    .select("*")
-    .is("geloescht_am", null)
-    .neq("richtung", "entwurf")
-    .order("created_at", { ascending: false })
-  if (error) throw error
-  return data
-}
-
 export async function holeNachricht(id: string): Promise<NachrichtRow | null> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("nachrichten").select("*").eq("id", id).maybeSingle()
