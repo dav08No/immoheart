@@ -43,8 +43,8 @@ describe("generiereText", () => {
 
     expect(ergebnis).toBe("Antwort")
     expect(erzeuge).toHaveBeenCalledTimes(2)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt")
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt", 20_000)
     expect(warte).toHaveBeenCalledWith(500)
   })
 
@@ -61,10 +61,10 @@ describe("generiereText", () => {
 
     expect(ergebnis).toBe("Antwort vom Ersatzmodell")
     expect(erzeuge).toHaveBeenCalledTimes(4)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(4, "gemini-flash-latest", "Prompt")
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(4, "gemini-flash-latest", "Prompt", 20_000)
     expect(warte).toHaveBeenNthCalledWith(1, 500)
     expect(warte).toHaveBeenNthCalledWith(2, 1500)
     expect(warte).toHaveBeenCalledTimes(2)
@@ -90,8 +90,8 @@ describe("generiereText", () => {
 
     expect(ergebnis).toBe("Antwort vom Ersatzmodell")
     expect(erzeuge).toHaveBeenCalledTimes(2)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-flash-latest", "Prompt")
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-flash-latest", "Prompt", 20_000)
     expect(warte).not.toHaveBeenCalled()
   })
 
@@ -101,5 +101,22 @@ describe("generiereText", () => {
 
     await expect(generiereText("Prompt", { erzeuge, warte })).rejects.toMatchObject({ status: 503 })
     expect(erzeuge).toHaveBeenCalledTimes(6)
+  })
+
+  it("gibt der Anfrage nur die Restzeit und bricht ab, wenn das Gesamtbudget aufgebraucht ist", async () => {
+    let uhr = 0
+    const warte = vi.fn(async (ms: number) => {
+      uhr += ms
+    })
+    // Jeder Versuch braucht 8 s und endet mit 503.
+    const erzeuge = vi.fn(async () => {
+      uhr += 8_000
+      throw fehlerMitStatus(503)
+    })
+
+    await expect(generiereText("Prompt", { erzeuge, warte, jetzt: () => uhr })).rejects.toMatchObject({ status: 503 })
+
+    // 0 s: 20 s Limit; 8,5 s: Rest 13,5 s; 18 s: Rest 4 s; danach 26 s > Budget.
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(2))).toEqual([20_000, 13_500, 4_000])
   })
 })

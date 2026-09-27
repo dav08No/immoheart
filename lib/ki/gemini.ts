@@ -22,6 +22,15 @@ const WARTEZEITEN_MS = [500, 1500]
 
 const VORUEBERGEHENDE_STATUS = [429, 500, 502, 503, 504]
 
+// Eine Mail-Verarbeitung macht zwei generiereText-Aufrufe (ordneEin + Entwurf) und muss
+// in die 60 s einer Server Action passen (Final-Review I4): pro Anfrage höchstens 20 s,
+// pro generiereText insgesamt höchstens ~22 s (+ eine letzte Wartezeit) inkl. aller
+// Wiederholungen und Modellwechsel.
+const ANFRAGE_TIMEOUT_MS = 20_000
+const GESAMT_BUDGET_MS = 22_000
+// Weniger Restzeit lohnt keinen weiteren Versuch mehr.
+const MIN_RESTZEIT_MS = 2_000
+
 function holeStatus(fehler: unknown): number | undefined {
   if (typeof fehler !== "object" || fehler === null) return undefined
   const objekt = fehler as Record<string, unknown>
@@ -49,10 +58,20 @@ export function istModellNichtVerfuegbar(fehler: unknown): boolean {
 // Ein Client pro generiereText-Aufruf statt pro Versuch: der Client hält
 // keinen Zustand, der zwischen Versuchen erneuert werden müsste, und ein
 // einziger reicht für alle Modelle/Wiederholungen dieses Aufrufs.
-function baueErzeugeStandard(client: GoogleGenAI): (modell: string, prompt: string) => Promise<string | undefined> {
-  return async (modell, prompt) => {
-    const antwort = await client.models.generateContent({ model: modell, contents: prompt })
-    return antwort.text
+type Erzeuge = (modell: string, prompt: string, timeoutMs: number) => Promise<string | undefined>
+
+function baueErzeugeStandard(client: GoogleGenAI): Erzeuge {
+  return async (modell, prompt, timeoutMs) => {
+    const signal = AbortSignal.timeout(timeoutMs)
+    try {
+      const antwort = await client.models.generateContent({ model: modell, contents: prompt, config: { abortSignal: signal } })
+      return antwort.text
+    } catch (fehler) {
+      // Eigene, verständliche Meldung statt "This operation was aborted"; ohne Status,
+      // also kein weiterer Versuch -- das Zeitbudget ist danach ohnehin aufgebraucht.
+      if (signal.aborted) throw new Error("Zeitüberschreitung bei der KI-Anfrage.")
+      throw fehler
+    }
   }
 }
 
@@ -61,21 +80,26 @@ function warteStandard(ms: number): Promise<void> {
 }
 
 export type GeneriereTextOptionen = {
-  erzeuge?: (modell: string, prompt: string) => Promise<string | undefined>
+  erzeuge?: Erzeuge
   warte?: (ms: number) => Promise<void>
+  jetzt?: () => number
 }
 
 export async function generiereText(
   prompt: string,
-  { erzeuge, warte = warteStandard }: GeneriereTextOptionen = {}
+  { erzeuge, warte = warteStandard, jetzt = Date.now }: GeneriereTextOptionen = {}
 ): Promise<string> {
   const aufruf = erzeuge ?? baueErzeugeStandard(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }))
+  const ende = jetzt() + GESAMT_BUDGET_MS
   let letzterFehler: unknown
 
   for (const modell of MODELLE) {
     for (let versuch = 0; versuch < VERSUCHE_PRO_MODELL; versuch++) {
+      const rest = ende - jetzt()
+      // letzterFehler ist hier immer gesetzt: der erste Versuch hat das volle Budget.
+      if (rest < MIN_RESTZEIT_MS) throw letzterFehler
       try {
-        const text = await aufruf(modell, prompt)
+        const text = await aufruf(modell, prompt, Math.min(ANFRAGE_TIMEOUT_MS, rest))
         // Eine leere Antwort hat keinen HTTP-Status, gilt also weder als
         // vorübergehend noch als "Modell nicht verfügbar" -- sie wird unten
         // sofort geworfen, bewusst ohne Versuch auf dem Ersatzmodell: ein
