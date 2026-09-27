@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
 import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
+import { antwortBetreff } from "@/lib/mail/verlauf"
 import type { Nutzung } from "@/types"
 import {
   holeNachricht,
@@ -31,7 +32,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
     richtung: "eingang",
     typ: "anfrage",
     von,
-    an: "kontakt@espaceso.ch",
+    an: process.env.GMAIL_USER ?? "",
     betreff,
     body: text,
     erkannte_felder: null,
@@ -44,13 +45,17 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
   const luecken = Object.values(felder).some((wert) => wert === null)
   if (luecken) {
     const entwurf = await entwurfRueckfrage(felder)
+    // Betreff der Eingangsmail (mit Re:-Präfix) statt des von der KI erfundenen
+    // Betreffs -- der Verlauf im Mailprogramm der Firma soll an ihre eigene
+    // Anfrage anschliessen, nicht an einen neuen, nicht wiedererkennbaren Titel.
     await legeNachrichtAn({
       richtung: "entwurf",
       typ: "rueckfrage",
-      von: "kontakt@espaceso.ch",
+      von: process.env.GMAIL_USER ?? "",
       an: von,
-      betreff: entwurf.betreff,
+      betreff: antwortBetreff(betreff),
       body: entwurf.body,
+      antwort_auf: nachricht.id,
     })
   }
 
