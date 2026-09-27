@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PulsHero } from "./PulsHero"
 import { MatchCard } from "./MatchCard"
 import { MatchDetail } from "./MatchDetail"
@@ -18,6 +19,7 @@ export function MatchesAnsicht({
   objektAnzahl: number
   langeStillAnfragen: AnfrageMitFirma[]
 }) {
+  const router = useRouter()
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(null)
   const ausgewaehlt = matches.find((m) => m.id === ausgewaehlteId) ?? null
 
@@ -51,10 +53,11 @@ export function MatchesAnsicht({
     setAusgewaehlteId(null)
     setFehler(null)
     try {
-      await matchSenden(id)
+      const { entwurfId } = await matchSenden(id)
+      router.push(`/admin/entwuerfe?id=${entwurfId}`)
     } catch (e) {
       const objekt = matches.find((m) => m.id === id)?.objekt.titel ?? "dieses Match"
-      setFehler(`Angebot senden fehlgeschlagen (${objekt}): ${fehlertext(e)}`)
+      setFehler(`Angebot entwerfen fehlgeschlagen (${objekt}): ${fehlertext(e)}`)
     }
   }
   async function verwerfen(id: string) {
@@ -70,9 +73,10 @@ export function MatchesAnsicht({
   async function nachfragen(id: string, wer: string) {
     setFehler(null)
     try {
-      await anfrageNachfragen(id)
+      const { entwurfId } = await anfrageNachfragen(id)
+      router.push(`/admin/entwuerfe?id=${entwurfId}`)
     } catch (e) {
-      setFehler(`Nachfragen fehlgeschlagen (${wer}): ${fehlertext(e)}`)
+      setFehler(`Nachfass entwerfen fehlgeschlagen (${wer}): ${fehlertext(e)}`)
     }
   }
 
@@ -148,7 +152,7 @@ export function MatchesAnsicht({
                 onClick={() => void nachfragen(id, wer)}
                 className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface-2"
               >
-                Nachfragen
+                Nachfass entwerfen
               </button>
             </div>
           )

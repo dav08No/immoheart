@@ -68,7 +68,7 @@ export function MatchDetail({
       <p className="text-xs text-ink-2">{letzterMatch.hinweis}</p>
       <div className="flex gap-2">
         <button onClick={onSenden} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand">
-          Angebot senden
+          Angebot entwerfen
         </button>
         <button onClick={onVerwerfen} className="rounded-lg border border-line-2 px-3 py-1.5 text-sm text-ink">
           Verwerfen

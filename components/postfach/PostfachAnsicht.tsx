@@ -1,38 +1,48 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { NachrichtenListe, type PostfachFilter } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
-import { EntwurfDetail } from "./EntwurfDetail"
+import { GesendetDetail } from "./GesendetDetail"
 import { MailEinfuegen } from "./MailEinfuegen"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 import type { Nutzung } from "@/types"
 
-export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }) {
+// Minimaler Ausschnitt eines Entwurfs (aus holeEntwuerfe, page.tsx), nur für
+// die Rückfrage-Zuordnung in rueckfrageOeffnen unten benötigt.
+export type RueckfrageEntwurf = { id: string; antwort_auf: string | null; an: string; typ: string }
+
+export function PostfachAnsicht({
+  nachrichten,
+  rueckfragen,
+}: {
+  nachrichten: NachrichtRow[]
+  rueckfragen: RueckfrageEntwurf[]
+}) {
+  const router = useRouter()
   const [filter, setFilter] = useState<PostfachFilter>("alle")
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(nachrichten[0]?.id ?? null)
   // alsAnfrageSpeichern (Task 39) wirft bewusst (siehe Kommentar dort), z.B. wenn
   // nutzung trotz manueller Auswahl nicht bestimmt werden konnte. Ohne sichtbares
   // Feedback landet der sorgfältig formulierte Fehlertext nur in der Browser-Konsole
-  // (Offener Punkt aus Task 39s Review, s. Plan). Milestone-Konvention (MailEinfuegen/
-  // Task 40, EntwurfDetail/Task 43): lokaler fehler-State, gerendert in text-crit.
+  // (Offener Punkt aus Task 39s Review, s. Plan). Milestone-Konvention (MailEinfuegen,
+  // EntwurfEditor): lokaler fehler-State, gerendert in text-crit.
   const [fehler, setFehler] = useState<string | null>(null)
   // Reviewer-Feedback Fix-Loop Runde 1: alsAnfrageSpeichern (app/actions/nachrichten.ts)
-  // macht holeNachricht -> legeAnfrageAn -> loescheNachricht ohne Transaktion. Ohne
-  // Sperre könnte ein schneller Doppelklick auf "Als Anfrage speichern" zwei
-  // überlappende Aufrufe für dieselbe nachrichtId auslösen, die beide die noch nicht
-  // gelöschte Zeile lesen und beide legeAnfrageAn aufrufen -- zwei doppelte Anfragen
-  // aus einer Quelle-Nachricht (derselbe Race wie bereits in MailEinfuegen/Task 40 und
-  // EntwurfDetail/Task 43 durch laedt/laufend verhindert). speichernLaufend wird an
-  // EingangDetail durchgereicht, das seinen Speichern-Button damit sperrt.
+  // macht holeNachricht -> legeAnfrageAn -> loescheUndGibNachrichtZurueck ohne
+  // Transaktion. Ohne Sperre könnte ein schneller Doppelklick auf "Als Anfrage
+  // speichern" zwei überlappende Aufrufe für dieselbe nachrichtId auslösen.
+  // speichernLaufend wird an EingangDetail durchgereicht, das seinen
+  // Speichern-Button damit sperrt.
   const [speichernLaufend, setSpeichernLaufend] = useState(false)
   // Kurze, optionale Erfolgsbestätigung nach dem Speichern (Reviewer-Vorschlag,
   // Minor) -- ersetzt den "Nachricht wählen."-Platzhalter einmalig, bis die Nutzerin
   // eine neue Nachricht (oder Rückfrage) auswählt.
   const [erfolg, setErfolg] = useState<string | null>(null)
 
-  // Analog zu EntwurfDetails nachrichtIdRef (Task 43): während alsAnfrageSpeichern
+  // Gleiches Ref-Muster wie in anderen Detail-Komponenten: während alsAnfrageSpeichern
   // läuft, könnte die Nutzerin in NachrichtenListe bereits eine andere Nachricht
   // auswählen (die Liste wird während des Speicherns nicht gesperrt). Träfe die
   // Antwort danach ein, dürfte ein Fehler aus dem ALTEN Aufruf nicht über der NEU
@@ -46,52 +56,37 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
 
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
 
-  // Es gibt in nachrichten kein Fremdschlüsselfeld, das eine eingehende Anfrage
-  // eindeutig mit "ihrer" Rückfrage verknüpft (Schema: nur anfrage_id/match_id, kein
-  // "ausgeloest_von"). Der Treffer läuft deshalb weiterhin nur über typ+an -- wie
-  // zuvor schon. Das öffnet ein Randfall-Risiko: sendet dieselbe Absenderin später
-  // eine ZWEITE Anfrage, die erneut eine Rückfrage auslöst, existieren zwei Zeilen mit
-  // typ === "rueckfrage" && an === vonEmail. Ein simples `.find()` (ohne richtung-
-  // Filter) griffe dann implizit auf die Array-Reihenfolge zurück -- korrekt nur,
-  // WEIL `nachrichten` aus holeNachrichten() bereits nach created_at absteigend
-  // sortiert reinkommt (Zufall aus Sicht dieser Funktion, keine hier sichtbare
-  // Garantie). Um nicht von dieser impliziten Sortierung abhängig zu sein, wird
-  // explizit nach created_at sortiert und der JÜNGSTE Treffer gewählt -- die aktuell
-  // relevante, offene Rückfrage, nicht eine ältere, bereits erledigte.
-  function rueckfrageOeffnen(vonEmail: string) {
-    const treffer = nachrichten
-      .filter((n) => n.typ === "rueckfrage" && n.an === vonEmail)
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0]
-    if (treffer) {
-      // Es gibt keinen eigenen Listen-Filter für richtung === "gesendet" (siehe
-      // PostfachFilter in NachrichtenListe.tsx: nur "alle" | "eingang" | "entwurf").
-      // Bei einer bereits gesendeten Rückfrage auf "entwurf" zu filtern würde sie aus
-      // der linken Liste verschwinden lassen (das Detail rechts bliebe trotzdem
-      // korrekt, da `ausgewaehlt` unabhängig vom Listen-Filter über die volle
-      // `nachrichten`-Liste aufgelöst wird) -- "alle" zeigt sie stattdessen sichtbar
-      // markiert in der Liste.
-      setFilter(treffer.richtung === "entwurf" ? "entwurf" : "alle")
-      setAusgewaehlteId(treffer.id)
-      setFehler(null)
-      setErfolg(null)
-      // Reset unabhängig vom Staleness-Ref-Guard in speichernAlsAnfrage: verhindert,
-      // dass ein noch laufender Speichern-Aufruf für die VORHERIGE Nachricht den
-      // Speichern-Button der jetzt neu ausgewählten Nachricht gesperrt lässt (siehe
-      // Kommentar bei speichernLaufend oben).
-      setSpeichernLaufend(false)
-    }
+  function gesendeteRueckfrageAuswaehlen(id: string) {
+    setFilter("alle")
+    setAusgewaehlteId(id)
+    setFehler(null)
+    setErfolg(null)
+    setSpeichernLaufend(false)
+  }
+
+  // Zuordnung primär über antwort_auf (eindeutig); typ+an nur als Fallback für
+  // Altdaten ohne antwort_auf. Beide Quellen kommen bereits nach created_at
+  // absteigend sortiert an, .find() trifft daher jeweils den jüngsten Eintrag.
+  function rueckfrageOeffnen(eingang: NachrichtRow) {
+    const gesendet = nachrichten.find((n) => n.richtung === "gesendet" && n.antwort_auf === eingang.id)
+    if (gesendet) return gesendeteRueckfrageAuswaehlen(gesendet.id)
+    const entwurf = rueckfragen.find((r) => r.antwort_auf === eingang.id)
+    if (entwurf) return router.push(`/admin/entwuerfe?id=${entwurf.id}`)
+    const legacyGesendet = nachrichten.find(
+      (n) => n.richtung === "gesendet" && n.typ === "rueckfrage" && n.an === eingang.von
+    )
+    if (legacyGesendet) return gesendeteRueckfrageAuswaehlen(legacyGesendet.id)
+    const legacyEntwurf = rueckfragen.find((r) => r.typ === "rueckfrage" && r.an === eingang.von)
+    if (legacyEntwurf) router.push(`/admin/entwuerfe?id=${legacyEntwurf.id}`)
   }
 
   // Nachtrag aus Task 42: EingangDetails onSpeichern reicht die von der Nutzerin
   // manuell gewählte Nutzung als optionales Argument durch, falls die KI-Erkennung
   // nutzung nicht bestimmen konnte -- das muss an alsAnfrageSpeichern weitergereicht
-  // werden. alsAnfrageSpeichern löscht bei Erfolg die Quelle-Nachricht
-  // (loescheNachricht, siehe app/actions/nachrichten.ts) -- die gespeicherte Nachricht
-  // verschwindet also aus der Liste. Die Auswahl wird deshalb explizit aufgehoben,
-  // statt darauf zu vertrauen, dass das `nachrichten`-Prop nach revalidatePath
-  // rechtzeitig nachzieht -- sonst würde `ausgewaehlt` für einen kurzen Moment auf
-  // eine bereits gelöschte Zeile zeigen (kein Crash dank `.find(...) ?? null`, aber
-  // sichtbar veraltete Daten).
+  // werden. alsAnfrageSpeichern löscht bei Erfolg die Quelle-Nachricht -- die
+  // gespeicherte Nachricht verschwindet also aus der Liste. Die Auswahl wird
+  // deshalb explizit aufgehoben, statt darauf zu vertrauen, dass das
+  // `nachrichten`-Prop nach revalidatePath rechtzeitig nachzieht.
   async function speichernAlsAnfrage(nachrichtId: string, nutzungUeberschreibung?: Nutzung) {
     setFehler(null)
     setErfolg(null)
@@ -151,13 +146,11 @@ export function PostfachAnsicht({ nachrichten }: { nachrichten: NachrichtRow[] }
             onSpeichern={(nutzungUeberschreibung) =>
               void speichernAlsAnfrage(ausgewaehlt.id, nutzungUeberschreibung)
             }
-            onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt.von)}
+            onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
             speichernLaufend={speichernLaufend}
           />
         )}
-        {ausgewaehlt && ausgewaehlt.richtung !== "eingang" && (
-          <EntwurfDetail key={ausgewaehlt.id} nachricht={ausgewaehlt} />
-        )}
+        {ausgewaehlt?.richtung === "gesendet" && <GesendetDetail nachricht={ausgewaehlt} />}
       </div>
     </div>
   )

@@ -75,7 +75,7 @@ export function MatchCard({
           onClick={(e) => { e.stopPropagation(); onSenden() }}
           className="rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-on-brand hover:bg-brand-2"
         >
-          Angebot senden
+          Angebot entwerfen
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onVerwerfen() }}

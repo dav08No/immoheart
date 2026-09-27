@@ -1,6 +1,6 @@
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 
-export type PostfachFilter = "alle" | "eingang" | "entwurf"
+export type PostfachFilter = "alle" | "eingang" | "gesendet"
 
 type Props = {
   nachrichten: NachrichtRow[]
@@ -14,13 +14,13 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
   const gefiltert = nachrichten.filter((n) => {
     if (filter === "alle") return true
     if (filter === "eingang") return n.richtung === "eingang"
-    return n.richtung === "entwurf"
+    return n.richtung === "gesendet"
   })
 
   return (
     <div className="rounded-card border border-line bg-surface">
       <div className="flex gap-1.5 border-b border-line p-2.5">
-        {(["alle", "eingang", "entwurf"] as const).map((option) => (
+        {(["alle", "eingang", "gesendet"] as const).map((option) => (
           <button
             key={option}
             onClick={() => onFilterWechsel(option)}
@@ -29,7 +29,7 @@ export function NachrichtenListe({ nachrichten, filter, ausgewaehlteId, onFilter
               filter === option ? "border-navy bg-navy text-white" : "border-line text-ink-2"
             }`}
           >
-            {option === "alle" ? "Alle" : option === "eingang" ? "Eingang" : "Entwürfe"}
+            {option === "alle" ? "Alle" : option === "eingang" ? "Eingang" : "Gesendet"}
           </button>
         ))}
       </div>
