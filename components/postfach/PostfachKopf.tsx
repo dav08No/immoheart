@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { mailAbrufen, verarbeiteNaechste } from "@/app/actions/eingang"
+import { fuehreAbrufRundeAus } from "@/lib/postfach-abruf"
 import { abrufAnzeige } from "@/lib/postfach"
 import { formatUhrzeit, formatZeitpunkt } from "@/lib/format"
 import type { AbrufStatus } from "@/lib/queries/eingang"
@@ -30,24 +30,21 @@ export function PostfachKopf({ abrufStatus }: { abrufStatus: AbrufStatus }) {
     if (sperre.current) return
     sperre.current = true
     setFortschritt("Mails werden abgerufen…")
-    let verarbeitet = 0
-    let fehlgeschlagen = 0
     try {
-      const abruf = await mailAbrufen()
-      if (abruf.fehler) toast.error(abruf.fehler)
-      // Auch nach einem Abruf-Fehler weiter einordnen: ältere, noch offene Mails
-      // sollen trotzdem verarbeitet werden.
-      for (let i = 0; i < MAX_EINORDNUNGEN; i++) {
+      const ergebnis = await fuehreAbrufRundeAus(MAX_EINORDNUNGEN, (verarbeitet) =>
         setFortschritt(verarbeitet === 0 ? "Wird eingeordnet…" : `${verarbeitet} eingeordnet…`)
-        const schritt = await verarbeiteNaechste()
-        if (!schritt.verarbeitet) break
-        verarbeitet += 1
-        if (schritt.fehler) fehlgeschlagen += 1
+      )
+      // null: MailAbrufer (Task 7) lief im selben Moment im Hintergrund bereits eine
+      // Runde -- kein Fehler, nur nichts zusätzlich zu tun.
+      if (!ergebnis) {
+        toast.info("Abruf läuft bereits im Hintergrund.")
+        return
       }
+      if (ergebnis.abrufFehler) toast.error(ergebnis.abrufFehler)
       // Fehlgeschlagene Einordnungen zählen separat: sie stehen mit "Erneut verarbeiten"
       // im Postfach und sollen nicht als Erfolg durchgehen.
-      const zusammenfassung = `${abruf.neu} neue Mail${abruf.neu === 1 ? "" : "s"}, ${verarbeitet - fehlgeschlagen} eingeordnet`
-      if (fehlgeschlagen > 0) toast.warning(`${zusammenfassung}, ${fehlgeschlagen} Fehler.`)
+      const zusammenfassung = `${ergebnis.neu} neue Mail${ergebnis.neu === 1 ? "" : "s"}, ${ergebnis.verarbeitet - ergebnis.fehlgeschlagen} eingeordnet`
+      if (ergebnis.fehlgeschlagen > 0) toast.warning(`${zusammenfassung}, ${ergebnis.fehlgeschlagen} Fehler.`)
       else toast.success(`${zusammenfassung}.`)
     } catch {
       toast.error("Unerwarteter Fehler beim Abrufen. Bitte Seite neu laden.")

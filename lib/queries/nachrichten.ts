@@ -55,15 +55,18 @@ export async function verknuepfeAntwortenMitAnfrage(eingangId: string, anfrageId
   if (error) throw error
 }
 
-// Badge Postfach = unbearbeitete Eingänge: nur "eingang" ohne geloescht_am.
-// Entwürfe haben mit zaehleEntwuerfe (Task 3, N3) einen eigenen Zähler
-// bekommen, weil sie inzwischen eine eigene Ansicht (/admin/entwuerfe) sind.
+// Badge Postfach = UNGELESENE Eingänge (gelesen = false), nicht bloss alle "eingang"
+// ohne geloescht_am (Task 7): sonst bliebe die Zahl nach dem Lesen alter Mails
+// dauerhaft hoch, obwohl nichts mehr zu tun ist. Entwürfe haben mit zaehleEntwuerfe
+// (Task 3, N3) einen eigenen Zähler, weil sie inzwischen eine eigene Ansicht
+// (/admin/entwuerfe) sind.
 export async function zaehleNachrichten(): Promise<number> {
   const supabase = await erstelleServerClient()
   const { count, error } = await supabase
     .from("nachrichten")
     .select("*", { count: "exact", head: true })
     .eq("richtung", "eingang")
+    .eq("gelesen", false)
     .is("geloescht_am", null)
   if (error) throw error
   return count ?? 0
@@ -99,6 +102,20 @@ export async function zaehleEntwuerfe(): Promise<number> {
     .is("geloescht_am", null)
   if (error) throw error
   return count ?? 0
+}
+
+// Objekt aus einer Mail übernommen (Task 7, "Als Objekt übernehmen" im Postfach): nur
+// bei richtung 'eingang' setzen -- WHERE richtung='eingang' ist Teil der UPDATE-
+// Bedingung selbst, ein inzwischen anderer Datensatz (z.B. bereits gelöscht oder gar
+// kein Eingang mehr) bleibt dann unverändert statt fälschlich verknüpft zu werden.
+export async function verknuepfeObjektMitEingang(eingangId: string, objektId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ objekt_id: objektId })
+    .eq("id", eingangId)
+    .eq("richtung", "eingang")
+  if (error) throw error
 }
 
 // Versand-Zustandsmaschine (reservieren/senden/markieren/freigeben) steht seit

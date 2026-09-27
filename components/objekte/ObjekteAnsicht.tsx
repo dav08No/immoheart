@@ -1,22 +1,37 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { ObjektRaster } from "./ObjektRaster"
 import { ObjektFormular } from "./ObjektFormular"
 import { Drawer } from "@/components/layout/Drawer"
 import { Button } from "@/components/ui/Button"
+import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
 import type { Database } from "@/types/database"
 
 type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
+export type ObjektVorbelegung = { nachrichtId: string; werte: ObjektVorbelegungWerte }
 
 export function ObjekteAnsicht({
-  objekte, treffer,
+  objekte, treffer, vorbelegung,
 }: {
   objekte: ObjektRow[]
   treffer: Record<string, number>
+  vorbelegung?: ObjektVorbelegung | null
 }) {
-  const [modus, setModus] = useState<string | null>(null)
+  const router = useRouter()
+  // ?aus=<Eingangs-id> (Link "Als Objekt übernehmen" im Postfach, Task 7) öffnet das
+  // Formular beim ersten Rendern direkt im Neu-Modus -- nur der Startwert, spätere
+  // Klicks auf "Objekt anlegen"/eine Karte steuern modus danach ganz normal weiter.
+  const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : null)
   const bearbeitetesObjekt = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
+
+  function beiFertig() {
+    setModus(null)
+    // Verhindert, dass ein Reload nach dem Speichern denselben ?aus=-Link erneut mit
+    // den (jetzt schon übernommenen) Werten öffnet.
+    if (vorbelegung) router.replace("/admin/objekte")
+  }
 
   return (
     <>
@@ -47,7 +62,13 @@ export function ObjekteAnsicht({
           dauerhaft gemountet bliebe. Mit key hier ist dieser interne Guard
           nur noch Defense-in-Depth, nicht mehr die einzige Absicherung.
         */}
-        <ObjektFormular key={bearbeitetesObjekt?.id ?? "neu"} objekt={bearbeitetesObjekt} onFertig={() => setModus(null)} />
+        <ObjektFormular
+          key={bearbeitetesObjekt?.id ?? "neu"}
+          objekt={bearbeitetesObjekt}
+          vorbelegung={vorbelegung?.werte}
+          herkunftNachrichtId={vorbelegung?.nachrichtId}
+          onFertig={beiFertig}
+        />
       </Drawer>
     </>
   )

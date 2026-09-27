@@ -3,90 +3,130 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { objektAnlegen, objektAktualisieren } from "@/app/actions/objekte"
+import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
 import type { Database } from "@/types/database"
 import type { Nutzung } from "@/types"
 
 type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
 type ObjektStatus = Database["public"]["Enums"]["objekt_status_enum"]
 
-const NUTZUNGEN: Nutzung[] = ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"]
+const NUTZUNGEN: { wert: Nutzung; label: string }[] = (
+  ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"] as Nutzung[]
+).map((n) => ({ wert: n, label: n }))
 const STATUS_OPTIONEN: { wert: ObjektStatus; label: string }[] = [
   { wert: "verfuegbar", label: "Verfügbar" },
   { wert: "reserviert", label: "Reserviert" },
   { wert: "vermietet", label: "Vermietet" },
 ]
 
-const LEER = {
-  titel: "", adresse: "", ort: "", flaeche: "", preis: "",
-  nutzung: "gewerbe" as Nutzung, verfuegbarAb: "", eigentuemer: "", fotoUrl: "",
+type Werte = {
+  titel: string; adresse: string; ort: string; flaeche: string; preis: string
+  nutzung: Nutzung; verfuegbarAb: string; eigentuemer: string; fotoUrl: string
 }
 
-// Bewusst kein Eingabefeld für `eigenschaften` (freies jsonb-Objekt, z.B.
-// `{"rampe": true, "kran_tonnen": 16}`, README-Abschnitt "objekte"): Anders als die
-// übrigen match-relevanten Felder (Task 55-Review, siehe MATCH_RELEVANTE_FELDER in
-// app/actions/objekte.ts) ist das kein einzelner Wert, sondern eine offene
-// Schlüssel/Wert-Menge ohne festes Schema -- dafür bräuchte es einen eigenen
-// dynamischen Key/Value-Editor (Zeilen hinzufügen/entfernen, Bool- vs. Zahl-Werte
-// unterscheiden), keinen einzelnen <input>. Das ist beim analogen Feld auf der
-// Anfrage-Seite (`anforderungen`, dieselbe Form) identisch: weder AnfrageFormular
-// noch AnfrageDetail bieten dafür ein Feld an. Der DB-Default `'{}'`
-// (20260922195257_schema.sql) ist dabei kein Datenverlust-Risiko, sondern der
-// neutrale/beste Fall: `punkteAnforderungen` (lib/matching.ts) liefert bei leeren
-// `eigenschaften` denselben Score wie bei leeren `anforderungen` -- 100 statt eines
-// Fehlschlags --, ein neu angelegtes Objekt ohne Zusatzeigenschaften wird also
-// gegenüber Anfragen ohne Zusatzanforderungen nicht benachteiligt. Ein Objekt mit
-// echten Zusatzeigenschaften kann heute nur direkt in der DB gepflegt werden; ein
-// dedizierter Key/Value-Editor wäre eine eigene, hier bewusst nicht mitgelöste
-// Aufgabe.
-export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFertig: () => void }) {
-  const [titel, setTitel] = useState(objekt?.titel ?? LEER.titel)
-  const [adresse, setAdresse] = useState(objekt?.adresse ?? LEER.adresse)
-  const [ort, setOrt] = useState(objekt?.ort ?? LEER.ort)
-  const [flaeche, setFlaeche] = useState(objekt?.flaeche?.toString() ?? LEER.flaeche)
-  const [preis, setPreis] = useState(objekt?.preis_pro_m2?.toString() ?? LEER.preis)
-  const [nutzung, setNutzung] = useState<Nutzung>(objekt?.nutzung ?? LEER.nutzung)
-  const [verfuegbarAb, setVerfuegbarAb] = useState(objekt?.verfuegbar_ab ?? LEER.verfuegbarAb)
-  const [eigentuemer, setEigentuemer] = useState(objekt?.eigentuemer ?? LEER.eigentuemer)
-  const [fotoUrl, setFotoUrl] = useState(objekt?.foto_url ?? LEER.fotoUrl)
-  // Nur im Bearbeiten-Modus gepflegt (siehe Kommentar bei STATUS_OPTIONEN unten) --
-  // beim Anlegen greift der DB-Default 'verfuegbar' (20260922195257_schema.sql).
+const LEER: Werte = {
+  titel: "", adresse: "", ort: "", flaeche: "", preis: "",
+  nutzung: "gewerbe", verfuegbarAb: "", eigentuemer: "", fotoUrl: "",
+}
+
+// objekt (Bearbeiten) schlägt vorbelegung (aus einer Mail übernommen, Task 7) schlägt
+// LEER -- bei objekt greift vorbelegung faktisch nie (NOT-NULL-Felder), der Vollständigkeit halber trotzdem mit derselben Priorität.
+function startwerte(objekt: ObjektRow | undefined, vorbelegung: ObjektVorbelegungWerte | undefined): Werte {
+  return {
+    titel: objekt?.titel ?? vorbelegung?.titel ?? LEER.titel,
+    adresse: objekt?.adresse ?? vorbelegung?.adresse ?? LEER.adresse,
+    ort: objekt?.ort ?? vorbelegung?.ort ?? LEER.ort,
+    flaeche: objekt?.flaeche?.toString() ?? vorbelegung?.flaeche ?? LEER.flaeche,
+    preis: objekt?.preis_pro_m2?.toString() ?? vorbelegung?.preis ?? LEER.preis,
+    nutzung: objekt?.nutzung ?? vorbelegung?.nutzung ?? LEER.nutzung,
+    verfuegbarAb: objekt?.verfuegbar_ab ?? vorbelegung?.verfuegbarAb ?? LEER.verfuegbarAb,
+    eigentuemer: objekt?.eigentuemer ?? vorbelegung?.eigentuemer ?? LEER.eigentuemer,
+    fotoUrl: objekt?.foto_url ?? LEER.fotoUrl,
+  }
+}
+
+// Ein <input> je einfachem Textfeld statt Copy-Paste (Titel/Adresse/Ort/Eigentümer/
+// Foto-URL sehen bis auf Platzhalter und Breite identisch aus).
+function TextFeld({
+  placeholder, wert, setWert, disabled, halb,
+}: {
+  placeholder: string; wert: string; setWert: (v: string) => void; disabled: boolean; halb?: boolean
+}) {
+  return (
+    <input
+      placeholder={placeholder}
+      value={wert}
+      onChange={(e) => setWert(e.target.value)}
+      disabled={disabled}
+      className={`${halb ? "w-1/2" : ""} rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60`}
+    />
+  )
+}
+
+function SelectFeld<T extends string>({
+  wert, setWert, optionen, disabled,
+}: { wert: T; setWert: (v: T) => void; optionen: { wert: T; label: string }[]; disabled: boolean }) {
+  return (
+    <select
+      value={wert}
+      onChange={(e) => setWert(e.target.value as T)}
+      disabled={disabled}
+      className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
+    >
+      {optionen.map((o) => (
+        <option key={o.wert} value={o.wert}>{o.label}</option>
+      ))}
+    </select>
+  )
+}
+
+// Kein Eingabefeld für `eigenschaften` (freies jsonb-Objekt, kein fester Schlüssel/Wert-
+// Satz für ein einzelnes <input>) -- bräuchte einen eigenen Key/Value-Editor, analog zu
+// `anforderungen` bei Anfragen, dort ebenfalls ohne Feld. DB-Default `'{}'` bewertet
+// laut punkteAnforderungen (lib/matching.ts) wie leere `anforderungen`, kein Nachteil.
+export function ObjektFormular({
+  objekt, vorbelegung, herkunftNachrichtId, onFertig,
+}: {
+  objekt?: ObjektRow
+  vorbelegung?: ObjektVorbelegungWerte
+  herkunftNachrichtId?: string
+  onFertig: () => void
+}) {
+  const start = startwerte(objekt, vorbelegung)
+  const [titel, setTitel] = useState(start.titel)
+  const [adresse, setAdresse] = useState(start.adresse)
+  const [ort, setOrt] = useState(start.ort)
+  const [flaeche, setFlaeche] = useState(start.flaeche)
+  const [preis, setPreis] = useState(start.preis)
+  const [nutzung, setNutzung] = useState<Nutzung>(start.nutzung)
+  const [verfuegbarAb, setVerfuegbarAb] = useState(start.verfuegbarAb)
+  const [eigentuemer, setEigentuemer] = useState(start.eigentuemer)
+  const [fotoUrl, setFotoUrl] = useState(start.fotoUrl)
+  // Nur im Bearbeiten-Modus gepflegt -- beim Anlegen greift der DB-Default 'verfuegbar'.
   const [status, setStatus] = useState<ObjektStatus>(objekt?.status ?? "verfuegbar")
   const [speichert, setSpeichert] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
-  // ObjekteAnsicht (Task 58) rendert `<ObjektFormular objekt={bearbeitetesObjekt} .../>`
-  // ohne `key` (gleicher Aufrufstil wie AnfrageDetail) -- der Drawer aus
-  // Task 58 bleibt beim Schliessen gemountet, und dieselbe Komponenteninstanz bedient
-  // sowohl "Objekt anlegen" (objekt === undefined) als auch das Bearbeiten verschiedener
-  // Objekte nacheinander. Ohne diesen Reset würde z.B. nach dem Bearbeiten von Objekt A
-  // ein direkter Wechsel zu Objekt B (oder zu "neu") weiterhin die Felder von A zeigen,
-  // bis die Seite neu geladen wird. objektIdRef hält zusätzlich die aktuell angezeigte
-  // Objekt-ID (oder "neu") für absenden() unten, um eine zwischenzeitlich veraltete
-  // Antwort einer noch laufenden Speicherung zu erkennen.
+  function setzeFelder(w: Werte) {
+    setTitel(w.titel); setAdresse(w.adresse); setOrt(w.ort); setFlaeche(w.flaeche)
+    setPreis(w.preis); setNutzung(w.nutzung); setVerfuegbarAb(w.verfuegbarAb)
+    setEigentuemer(w.eigentuemer); setFotoUrl(w.fotoUrl)
+  }
+
+  // Fallback-Reset, falls diese Komponente je ohne key-Wechsel weiterläuft (siehe
+  // objektIdRef unten) -- primäre Absicherung ist der key im Elternteil (ObjekteAnsicht).
   const objektIdRef = useRef(objekt?.id ?? "neu")
   useEffect(() => {
     objektIdRef.current = objekt?.id ?? "neu"
-    setTitel(objekt?.titel ?? LEER.titel)
-    setAdresse(objekt?.adresse ?? LEER.adresse)
-    setOrt(objekt?.ort ?? LEER.ort)
-    setFlaeche(objekt?.flaeche?.toString() ?? LEER.flaeche)
-    setPreis(objekt?.preis_pro_m2?.toString() ?? LEER.preis)
-    setNutzung(objekt?.nutzung ?? LEER.nutzung)
-    setVerfuegbarAb(objekt?.verfuegbar_ab ?? LEER.verfuegbarAb)
-    setEigentuemer(objekt?.eigentuemer ?? LEER.eigentuemer)
-    setFotoUrl(objekt?.foto_url ?? LEER.fotoUrl)
+    setzeFelder(startwerte(objekt, vorbelegung))
     setStatus(objekt?.status ?? "verfuegbar")
     setFehler(null)
     setSpeichert(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objekt?.id])
 
-  // objektAnlegen/objektAktualisieren (Task 55) werfen bewusst statt Fehler
-  // stillschweigend zu verschlucken (Milestone-Konvention, siehe MailEinfuegen/
-  // AnfrageDetail/AnfrageFormular). Ohne try/catch würde ein Fehler
-  // (z.B. RLS- oder Netzwerkfehler, oder objektAktualisierens expliziter Wurf bei
-  // einem RLS-gefilterten Zero-Row-Update) hier zu einer unhandled promise
-  // rejection führen und `speichert` bliebe dauerhaft true.
+  // objektAnlegen/objektAktualisieren werfen bewusst (Milestone-Konvention) -- ohne
+  // try/catch bliebe `speichert` bei einem Fehler dauerhaft true.
   async function absenden() {
     const zielId = objektIdRef.current
     setSpeichert(true)
@@ -100,28 +140,15 @@ export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFer
         verfuegbar_ab: verfuegbarAb,
         eigentuemer,
         foto_url: fotoUrl || null,
-        // status nur beim Bearbeiten mitschicken: beim Anlegen greift der DB-Default,
-        // und objektAnlegen kennt ohnehin noch kein Feld dafür in dieser Maske.
         ...(objekt ? { status } : {}),
       }
       if (objekt) {
         await objektAktualisieren(objekt.id, werte)
       } else {
-        await objektAnlegen(werte)
-        // Formular für die nächste Neuanlage zurücksetzen: siehe Ref-Kommentar oben --
-        // ohne Reset stünden beim nächsten "Objekt anlegen" noch die zuletzt
-        // eingegebenen Werte da, weil die Komponente gemountet bleibt.
-        if (objektIdRef.current === zielId) {
-          setTitel(LEER.titel)
-          setAdresse(LEER.adresse)
-          setOrt(LEER.ort)
-          setFlaeche(LEER.flaeche)
-          setPreis(LEER.preis)
-          setNutzung(LEER.nutzung)
-          setVerfuegbarAb(LEER.verfuegbarAb)
-          setEigentuemer(LEER.eigentuemer)
-          setFotoUrl(LEER.fotoUrl)
-        }
+        await objektAnlegen(werte, herkunftNachrichtId)
+        // Zurücksetzen, sonst stünden beim nächsten "Objekt anlegen" noch die zuletzt
+        // eingegebenen (oder vorbelegten) Werte da -- die Komponente bleibt gemountet.
+        if (objektIdRef.current === zielId) setzeFelder(LEER)
       }
       if (objektIdRef.current === zielId) onFertig()
     } catch (e) {
@@ -131,62 +158,25 @@ export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFer
     }
   }
 
-  // Anders als bei AnfrageFormular (Anfrage-Felder sind laut Schema nullable, siehe
-  // dortiger Kommentar) sind titel/adresse/ort/flaeche/verfuegbar_ab/eigentuemer in
-  // der objekte-Basistabelle NOT NULL (20260922195257_schema.sql) -- ein Objekt ohne
-  // diese Angaben wäre ein Schemaverstoss, die Pflichtfeld-Validierung bleibt daher
-  // (anders als dort) bestehen.
+  // titel/adresse/ort/flaeche/verfuegbar_ab/eigentuemer sind NOT NULL (anders als bei
+  // Anfragen) -- die Pflichtfeld-Validierung bleibt daher bestehen.
   const gueltig = titel && adresse && ort && flaeche && verfuegbarAb && eigentuemer
 
   return (
     <div className="flex flex-col gap-2.5 text-sm">
-      <input
-        placeholder="Titel"
-        value={titel}
-        onChange={(e) => setTitel(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <input
-        placeholder="Adresse"
-        value={adresse}
-        onChange={(e) => setAdresse(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <input
-        placeholder="Ort"
-        value={ort}
-        onChange={(e) => setOrt(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
+      {!objekt && vorbelegung && (
+        <p className="rounded-lg bg-brand-soft px-2.5 py-1.5 text-xs text-ink-2">
+          Vorbelegt aus Mail von {vorbelegung.eigentuemer}.
+        </p>
+      )}
+      <TextFeld placeholder="Titel" wert={titel} setWert={setTitel} disabled={speichert} />
+      <TextFeld placeholder="Adresse" wert={adresse} setWert={setAdresse} disabled={speichert} />
+      <TextFeld placeholder="Ort" wert={ort} setWert={setOrt} disabled={speichert} />
       <div className="flex gap-2">
-        <input
-          placeholder="Fläche m²"
-          value={flaeche}
-          onChange={(e) => setFlaeche(e.target.value)}
-          disabled={speichert}
-          className="w-1/2 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-        />
-        <input
-          placeholder="Preis CHF/m² (optional)"
-          value={preis}
-          onChange={(e) => setPreis(e.target.value)}
-          disabled={speichert}
-          className="w-1/2 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-        />
+        <TextFeld placeholder="Fläche m²" wert={flaeche} setWert={setFlaeche} disabled={speichert} halb />
+        <TextFeld placeholder="Preis CHF/m² (optional)" wert={preis} setWert={setPreis} disabled={speichert} halb />
       </div>
-      <select
-        value={nutzung}
-        onChange={(e) => setNutzung(e.target.value as Nutzung)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      >
-        {NUTZUNGEN.map((n) => (
-          <option key={n} value={n}>{n}</option>
-        ))}
-      </select>
+      <SelectFeld wert={nutzung} setWert={setNutzung} optionen={NUTZUNGEN} disabled={speichert} />
       <input
         type="date"
         value={verfuegbarAb}
@@ -194,31 +184,10 @@ export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFer
         disabled={speichert}
         className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
       />
-      <input
-        placeholder="Eigentümer"
-        value={eigentuemer}
-        onChange={(e) => setEigentuemer(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <input
-        placeholder="Foto-URL (optional)"
-        value={fotoUrl}
-        onChange={(e) => setFotoUrl(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
+      <TextFeld placeholder="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
+      <TextFeld placeholder="Foto-URL (optional)" wert={fotoUrl} setWert={setFotoUrl} disabled={speichert} />
       {objekt && (
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as ObjektStatus)}
-          disabled={speichert}
-          className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-        >
-          {STATUS_OPTIONEN.map((s) => (
-            <option key={s.wert} value={s.wert}>{s.label}</option>
-          ))}
-        </select>
+        <SelectFeld wert={status} setWert={setStatus} optionen={STATUS_OPTIONEN} disabled={speichert} />
       )}
       {fehler && <div className="text-sm text-crit">{fehler}</div>}
       <Button variante="primaer" onClick={absenden} disabled={speichert || !gueltig}>
