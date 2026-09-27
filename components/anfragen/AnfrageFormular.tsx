@@ -29,8 +29,8 @@ export function AnfrageFormular({ onFertig }: { onFertig: () => void }) {
   const [fehler, setFehler] = useState<string | null>(null)
 
   // anfrageAnlegen (Task 48) wirft bewusst statt Fehler stillschweigend zu
-  // verschlucken (Milestone-Konvention, siehe MailEinfuegen/EntwurfDetail/
-  // AnfrageDetail). Ohne try/catch würde ein Fehler (z.B. RLS- oder Netzwerkfehler)
+  // verschlucken (Milestone-Konvention, siehe MailEinfuegen/AnfrageDetail).
+  // Ohne try/catch würde ein Fehler (z.B. RLS- oder Netzwerkfehler)
   // hier zu einer unhandled promise rejection führen und `speichert` bliebe
   // dauerhaft true -- der Button wäre für immer deaktiviert, ohne dass die
   // Nutzerin es erneut versuchen könnte.

@@ -5,7 +5,7 @@ import type { ErkannteFelder } from "./erkennung"
 export type Mailentwurf = { betreff: string; body: string }
 
 const AUSGABEFORMAT =
-  'Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung: {"betreff": string, "body": string}. Der Ton ist knapp, sachlich, per Sie, ohne Floskeln. Unterschrift: "Freundliche Grüsse\\nespaceSOLOTHURN".'
+  'Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung: {"betreff": string, "body": string}. Der Ton ist knapp, sachlich, per Sie, ohne Floskeln. Unterschrift: "Freundliche Grüsse\\nimmoheart".'
 
 export function parseMailAntwort(antwort: string): Mailentwurf {
   const bereinigt = antwort

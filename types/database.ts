@@ -156,43 +156,61 @@ export type Database = {
         Row: {
           an: string
           anfrage_id: string | null
+          antwort_auf: string | null
           betreff: string
           body: string
           created_at: string
           erkannte_felder: Json | null
+          geloescht_am: string | null
           gesendet_am: string | null
           id: string
+          in_reply_to: string | null
           match_id: string | null
+          message_id: string | null
+          referenzen: string | null
           richtung: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ: Database["public"]["Enums"]["nachricht_typ_enum"]
+          versand_fehler: string | null
           von: string
         }
         Insert: {
           an: string
           anfrage_id?: string | null
+          antwort_auf?: string | null
           betreff: string
           body: string
           created_at?: string
           erkannte_felder?: Json | null
+          geloescht_am?: string | null
           gesendet_am?: string | null
           id?: string
+          in_reply_to?: string | null
           match_id?: string | null
+          message_id?: string | null
+          referenzen?: string | null
           richtung: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ: Database["public"]["Enums"]["nachricht_typ_enum"]
+          versand_fehler?: string | null
           von: string
         }
         Update: {
           an?: string
           anfrage_id?: string | null
+          antwort_auf?: string | null
           betreff?: string
           body?: string
           created_at?: string
           erkannte_felder?: Json | null
+          geloescht_am?: string | null
           gesendet_am?: string | null
           id?: string
+          in_reply_to?: string | null
           match_id?: string | null
+          message_id?: string | null
+          referenzen?: string | null
           richtung?: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ?: Database["public"]["Enums"]["nachricht_typ_enum"]
+          versand_fehler?: string | null
           von?: string
         }
         Relationships: [
@@ -201,6 +219,13 @@ export type Database = {
             columns: ["anfrage_id"]
             isOneToOne: false
             referencedRelation: "anfragen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nachrichten_antwort_auf_fkey"
+            columns: ["antwort_auf"]
+            isOneToOne: false
+            referencedRelation: "nachrichten"
             referencedColumns: ["id"]
           },
           {
@@ -336,7 +361,13 @@ export type Database = {
       anfrage_status_enum: "offen" | "vermittelt" | "ruhend"
       match_status_enum: "neu" | "gesendet" | "verworfen"
       nachricht_richtung_enum: "eingang" | "entwurf" | "gesendet"
-      nachricht_typ_enum: "anfrage" | "angebot" | "rueckfrage" | "nachfass"
+      nachricht_typ_enum:
+        | "anfrage"
+        | "angebot"
+        | "rueckfrage"
+        | "nachfass"
+        | "antwort"
+        | "frei"
       nutzung_enum:
         | "buero"
         | "gewerbe"
@@ -475,7 +506,14 @@ export const Constants = {
       anfrage_status_enum: ["offen", "vermittelt", "ruhend"],
       match_status_enum: ["neu", "gesendet", "verworfen"],
       nachricht_richtung_enum: ["eingang", "entwurf", "gesendet"],
-      nachricht_typ_enum: ["anfrage", "angebot", "rueckfrage", "nachfass"],
+      nachricht_typ_enum: [
+        "anfrage",
+        "angebot",
+        "rueckfrage",
+        "nachfass",
+        "antwort",
+        "frei",
+      ],
       nutzung_enum: [
         "buero",
         "gewerbe",

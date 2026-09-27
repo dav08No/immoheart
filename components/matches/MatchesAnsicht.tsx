@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PulsHero } from "./PulsHero"
 import { MatchCard } from "./MatchCard"
 import { MatchDetail } from "./MatchDetail"
@@ -18,6 +19,7 @@ export function MatchesAnsicht({
   objektAnzahl: number
   langeStillAnfragen: AnfrageMitFirma[]
 }) {
+  const router = useRouter()
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(null)
   const ausgewaehlt = matches.find((m) => m.id === ausgewaehlteId) ?? null
 
@@ -35,6 +37,12 @@ export function MatchesAnsicht({
   // das Objekt bzw. die Firma, damit die Zuordnung eindeutig bleibt, auch
   // wenn der Drawer inzwischen schon wieder geschlossen ist.
   const [fehler, setFehler] = useState<string | null>(null)
+  // Sperre pro Aktion (N3-Review, Fund 7): id des Matches bzw. der Anfrage, deren
+  // Server Action gerade läuft. Nur die betroffene Karte/Zeile/der Drawer wird
+  // gesperrt (Buttons disabled) -- andere Matches bleiben bedienbar. Verhindert
+  // z.B. einen Doppelklick auf "Angebot entwerfen", der sonst zwei KI-Aufrufe und
+  // zwei Entwürfe für dasselbe Match auslösen könnte.
+  const [laufendId, setLaufendId] = useState<string | null>(null)
 
   function fehlertext(e: unknown): string {
     return e instanceof Error ? e.message : String(e)
@@ -48,16 +56,23 @@ export function MatchesAnsicht({
   // die Aktion fehl, bleibt die betroffene Karte trotzdem sichtbar (siehe
   // Kommentar bei `fehler` oben), der Banner nennt zusätzlich das Objekt.
   async function senden(id: string) {
+    if (laufendId) return
+    setLaufendId(id)
     setAusgewaehlteId(null)
     setFehler(null)
     try {
-      await matchSenden(id)
+      const { entwurfId } = await matchSenden(id)
+      router.push(`/admin/entwuerfe?id=${entwurfId}`)
     } catch (e) {
       const objekt = matches.find((m) => m.id === id)?.objekt.titel ?? "dieses Match"
-      setFehler(`Angebot senden fehlgeschlagen (${objekt}): ${fehlertext(e)}`)
+      setFehler(`Angebot entwerfen fehlgeschlagen (${objekt}): ${fehlertext(e)}`)
+    } finally {
+      setLaufendId(null)
     }
   }
   async function verwerfen(id: string) {
+    if (laufendId) return
+    setLaufendId(id)
     setAusgewaehlteId(null)
     setFehler(null)
     try {
@@ -65,14 +80,21 @@ export function MatchesAnsicht({
     } catch (e) {
       const objekt = matches.find((m) => m.id === id)?.objekt.titel ?? "dieses Match"
       setFehler(`Verwerfen fehlgeschlagen (${objekt}): ${fehlertext(e)}`)
+    } finally {
+      setLaufendId(null)
     }
   }
   async function nachfragen(id: string, wer: string) {
+    if (laufendId) return
+    setLaufendId(id)
     setFehler(null)
     try {
-      await anfrageNachfragen(id)
+      const { entwurfId } = await anfrageNachfragen(id)
+      router.push(`/admin/entwuerfe?id=${entwurfId}`)
     } catch (e) {
-      setFehler(`Nachfragen fehlgeschlagen (${wer}): ${fehlertext(e)}`)
+      setFehler(`Nachfass entwerfen fehlgeschlagen (${wer}): ${fehlertext(e)}`)
+    } finally {
+      setLaufendId(null)
     }
   }
 
@@ -118,6 +140,7 @@ export function MatchesAnsicht({
         {matches.map((m) => (
           <MatchCard
             key={m.id} match={m}
+            laufend={laufendId === m.id}
             onOeffnen={() => setAusgewaehlteId(m.id)}
             onSenden={() => void senden(m.id)}
             onVerwerfen={() => void verwerfen(m.id)}
@@ -146,9 +169,10 @@ export function MatchesAnsicht({
               <span className="ml-auto text-xs text-ink-2">{tage} Tage</span>
               <button
                 onClick={() => void nachfragen(id, wer)}
-                className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface-2"
+                disabled={laufendId === id}
+                className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface-2 disabled:opacity-60"
               >
-                Nachfragen
+                {laufendId === id ? "Wird bearbeitet…" : "Nachfass entwerfen"}
               </button>
             </div>
           )
@@ -158,6 +182,7 @@ export function MatchesAnsicht({
       <MatchDetail
         match={ausgewaehlt}
         offen={!!ausgewaehlt}
+        laufend={ausgewaehlt !== null && laufendId === ausgewaehlt.id}
         onSchliessen={() => setAusgewaehlteId(null)}
         onSenden={() => ausgewaehlt && void senden(ausgewaehlt.id)}
         onVerwerfen={() => ausgewaehlt && void verwerfen(ausgewaehlt.id)}

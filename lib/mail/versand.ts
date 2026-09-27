@@ -13,7 +13,11 @@ function transport() {
   })
 }
 
-export async function sendeMail(an: string, mail: Mail): Promise<{ messageId: string }> {
+export async function sendeMail(
+  an: string,
+  mail: Mail,
+  verlauf?: { inReplyTo: string | null; referenzen: string | null }
+): Promise<{ messageId: string }> {
   const { GMAIL_USER, GMAIL_APP_PASSWORD } = process.env
   // Ohne beide Werte würde nodemailer erst beim SMTP-Handshake scheitern --
   // mit einer verwirrenden Fehlermeldung statt einer klaren Konfigurationsursache.
@@ -24,6 +28,8 @@ export async function sendeMail(an: string, mail: Mail): Promise<{ messageId: st
     subject: mail.betreff,
     text: mail.text,
     html: mail.html,
+    ...(verlauf?.inReplyTo ? { inReplyTo: verlauf.inReplyTo } : {}),
+    ...(verlauf?.referenzen ? { references: verlauf.referenzen } : {}),
   })
   return { messageId: info.messageId }
 }

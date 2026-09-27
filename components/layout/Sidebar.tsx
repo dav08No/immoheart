@@ -2,18 +2,27 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, Search, Users } from "lucide-react"
+import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
 import type { Profil } from "@/types"
 
 const EINTRAEGE = [
   { pfad: "/admin", label: "Matches", Icon: HeartHandshake },
   { pfad: "/admin/postfach", label: "Postfach", Icon: Inbox },
+  { pfad: "/admin/entwuerfe", label: "Entwürfe", Icon: PenLine },
   { pfad: "/admin/anfragen", label: "Anfragen", Icon: Search },
   { pfad: "/admin/objekte", label: "Objekte", Icon: Building2 },
   { pfad: "/admin/zahlen", label: "Zahlen", Icon: BarChart3 },
 ]
 
-export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAnzahl: number }) {
+export function Sidebar({
+  profil,
+  postfachAnzahl,
+  entwurfAnzahl,
+}: {
+  profil: Profil
+  postfachAnzahl: number
+  entwurfAnzahl: number
+}) {
   const pfad = usePathname()
   // filter(Boolean) fängt doppelte Leerzeichen und leere Namen ab.
   const initialen =
@@ -26,6 +35,7 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
       .toUpperCase() || "?"
 
   const eintraege = profil.darf_nutzer_anlegen ? [...EINTRAEGE, { pfad: "/admin/nutzer", label: "Nutzer", Icon: Users }] : EINTRAEGE
+  const badges: Record<string, number> = { "/admin/postfach": postfachAnzahl, "/admin/entwuerfe": entwurfAnzahl }
 
   return (
     <aside className="flex h-screen w-[206px] flex-none flex-col border-r border-line bg-surface">
@@ -36,7 +46,12 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2.5">
         {eintraege.map(({ pfad: ziel, label, Icon }) => {
-          const aktiv = pfad === ziel
+          // Sub-Routen desselben Bereichs (z.B. eine künftige /admin/objekte/<id>)
+          // sollen den Eltern-Eintrag ebenfalls aktiv markieren -- "/admin" selbst
+          // ist ausgenommen, sonst wäre er wegen des gemeinsamen Präfixes für
+          // JEDE Admin-Seite aktiv.
+          const aktiv = pfad === ziel || (ziel !== "/admin" && pfad.startsWith(ziel + "/"))
+          const badge = badges[ziel] ?? 0
           return (
             <Link
               key={ziel}
@@ -47,9 +62,9 @@ export function Sidebar({ profil, postfachAnzahl }: { profil: Profil; postfachAn
             >
               <Icon className="size-4 opacity-80" aria-hidden />
               {label}
-              {ziel === "/admin/postfach" && postfachAnzahl > 0 && (
+              {badge > 0 && (
                 <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-on-brand">
-                  {postfachAnzahl}
+                  {badge}
                 </span>
               )}
             </Link>

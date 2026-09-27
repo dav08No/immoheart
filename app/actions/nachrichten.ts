@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { erkenneFelder, type ErkannteFelder } from "@/lib/ki/erkennung"
 import { entwurfRueckfrage } from "@/lib/ki/entwuerfe"
+import { antwortBetreff } from "@/lib/mail/verlauf"
 import type { Nutzung } from "@/types"
 import {
   holeNachricht,
   legeNachrichtAn,
   aktualisiereNachricht,
-  loescheNachricht,
   loescheUndGibNachrichtZurueck,
 } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn } from "@/lib/queries/anfragen"
@@ -31,7 +31,7 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
     richtung: "eingang",
     typ: "anfrage",
     von,
-    an: "kontakt@espaceso.ch",
+    an: process.env.GMAIL_USER ?? "",
     betreff,
     body: text,
     erkannte_felder: null,
@@ -44,13 +44,17 @@ export async function nachrichtEingegangen(text: string, von: string, betreff: s
   const luecken = Object.values(felder).some((wert) => wert === null)
   if (luecken) {
     const entwurf = await entwurfRueckfrage(felder)
+    // Betreff der Eingangsmail (mit Re:-Präfix) statt des von der KI erfundenen
+    // Betreffs -- der Verlauf im Mailprogramm der Firma soll an ihre eigene
+    // Anfrage anschliessen, nicht an einen neuen, nicht wiedererkennbaren Titel.
     await legeNachrichtAn({
       richtung: "entwurf",
       typ: "rueckfrage",
-      von: "kontakt@espaceso.ch",
+      von: process.env.GMAIL_USER ?? "",
       an: von,
-      betreff: entwurf.betreff,
+      betreff: antwortBetreff(betreff),
       body: entwurf.body,
+      antwort_auf: nachricht.id,
     })
   }
 
@@ -141,19 +145,4 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
 
   revalidatePath("/admin/postfach")
   revalidatePath("/admin/anfragen")
-}
-
-export async function entwurfSenden(nachrichtId: string): Promise<void> {
-  await aktualisiereNachricht(nachrichtId, { richtung: "gesendet", gesendet_am: new Date().toISOString() })
-  revalidatePath("/admin/postfach")
-}
-
-export async function entwurfBearbeiten(nachrichtId: string, body: string): Promise<void> {
-  await aktualisiereNachricht(nachrichtId, { body })
-  revalidatePath("/admin/postfach")
-}
-
-export async function entwurfVerwerfen(nachrichtId: string): Promise<void> {
-  await loescheNachricht(nachrichtId)
-  revalidatePath("/admin/postfach")
 }

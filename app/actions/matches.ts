@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { entwurfAngebot, entwurfNachfass } from "@/lib/ki/entwuerfe"
 import { legeNachrichtAn } from "@/lib/queries/nachrichten"
+import { holeGesendeteIdsFuerAnfrage, holeLetztenGesendetenBetreff } from "@/lib/queries/versand"
+import { antwortBetreff } from "@/lib/mail/verlauf"
 import { holeAnfrage, holeFirma, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
+import { holeEigenesProfil } from "@/lib/queries/profile"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Kriterium } from "@/types"
 
@@ -24,6 +27,17 @@ async function empfaengerFuerAnfrage(firmaId: string | null): Promise<string> {
   return firma.kontakt_email
 }
 
+// Gibt es für die Anfrage bereits gesendete Mails, hängt der neue Entwurf mit
+// "Re:" an deren letzten Betreff an, statt den von der KI frei erfundenen
+// Betreff zu verwenden -- der Verlauf im Mailprogramm der Firma soll an ihre
+// eigene Konversation anschliessen.
+async function betreffFuerAnfrage(anfrageId: string, kiBetreff: string): Promise<string> {
+  const bisherige = await holeGesendeteIdsFuerAnfrage(anfrageId)
+  if (bisherige.length === 0) return kiBetreff
+  const letzterBetreff = await holeLetztenGesendetenBetreff(anfrageId)
+  return letzterBetreff ? antwortBetreff(letzterBetreff) : kiBetreff
+}
+
 // Ein UPDATE ohne betroffene Zeile ist für PostgREST kein Fehler -- deshalb
 // die zurückgegebene id prüfen, statt einen stillen Fehlschlag als Erfolg zu melden.
 async function aktualisiereMatchStatus(matchId: string, status: "gesendet" | "verworfen"): Promise<void> {
@@ -33,10 +47,15 @@ async function aktualisiereMatchStatus(matchId: string, status: "gesendet" | "ve
   if (!data) throw new Error("Match konnte nicht aktualisiert werden")
 }
 
-export async function matchSenden(matchId: string): Promise<void> {
+export async function matchSenden(matchId: string): Promise<{ entwurfId: string }> {
+  await holeEigenesProfil()
   const supabase = await erstelleServerClient()
   const { data: matchRow, error } = await supabase.from("matches").select("*").eq("id", matchId).single()
   if (error) throw error
+  // Verhindert einen zweiten KI-Aufruf (teuer, siehe entwurfAngebot) und einen zweiten
+  // Angebotsentwurf für ein bereits bearbeitetes Match -- z.B. bei einem Doppelklick
+  // oder wenn dieselbe Karte in zwei Tabs offen ist. Läuft VOR jedem KI-/DB-Zugriff.
+  if (matchRow.status !== "neu") throw new Error("Dieses Match wurde bereits bearbeitet.")
 
   const [anfrageRow, objektRow] = await Promise.all([holeAnfrage(matchRow.anfrage_id), holeObjekt(matchRow.objekt_id)])
   if (!anfrageRow || !objektRow) throw new Error("Anfrage oder Objekt nicht gefunden")
@@ -45,30 +64,37 @@ export async function matchSenden(matchId: string): Promise<void> {
   const objekt = zuObjektDomain(objektRow)
   const entwurf = await entwurfAngebot(anfrage, objekt, matchRow.kriterien as Kriterium[], matchRow.hinweis)
   const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
+  const betreff = await betreffFuerAnfrage(anfrage.id, entwurf.betreff)
 
-  await legeNachrichtAn({
+  const neu = await legeNachrichtAn({
     richtung: "entwurf",
     typ: "angebot",
     anfrage_id: anfrage.id,
     match_id: matchId,
-    von: "kontakt@espaceso.ch",
+    von: process.env.GMAIL_USER ?? "",
     an: empfaenger,
-    betreff: entwurf.betreff,
+    betreff,
     body: entwurf.body,
   })
 
+  // Match gilt als bearbeitet, sobald ein Angebotsentwurf existiert.
   await aktualisiereMatchStatus(matchId, "gesendet")
 
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
+  revalidatePath("/admin/entwuerfe")
+  revalidatePath("/admin", "layout")
+  return { entwurfId: neu.id }
 }
 
 export async function matchVerwerfen(matchId: string): Promise<void> {
+  await holeEigenesProfil()
   await aktualisiereMatchStatus(matchId, "verworfen")
   revalidatePath("/admin")
 }
 
-export async function anfrageNachfragen(anfrageId: string): Promise<void> {
+export async function anfrageNachfragen(anfrageId: string): Promise<{ entwurfId: string }> {
+  await holeEigenesProfil()
   const anfrageRow = await holeAnfrage(anfrageId)
   if (!anfrageRow) throw new Error("Anfrage nicht gefunden")
 
@@ -76,17 +102,21 @@ export async function anfrageNachfragen(anfrageId: string): Promise<void> {
   const tage = Math.floor((Date.now() - anfrage.letzterKontakt.getTime()) / 86_400_000)
   const entwurf = await entwurfNachfass(anfrage, tage)
   const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
+  const betreff = await betreffFuerAnfrage(anfrage.id, entwurf.betreff)
 
-  await legeNachrichtAn({
+  const neu = await legeNachrichtAn({
     richtung: "entwurf",
     typ: "nachfass",
     anfrage_id: anfrage.id,
-    von: "kontakt@espaceso.ch",
+    von: process.env.GMAIL_USER ?? "",
     an: empfaenger,
-    betreff: entwurf.betreff,
+    betreff,
     body: entwurf.body,
   })
 
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
+  revalidatePath("/admin/entwuerfe")
+  revalidatePath("/admin", "layout")
+  return { entwurfId: neu.id }
 }
