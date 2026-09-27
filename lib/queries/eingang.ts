@@ -9,6 +9,9 @@ import { erstelleAdminClient } from "@/lib/supabase/admin"
 const ABRUF_ID = 1
 const SPERRE_DAUER_MS = 60_000
 const DUPLIKAT_CODE = "23505"
+// Schutz vor einer übergrossen Fehlermeldung (z.B. ein voller Stacktrace-String eines
+// Drittpakets) in der ohnehin nur als kurzer Hinweis gedachten Statusspalte.
+const MAX_FEHLER_LAENGE = 300
 
 // Bedingtes UPDATE als Sperre (gleiches Muster wie reserviereEntwurf, lib/queries/
 // versand.ts): die WHERE-Bedingung (id + Zeit-Fenster) und das UPDATE laufen in einem
@@ -40,7 +43,7 @@ export async function abrufFehler(text: string): Promise<void> {
   const supabase = erstelleAdminClient()
   const { error } = await supabase
     .from("mail_abruf")
-    .update({ letzter_fehler: text, letzter_fehler_am: new Date().toISOString() })
+    .update({ letzter_fehler: text.slice(0, MAX_FEHLER_LAENGE), letzter_fehler_am: new Date().toISOString() })
     .eq("id", ABRUF_ID)
   if (error) throw error
 }
@@ -105,12 +108,19 @@ export async function speichereEingang(e: EingangEintrag): Promise<{ id: string 
   return data
 }
 
+// Deterministisch aus nachrichtId/index/dateiname statt von speichereAnhang zurückgegeben:
+// verwerfeEingang (Fix-Runde 1) muss denselben Pfad auch dann kennen, wenn speichereAnhang
+// nach dem Hochladen aber vor der Rückgabe scheitert (z.B. beim nachricht_anhaenge-Insert).
+function anhangPfad(nachrichtId: string, index: number, dateiname: string): string {
+  return `${nachrichtId}/${index}-${dateiname}`
+}
+
 export async function speichereAnhang(
   nachrichtId: string,
   a: { dateiname: string; mime: string; inhalt: Buffer; index: number }
 ): Promise<void> {
   const supabase = erstelleAdminClient()
-  const pfad = `${nachrichtId}/${a.index}-${a.dateiname}`
+  const pfad = anhangPfad(nachrichtId, a.index, a.dateiname)
   const { error: uploadError } = await supabase.storage
     .from("mail-anhaenge")
     .upload(pfad, a.inhalt, { contentType: a.mime, upsert: false })
@@ -123,4 +133,30 @@ export async function speichereAnhang(
     groesse: a.inhalt.length,
   })
   if (error) throw error
+}
+
+// Aufräumen nach einem fehlgeschlagenen Anhang (Fix-Runde 1, Task-Review): schlägt
+// speichereAnhang für irgendeinen Anhang fehl, bleibt sonst eine Nachrichten-Zeile mit
+// unvollständigen Anhängen stehen, die nie erneut versucht wird (message_id ist bereits
+// vergeben, ein erneuter Abruf hält sie für ein Duplikat und markiert sie nur als
+// gelesen). Entfernt deshalb sowohl die schon hochgeladenen Storage-Objekte als auch die
+// gerade erst eingefügte nachrichten-Zeile (löscht per ON DELETE CASCADE auch etwaige
+// nachricht_anhaenge-Zeilen) -- der Aufrufer markiert die Mail danach NICHT als gelesen,
+// der nächste Abruf sieht sie wieder komplett neu. Nimmt bewusst alle für diese Mail
+// vorgesehenen Anhänge entgegen (nicht nur die erfolgreich hochgeladenen): ein Pfad, der
+// nie hochgeladen wurde, existiert im Bucket schlicht nicht und remove() ignoriert das.
+// Eigene Fehler werden nur geloggt, nicht geworfen -- sie dürfen den ursprünglichen
+// Fehler, wegen dem aufgeräumt wird, nicht überdecken.
+export async function verwerfeEingang(
+  nachrichtId: string,
+  anhaenge: { dateiname: string; index: number }[]
+): Promise<void> {
+  const supabase = erstelleAdminClient()
+  if (anhaenge.length > 0) {
+    const pfade = anhaenge.map((a) => anhangPfad(nachrichtId, a.index, a.dateiname))
+    const { error } = await supabase.storage.from("mail-anhaenge").remove(pfade)
+    if (error) console.error("verwerfeEingang: Anhänge konnten nicht aus dem Bucket entfernt werden", nachrichtId, error)
+  }
+  const { error } = await supabase.from("nachrichten").delete().eq("id", nachrichtId)
+  if (error) console.error("verwerfeEingang: Nachricht konnte nicht gelöscht werden", nachrichtId, error)
 }

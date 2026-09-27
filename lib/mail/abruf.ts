@@ -2,7 +2,7 @@ import "server-only"
 import { ImapFlow } from "imapflow"
 import { simpleParser } from "mailparser"
 import { anhangErlaubt, eingangFelderAusMail, sichererDateiname } from "@/lib/mail/eingang"
-import { speichereAnhang, speichereEingang } from "@/lib/queries/eingang"
+import { speichereAnhang, speichereEingang, verwerfeEingang } from "@/lib/queries/eingang"
 
 const IMAP_HOST = "imap.gmail.com"
 const IMAP_PORT = 993
@@ -77,8 +77,21 @@ export async function holeNeueMails(max: number): Promise<{ gespeichert: number;
             continue
           }
 
-          for (const anhang of erlaubteAnhaenge) {
-            await speichereAnhang(zeile.id, anhang)
+          try {
+            for (const anhang of erlaubteAnhaenge) {
+              await speichereAnhang(zeile.id, anhang)
+            }
+          } catch (fehler) {
+            // Fix-Runde 1 (Task-Review): ohne dieses Aufräumen bliebe eine Nachrichten-
+            // Zeile mit unvollständigen Anhängen stehen, die message_id ist ja schon
+            // vergeben -- ein erneuter Abruf hielte sie für ein Duplikat und würde sie
+            // nur noch als gelesen markieren, nie erneut versuchen. verwerfeEingang
+            // entfernt die Zeile (und schon hochgeladene Anhänge) wieder vollständig,
+            // danach wirft dieser catch weiter zum äusseren Mail-catch unten, der die
+            // Mail bewusst NICHT als gelesen markiert -- der nächste Abruf sieht sie
+            // komplett neu.
+            await verwerfeEingang(zeile.id, erlaubteAnhaenge)
+            throw fehler
           }
 
           // Erst NACH Rohtext + Anhängen als gelesen markieren (globale Vorgabe): schlägt
