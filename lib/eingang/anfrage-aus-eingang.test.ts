@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { baueAnfrageEinfuegung, feldUebernehmenAenderung, firmenName } from "./anfrage-aus-eingang"
+import {
+  anfrageQuelle, baueAnfrageEinfuegung, feldUebernehmenAenderung, firmenName, suchanfrageKontakt,
+} from "./anfrage-aus-eingang"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 
 const LEERE_FELDER: ErkannteFelder = {
@@ -33,7 +35,7 @@ describe("baueAnfrageEinfuegung", () => {
       budget_pro_m2: 15,
       bezug: "sofort",
     }
-    expect(baueAnfrageEinfuegung(felder, "buero", "firma-1")).toEqual({
+    expect(baueAnfrageEinfuegung(felder, "buero", "firma-1", "mail")).toEqual({
       ort: "Solothurn",
       nutzung: "buero",
       flaeche_min: 100,
@@ -41,7 +43,33 @@ describe("baueAnfrageEinfuegung", () => {
       budget_pro_m2: 15,
       bezug: "sofort",
       firma_id: "firma-1",
+      quelle: "mail",
     })
+  })
+
+  it("übernimmt die Quelle website für Suchaufträge vom Formular", () => {
+    expect(baueAnfrageEinfuegung(LEERE_FELDER, "lager", "firma-2", "website").quelle).toBe("website")
+  })
+})
+
+describe("anfrageQuelle", () => {
+  it("website bleibt website, alles andere gilt als Mail", () => {
+    expect(anfrageQuelle("website")).toBe("website")
+    expect(anfrageQuelle("mail")).toBe("mail")
+    expect(anfrageQuelle(null)).toBe("mail")
+  })
+})
+
+describe("suchanfrageKontakt", () => {
+  it("liest die Kontaktangaben eines Website-Suchauftrags", () => {
+    const felder = { ...LEERE_FELDER, kontakt: { name: "Anna", email: "a@b.ch", telefon: null, nachricht: "Hallo" } }
+    expect(suchanfrageKontakt(felder)).toEqual({ name: "Anna", email: "a@b.ch", telefon: null, nachricht: "Hallo" })
+  })
+
+  it("liefert null ohne Kontakt (Mail-Eingang) oder bei kaputten Daten", () => {
+    expect(suchanfrageKontakt(LEERE_FELDER)).toBeNull()
+    expect(suchanfrageKontakt(null)).toBeNull()
+    expect(suchanfrageKontakt({ kontakt: { name: 3 } })).toBeNull()
   })
 })
 
