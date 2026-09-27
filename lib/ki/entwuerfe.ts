@@ -116,6 +116,8 @@ export function entwurfAntwort(p: { eingangBetreff: string; eingangText: string;
 }
 
 export const FOTO_BITTE = "Bitte freundlich darum, Fotos der Fläche als Anhang zu schicken."
+// Ohne diesen Satz bat die KI im Live-Test trotz mitgeschicktem Foto um "Bilder".
+export const FOTOS_VORHANDEN = "Fotos wurden bereits mitgeschickt: bedanke dich dafür und bitte nicht erneut um Bilder."
 
 export function baueObjektangebotPrompt(p: { betreff: string; text: string; hatBilder: boolean }): string {
   const fotos = p.hatBilder ? "" : `\n${FOTO_BITTE}`

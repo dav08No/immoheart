@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   baueRueckfragePrompt, baueAngebotPrompt, baueNachfassPrompt, parseMailAntwort,
-  baueAntwortPrompt, baueObjektangebotPrompt, FOTO_BITTE,
+  baueAntwortPrompt, baueObjektangebotPrompt, FOTO_BITTE, FOTOS_VORHANDEN,
 } from "./entwuerfe"
 import type { ErkannteFelder } from "./erkennung"
 import type { Anfrage, Objekt } from "@/types"
@@ -86,5 +86,6 @@ describe("baueObjektangebotPrompt", () => {
     const prompt = baueObjektangebotPrompt({ betreff: "Lagerhalle Zuchwil", text: "Zu vermieten", hatBilder: true })
     expect(prompt).toContain("Lagerhalle Zuchwil")
     expect(prompt).not.toContain(FOTO_BITTE)
+    expect(prompt).toContain(FOTOS_VORHANDEN)
   })
 })
