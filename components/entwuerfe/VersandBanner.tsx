@@ -37,6 +37,8 @@ export function VersandBanner({ entwurf }: { entwurf: EntwurfMitBezug }) {
         toast.success("Reservierung freigegeben")
         setBestaetigung(null)
       }
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaufend(null)
       router.refresh()
@@ -52,6 +54,8 @@ export function VersandBanner({ entwurf }: { entwurf: EntwurfMitBezug }) {
         toast.success("Als gesendet markiert")
         setBestaetigung(null)
       }
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaufend(null)
       router.refresh()

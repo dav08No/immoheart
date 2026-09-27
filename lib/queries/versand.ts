@@ -53,9 +53,18 @@ export async function reserviereEntwurf(id: string): Promise<NachrichtRow | null
   return data
 }
 
+// .eq("richtung", "entwurf") (N3-Review, Hardening): ohne diese Bedingung könnte ein
+// spät eintreffender Aufruf (z.B. nach einer Race mit markiereGesendet) versehentlich
+// eine bereits als "gesendet" markierte Zeile wieder auf gesendet_am=null zurücksetzen
+// und damit erneut sendbar machen -- genau der Doppelversand, den die gesamte
+// Reservierungs-Logik verhindern soll.
 export async function gibReservierungFrei(id: string, fehler: string): Promise<void> {
   const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("nachrichten").update({ gesendet_am: null, versand_fehler: fehler }).eq("id", id)
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ gesendet_am: null, versand_fehler: fehler })
+    .eq("id", id)
+    .eq("richtung", "entwurf")
   if (error) throw error
 }
 
@@ -92,22 +101,26 @@ export async function gibFestsitzendeReservierungFrei(id: string): Promise<void>
 // Gegenstück für den Fall, dass die Mail laut Gmail-Ordner "Gesendet" tatsächlich
 // rausgegangen ist (alsGesendetMarkieren, app/actions/entwuerfe.ts): dieselbe
 // Bedingung wie gibFestsitzendeReservierungFrei (reservierter, nicht gelöschter
-// Entwurf), aber ohne Alters-Grenze -- die Nutzerin bestätigt hier eine bereits
-// geprüfte Tatsache, kein Timeout-Ablauf. gesendet_am bleibt unverändert (Zeitpunkt
-// der ursprünglichen Reservierung/des Versands), message_id bleibt null, da keine
-// echte Message-ID bekannt ist.
-export async function markiereAlsManuellGesendet(id: string): Promise<NachrichtRow | null> {
+// Entwurf, mit derselben 2-Minuten-Grenze -- N3-Review, Hardening: auch eine von der
+// Nutzerin bestätigte Gmail-Prüfung darf einen möglicherweise noch laufenden Versand
+// nicht als abgeschlossen markieren). gesendet_am bleibt unverändert (Zeitpunkt der
+// ursprünglichen Reservierung/des Versands), message_id bleibt null, da keine echte
+// Message-ID bekannt ist.
+export async function markiereAlsManuellGesendet(id: string): Promise<NachrichtRow> {
   const supabase = await erstelleServerClient()
+  const grenze = new Date(Date.now() - RESERVIERUNG_TIMEOUT_MS).toISOString()
   const { data, error } = await supabase
     .from("nachrichten")
     .update({ richtung: "gesendet" })
     .eq("id", id)
     .eq("richtung", "entwurf")
     .not("gesendet_am", "is", null)
+    .lt("gesendet_am", grenze)
     .is("geloescht_am", null)
     .select()
     .maybeSingle()
   if (error) throw error
+  if (!data) throw new NutzerFehler("Der Versand läuft möglicherweise noch. Bitte in zwei Minuten erneut prüfen.")
   return data
 }
 

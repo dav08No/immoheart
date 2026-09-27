@@ -33,6 +33,8 @@ export function NeueMailDialog({ offen, onOpenChange }: { offen: boolean; onOpen
       setBody("")
       onOpenChange(false)
       router.push(`/admin/entwuerfe?id=${id}`)
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaedt(false)
       router.refresh()

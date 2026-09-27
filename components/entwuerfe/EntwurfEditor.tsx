@@ -43,6 +43,8 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
       const { fehler } = await entwurfSpeichern(entwurf.id, { an, betreff, body })
       if (fehler) toast.error(fehler)
       else toast.success("Gespeichert")
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaufend(null)
       router.refresh()
@@ -63,6 +65,8 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
         toast.success("Gesendet")
         setBestaetigung(null)
       }
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaufend(null)
       router.refresh()
@@ -75,6 +79,8 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
       const { fehler } = await entwurfLoeschen(entwurf.id)
       if (fehler) toast.error(fehler)
       else toast.success("Gelöscht")
+    } catch {
+      toast.error("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
       setLaufend(null)
       router.refresh()

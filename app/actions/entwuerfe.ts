@@ -66,14 +66,13 @@ export async function reservierungFreigeben(id: string): Promise<Ergebnis> {
 
 // Weg raus, wenn die Mail laut Gmail-Ordner "Gesendet" tatsächlich rausgegangen ist,
 // obwohl markiereGesendet (entwurfSenden) den Status nicht mehr speichern konnte.
-// Bewusst kein Alters-Check wie bei reservierungFreigeben: die Nutzerin bestätigt hier
-// eine bereits im Gmail-Postfach geprüfte Tatsache, kein Timeout-Ablauf.
+// markiereAlsManuellGesendet (lib/queries/versand.ts) prüft selbst die 2-Minuten-Grenze
+// und wirft dort bereits die passende NutzerFehler-Meldung -- kein zusätzlicher Check hier.
 export async function alsGesendetMarkieren(id: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
     const geprueft = idSchema.parse(id)
     const aktualisiert = await markiereAlsManuellGesendet(geprueft)
-    if (!aktualisiert) throw new NutzerFehler("Dieser Entwurf ist nicht reserviert.")
 
     // Best-effort wie in entwurfSenden: das Komfort-Feld letzter_kontakt darf bei
     // einem Fehler nicht als Fehlschlag der eigentlichen Aktion angezeigt werden.
