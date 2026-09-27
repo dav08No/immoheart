@@ -57,7 +57,7 @@ export function AnfrageDetail({
   const [matchesVeraltet, setMatchesVeraltet] = useState(false)
 
   // AnfragenAnsicht (Task 52, noch nicht gebaut) rendert `<AnfrageDetail anfrage={ausgewaehlt} .../>`
-  // voraussichtlich ohne `key={anfrage.id}` (gleicher Aufrufstil wie EntwurfDetail/Task 44).
+  // voraussichtlich ohne `key={anfrage.id}` (gleicher Aufrufstil wie andere Detail-Komponenten).
   // Wechselt die Auswahl in AnfragenTabelle, bekommt dieselbe Komponenteninstanz ein neues
   // `anfrage`-Prop statt neu zu mounten -- ohne Reset würde lokaler Bearbeiten-State (Eingaben,
   // Fehler, laufend) von der vorherigen Anfrage kleben bleiben. anfrageIdRef hält zusätzlich die
@@ -84,7 +84,7 @@ export function AnfrageDetail({
   const tage = Math.floor((Date.now() - new Date(letzterKontakt).getTime()) / 86_400_000)
 
   // anfrageAktualisieren (Task 48) wirft bewusst statt Fehler stillschweigend zu
-  // verschlucken (Milestone-Konvention, siehe MailEinfuegen/EntwurfDetail). Der Aufruf
+  // verschlucken (Milestone-Konvention, siehe MailEinfuegen). Der Aufruf
   // hier läuft deshalb durch try/catch, der Fehler landet sichtbar in `fehler` statt nur
   // in der Konsole zu verschwinden -- sonst bliebe die Nutzerin bei z.B. einem RLS- oder
   // Netzwerkfehler dauerhaft im Bearbeiten-Modus hängen, ohne zu wissen warum.

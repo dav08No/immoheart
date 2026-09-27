@@ -39,7 +39,7 @@ export function ObjekteAnsicht({
           "Objekt anlegen"): React unmountet die alte Instanz komplett und
           mountet eine neue mit frischem useState-Initialwert, statt dieselbe
           Instanz mit neuen Props weiterlaufen zu lassen. Das ist dieselbe
-          primäre Verteidigung wie bei EntwurfDetail (M5) und AnfrageDetail
+          primäre Verteidigung wie bei AnfrageDetail
           (M6) -- ObjektFormular hat zusätzlich einen internen
           useEffect+objektIdRef-Guard (siehe Kommentar dort), der laut
           eigenem Kommentar für den Fall gedacht war, dass diese Seite (wie

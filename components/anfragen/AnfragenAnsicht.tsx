@@ -50,8 +50,8 @@ export function AnfragenAnsicht({ anfragen }: { anfragen: AnfrageMitFirma[] }) {
   // Guard gegen veraltete fetch-Antworten: wechselt die Nutzerin schnell zu einer
   // anderen Zeile (oder schliesst den Drawer), während eine vorherige Anfrage für
   // /detail noch unterwegs ist, darf deren verspätete Antwort nicht mehr den State
-  // überschreiben (gleiches Muster wie anfrageIdRef in AnfrageDetail, nachrichtIdRef
-  // in EntwurfDetail, ausgewaehlteIdRef in PostfachAnsicht).
+  // überschreiben (gleiches Muster wie anfrageIdRef in AnfrageDetail,
+  // ausgewaehlteIdRef in PostfachAnsicht).
   const ausgewaehlteIdRef = useRef(ausgewaehlteId)
   useEffect(() => {
     ausgewaehlteIdRef.current = ausgewaehlteId

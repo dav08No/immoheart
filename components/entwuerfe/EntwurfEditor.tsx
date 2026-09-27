@@ -7,20 +7,22 @@ import { entwurfLoeschen, entwurfSenden, entwurfSpeichern, reservierungFreigeben
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 type Laufend = "speichern" | "senden" | "loeschen" | "freigeben" | null
+type Bestaetigung = "senden" | "loeschen" | "freigeben" | null
 const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink disabled:opacity-60"
 
 // Wird von EntwuerfeAnsicht immer mit key={entwurf.id} gerendert -- ein
 // Wechsel der Auswahl mountet diese Komponente also komplett neu, statt das
 // Prop auf eine bestehende Instanz zu übertragen. Lokaler State (Eingaben,
 // Bestätigungs-Dialoge, laufend) muss deshalb NICHT manuell beim Wechsel
-// zurückgesetzt werden (anders als z.B. components/postfach/EntwurfDetail.tsx).
+// zurückgesetzt werden.
 export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   const [an, setAn] = useState(entwurf.an)
   const [betreff, setBetreff] = useState(entwurf.betreff)
   const [body, setBody] = useState(entwurf.body)
   const [laufend, setLaufend] = useState<Laufend>(null)
-  const [sendenBestaetigen, setSendenBestaetigen] = useState(false)
-  const [loeschenBestaetigen, setLoeschenBestaetigen] = useState(false)
+  // Nur EIN Bestätigungs-Panel gleichzeitig offen -- Senden/Löschen/Freigeben
+  // schliessen sich gegenseitig, statt sich zu überlagern.
+  const [bestaetigung, setBestaetigung] = useState<Bestaetigung>(null)
 
   // gesendet_am gesetzt, aber richtung noch "entwurf": Versand-Ergebnis unklar
   // (siehe reservierungFreigeben in app/actions/entwuerfe.ts). Bearbeiten/
@@ -48,7 +50,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
       await entwurfSpeichern(entwurf.id, { an, betreff, body })
       await entwurfSenden(entwurf.id)
       toast.success("Gesendet")
-      setSendenBestaetigen(false)
+      setBestaetigung(null)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Versand fehlgeschlagen.")
     } finally {
@@ -73,6 +75,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
     try {
       await reservierungFreigeben(entwurf.id)
       toast.success("Reservierung freigegeben")
+      setBestaetigung(null)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Reservierung konnte nicht freigegeben werden.")
     } finally {
@@ -83,13 +86,28 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   return (
     <div className="p-4">
       {reserviert && (
-        <div className="mb-3.5 flex flex-wrap items-center gap-3 rounded-lg border border-warn bg-warn-bg p-3 text-sm text-warn">
-          <span className="flex-1">
-            Versand unklar – bitte im Gmail-Ordner „Gesendet” prüfen, bevor Sie erneut senden.
-          </span>
-          <Button onClick={freigeben} disabled={laufend !== null}>
-            {laufend === "freigeben" ? "Wird freigegeben…" : "Reservierung freigeben"}
-          </Button>
+        <div className="mb-3.5 rounded-lg border border-warn bg-warn-bg p-3 text-sm text-warn">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex-1">
+              Versand unklar – bitte im Gmail-Ordner „Gesendet” prüfen, bevor Sie erneut senden.
+            </span>
+            {bestaetigung !== "freigeben" && (
+              <Button onClick={() => setBestaetigung("freigeben")} disabled={laufend !== null}>
+                Reservierung freigeben
+              </Button>
+            )}
+          </div>
+          {bestaetigung === "freigeben" && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-ink-2">
+              Wirklich freigeben? Nur tun, wenn die Mail im Gmail-Ordner „Gesendet“ NICHT vorhanden ist.
+              <Button onClick={freigeben} disabled={laufend !== null}>
+                {laufend === "freigeben" ? "Wird freigegeben…" : "Ja, freigeben"}
+              </Button>
+              <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
+                Abbrechen
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -135,34 +153,34 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
           <Button onClick={speichern} disabled={gesperrt || !geaendert}>
             {laufend === "speichern" ? "Wird gespeichert…" : "Speichern"}
           </Button>
-          <Button variante="primaer" onClick={() => setSendenBestaetigen(true)} disabled={gesperrt}>
+          <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt}>
             Senden
           </Button>
-          <Button onClick={() => setLoeschenBestaetigen(true)} disabled={gesperrt}>
+          <Button onClick={() => setBestaetigung("loeschen")} disabled={gesperrt}>
             Löschen
           </Button>
         </div>
       )}
 
-      {!reserviert && sendenBestaetigen && (
+      {!reserviert && bestaetigung === "senden" && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
           An {an || "?"} senden?
           <Button variante="primaer" onClick={senden} disabled={laufend !== null}>
             {laufend === "senden" ? "Wird gesendet…" : "Jetzt senden"}
           </Button>
-          <Button onClick={() => setSendenBestaetigen(false)} disabled={laufend !== null}>
+          <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
             Abbrechen
           </Button>
         </div>
       )}
 
-      {!reserviert && loeschenBestaetigen && (
+      {!reserviert && bestaetigung === "loeschen" && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
           Entwurf wirklich löschen?
           <Button onClick={loeschen} disabled={laufend !== null}>
             {laufend === "loeschen" ? "Wird gelöscht…" : "Ja, löschen"}
           </Button>
-          <Button onClick={() => setLoeschenBestaetigen(false)} disabled={laufend !== null}>
+          <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
             Abbrechen
           </Button>
         </div>

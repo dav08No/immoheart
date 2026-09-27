@@ -41,8 +41,8 @@ type Props = {
   // Sperre würde ein schneller Doppelklick zwei überlappende Aufrufe für dieselbe
   // nachrichtId auslösen, die beide die noch nicht gelöschte Zeile lesen und beide
   // legeAnfrageAn aufrufen -- zwei doppelte Anfragen aus einer Quelle-Nachricht
-  // (derselbe Race wie bereits in MailEinfuegen/Task 40 und EntwurfDetail/Task 43
-  // durch laedt/laufend verhindert).
+  // (dasselbe Muster wie in MailEinfuegen und EntwurfEditor durch laedt/laufend
+  // verhindert).
   speichernLaufend: boolean
 }
 

@@ -36,12 +36,6 @@ export async function aktualisiereNachricht(id: string, aenderung: Partial<Nachr
   if (error) throw error
 }
 
-export async function loescheNachricht(id: string): Promise<void> {
-  const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("nachrichten").delete().eq("id", id)
-  if (error) throw error
-}
-
 // Atomarer Lösch-und-Rückgabe-Aufruf (statt erst holen, dann getrennt löschen):
 // Postgres serialisiert konkurrierende DELETEs auf dieselbe Zeile über
 // Row-Level-Locking, sodass von zwei überlappenden Aufrufen für dieselbe id

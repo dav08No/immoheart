@@ -75,6 +75,8 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
 
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
+  revalidatePath("/admin/entwuerfe")
+  revalidatePath("/admin", "layout")
   return { entwurfId: neu.id }
 }
 
@@ -105,5 +107,7 @@ export async function anfrageNachfragen(anfrageId: string): Promise<{ entwurfId:
 
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
+  revalidatePath("/admin/entwuerfe")
+  revalidatePath("/admin", "layout")
   return { entwurfId: neu.id }
 }

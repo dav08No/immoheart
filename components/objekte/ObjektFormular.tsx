@@ -55,7 +55,7 @@ export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFer
   const [fehler, setFehler] = useState<string | null>(null)
 
   // ObjekteAnsicht (Task 58) rendert `<ObjektFormular objekt={bearbeitetesObjekt} .../>`
-  // ohne `key` (gleicher Aufrufstil wie AnfrageDetail/EntwurfDetail) -- der Drawer aus
+  // ohne `key` (gleicher Aufrufstil wie AnfrageDetail) -- der Drawer aus
   // Task 58 bleibt beim Schliessen gemountet, und dieselbe Komponenteninstanz bedient
   // sowohl "Objekt anlegen" (objekt === undefined) als auch das Bearbeiten verschiedener
   // Objekte nacheinander. Ohne diesen Reset würde z.B. nach dem Bearbeiten von Objekt A
@@ -83,7 +83,7 @@ export function ObjektFormular({ objekt, onFertig }: { objekt?: ObjektRow; onFer
 
   // objektAnlegen/objektAktualisieren (Task 55) werfen bewusst statt Fehler
   // stillschweigend zu verschlucken (Milestone-Konvention, siehe MailEinfuegen/
-  // EntwurfDetail/AnfrageDetail/AnfrageFormular). Ohne try/catch würde ein Fehler
+  // AnfrageDetail/AnfrageFormular). Ohne try/catch würde ein Fehler
   // (z.B. RLS- oder Netzwerkfehler, oder objektAktualisierens expliziter Wurf bei
   // einem RLS-gefilterten Zero-Row-Update) hier zu einer unhandled promise
   // rejection führen und `speichert` bliebe dauerhaft true.

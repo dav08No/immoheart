@@ -9,7 +9,6 @@ import {
   holeNachricht,
   legeNachrichtAn,
   aktualisiereNachricht,
-  loescheNachricht,
   loescheUndGibNachrichtZurueck,
 } from "@/lib/queries/nachrichten"
 import { legeAnfrageAn } from "@/lib/queries/anfragen"
@@ -146,19 +145,4 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
 
   revalidatePath("/admin/postfach")
   revalidatePath("/admin/anfragen")
-}
-
-export async function entwurfSenden(nachrichtId: string): Promise<void> {
-  await aktualisiereNachricht(nachrichtId, { richtung: "gesendet", gesendet_am: new Date().toISOString() })
-  revalidatePath("/admin/postfach")
-}
-
-export async function entwurfBearbeiten(nachrichtId: string, body: string): Promise<void> {
-  await aktualisiereNachricht(nachrichtId, { body })
-  revalidatePath("/admin/postfach")
-}
-
-export async function entwurfVerwerfen(nachrichtId: string): Promise<void> {
-  await loescheNachricht(nachrichtId)
-  revalidatePath("/admin/postfach")
 }
