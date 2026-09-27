@@ -103,3 +103,11 @@ describe("aehnlicheObjekte", () => {
     expect(aehnlicheObjekte([ziel, ...andere], ziel, 2)).toHaveLength(2)
   })
 })
+
+describe("leseFilter Duplikate", () => {
+  it("entfernt doppelte Mehrfachwerte", () => {
+    const f = leseFilter({ ort: ["Solothurn", "Solothurn"], nutzung: ["lager", "lager"] }, ["Solothurn"], [])
+    expect(f.orte).toEqual(["Solothurn"])
+    expect(f.nutzung).toEqual(["lager"])
+  })
+})

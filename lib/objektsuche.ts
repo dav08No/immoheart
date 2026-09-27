@@ -38,7 +38,8 @@ type RohParams = Record<string, string | string[] | undefined>
 function alsListe(params: RohParams, key: string): string[] {
   const wert = params[key]
   if (wert === undefined) return []
-  return Array.isArray(wert) ? wert : [wert]
+  // Doppelte Werte (?ort=A&ort=A) ergäben doppelte Chips und Kriterien.
+  return [...new Set(Array.isArray(wert) ? wert : [wert])]
 }
 
 function ersterWert(params: RohParams, key: string): string | undefined {
