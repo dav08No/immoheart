@@ -1,8 +1,14 @@
 import "server-only"
 import { ImapFlow } from "imapflow"
 import { simpleParser } from "mailparser"
-import { anhangErlaubt, eingangFelderAusMail, sichererDateiname } from "@/lib/mail/eingang"
-import { speichereAnhang, speichereEingang, verwerfeEingang } from "@/lib/queries/eingang"
+import {
+  anhangErlaubt,
+  duplikatNeuImportieren,
+  eingangFelderAusMail,
+  sichererDateiname,
+  zeitFuerWeitereMail,
+} from "@/lib/mail/eingang"
+import { gibEingangFrei, speichereAnhang, speichereEingang, verwerfeEingang } from "@/lib/queries/eingang-import"
 
 const IMAP_HOST = "imap.gmail.com"
 const IMAP_PORT = 993
@@ -14,8 +20,76 @@ const VERBINDUNGS_TIMEOUT_MS = 10_000
 const SOCKET_TIMEOUT_MS = 20_000
 
 type ErlaubterAnhang = { dateiname: string; mime: string; inhalt: Buffer; index: number }
+type MailErgebnis = "gespeichert" | "duplikat" | "uebersprungen"
+
+async function markiereGelesen(client: ImapFlow, uid: number): Promise<void> {
+  await client.messageFlagsAdd(uid, ["\\Seen"], { uid: true })
+}
+
+async function speichereAnhaengeOderVerwirf(id: string, anhaenge: ErlaubterAnhang[]): Promise<void> {
+  try {
+    for (const anhang of anhaenge) await speichereAnhang(id, anhang)
+  } catch (fehler) {
+    // Zeile + schon hochgeladene Anhänge wieder entfernen und die Mail ungelesen lassen:
+    // der nächste Abruf sieht sie komplett neu. Ein Fehler beim Aufräumen wird nur
+    // geloggt (die Zeile bleibt dann mit ki_status null stehen und wird beim nächsten
+    // Abruf über duplikatNeuImportieren verworfen); geworfen wird der Ursprungsfehler.
+    try {
+      await verwerfeEingang(id)
+    } catch (aufraeumFehler) {
+      console.error("holeNeueMails: Aufräumen fehlgeschlagen", id, aufraeumFehler)
+    }
+    throw fehler
+  }
+}
+
+async function importiereMail(client: ImapFlow, uid: number): Promise<MailErgebnis> {
+  const nachricht = await client.fetchOne(uid, { source: true }, { uid: true })
+  if (!nachricht || !nachricht.source) {
+    console.error("holeNeueMails: keine Rohquelle für UID", uid)
+    return "uebersprungen"
+  }
+  const parsed = await simpleParser(nachricht.source)
+  const felder = eingangFelderAusMail(parsed)
+
+  // Erst einordnen (erlaubt/nicht erlaubt), dann speichern -- unerlaubte Anhänge landen
+  // nur als Name im anhaenge-Feld (globale Vorgabe: "Andere Dateien: nur der Name").
+  const erlaubteAnhaenge: ErlaubterAnhang[] = []
+  const anhaengeNamen: string[] = []
+  parsed.attachments.forEach((anhang, index) => {
+    const dateiname = sichererDateiname(anhang.filename, index)
+    if (anhangErlaubt(anhang.contentType, anhang.size)) {
+      erlaubteAnhaenge.push({ dateiname, mime: anhang.contentType, inhalt: anhang.content, index })
+    } else {
+      anhaengeNamen.push(dateiname)
+    }
+  })
+
+  const eintrag = { ...felder, anhaenge: anhaengeNamen }
+  let zeile = await speichereEingang(eintrag)
+  if ("duplikat" in zeile) {
+    if (!duplikatNeuImportieren(zeile.duplikat)) {
+      // Vollständiges Duplikat: trotzdem als gelesen markieren, damit es nicht bei jedem
+      // Abruf erneut als "neu" auftaucht.
+      await markiereGelesen(client, uid)
+      return "duplikat"
+    }
+    // Abgebrochener Import (Final-Review I3): verwerfen und gleich neu speichern.
+    await verwerfeEingang(zeile.duplikat.id)
+    zeile = await speichereEingang(eintrag)
+    if ("duplikat" in zeile) throw new Error("Eingang nach dem Verwerfen erneut vorhanden")
+  }
+
+  await speichereAnhaengeOderVerwirf(zeile.id, erlaubteAnhaenge)
+  // Erst jetzt für die KI freigeben und danach als gelesen markieren (globale Vorgabe:
+  // Rohtext + Anhänge zuerst) -- scheitert einer der Schritte, bleibt die Mail ungelesen.
+  await gibEingangFrei(zeile.id)
+  await markiereGelesen(client, uid)
+  return "gespeichert"
+}
 
 export async function holeNeueMails(max: number): Promise<{ gespeichert: number; duplikate: number }> {
+  const start = Date.now()
   const { GMAIL_USER, GMAIL_APP_PASSWORD } = process.env
   // Ohne beide Werte würde ImapFlow erst beim Verbindungsaufbau scheitern -- mit einer
   // verwirrenden Fehlermeldung statt einer klaren Konfigurationsursache (gleiches
@@ -44,61 +118,11 @@ export async function holeNeueMails(max: number): Promise<{ gespeichert: number;
       const uids = (Array.isArray(gefunden) ? gefunden : []).slice().sort((a, b) => a - b).slice(0, max)
 
       for (const uid of uids) {
+        if (!zeitFuerWeitereMail(start, Date.now())) break
         try {
-          const nachricht = await client.fetchOne(uid, { source: true }, { uid: true })
-          if (!nachricht || !nachricht.source) {
-            console.error("holeNeueMails: keine Rohquelle für UID", uid)
-            continue
-          }
-          const parsed = await simpleParser(nachricht.source)
-          const felder = eingangFelderAusMail(parsed)
-
-          // Erst einordnen (erlaubt/nicht erlaubt), dann speichern -- unerlaubte
-          // Anhänge landen nur als Name im anhaenge-Feld der Nachricht selbst
-          // (globale Vorgabe: "Andere Dateien: nur der Name").
-          const erlaubteAnhaenge: ErlaubterAnhang[] = []
-          const anhaengeNamen: string[] = []
-          parsed.attachments.forEach((anhang, index) => {
-            const dateiname = sichererDateiname(anhang.filename, index)
-            if (anhangErlaubt(anhang.contentType, anhang.size)) {
-              erlaubteAnhaenge.push({ dateiname, mime: anhang.contentType, inhalt: anhang.content, index })
-            } else {
-              anhaengeNamen.push(dateiname)
-            }
-          })
-
-          const zeile = await speichereEingang({ ...felder, anhaenge: anhaengeNamen })
-          if (!zeile) {
-            // Duplikat (message_id bereits vorhanden): trotzdem als gelesen markieren,
-            // damit ein früher schon verarbeiteter Eingang nicht bei jedem Abruf erneut
-            // als "neu" auftaucht.
-            duplikate++
-            await client.messageFlagsAdd(uid, ["\\Seen"], { uid: true })
-            continue
-          }
-
-          try {
-            for (const anhang of erlaubteAnhaenge) {
-              await speichereAnhang(zeile.id, anhang)
-            }
-          } catch (fehler) {
-            // Fix-Runde 1 (Task-Review): ohne dieses Aufräumen bliebe eine Nachrichten-
-            // Zeile mit unvollständigen Anhängen stehen, die message_id ist ja schon
-            // vergeben -- ein erneuter Abruf hielte sie für ein Duplikat und würde sie
-            // nur noch als gelesen markieren, nie erneut versuchen. verwerfeEingang
-            // entfernt die Zeile (und schon hochgeladene Anhänge) wieder vollständig,
-            // danach wirft dieser catch weiter zum äusseren Mail-catch unten, der die
-            // Mail bewusst NICHT als gelesen markiert -- der nächste Abruf sieht sie
-            // komplett neu.
-            await verwerfeEingang(zeile.id, erlaubteAnhaenge)
-            throw fehler
-          }
-
-          // Erst NACH Rohtext + Anhängen als gelesen markieren (globale Vorgabe): schlägt
-          // einer der beiden Schritte fehl, bleibt die Mail ungelesen und wird beim
-          // nächsten Abruf erneut versucht.
-          await client.messageFlagsAdd(uid, ["\\Seen"], { uid: true })
-          gespeichert++
+          const ergebnis = await importiereMail(client, uid)
+          if (ergebnis === "gespeichert") gespeichert++
+          if (ergebnis === "duplikat") duplikate++
         } catch (fehler) {
           // Einzelne kaputte Mail darf den ganzen Abruf nicht abbrechen -- loggen, nicht
           // als gelesen markieren, mit der nächsten UID weitermachen.

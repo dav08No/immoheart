@@ -124,3 +124,21 @@ export function eingangFelderAusMail(mail: GeparsteMail): EingangFelder {
     empfangen_am: mail.date ? mail.date.toISOString() : null,
   }
 }
+
+// Nach ~30 s keine weitere Mail mehr anfangen: eine angefangene Mail (Download, Anhänge)
+// braucht Zeit, und die Server Action wird nach 60 s beendet (Final-Review I3). Die
+// übrigen Mails bleiben ungelesen und kommen im nächsten Abruf dran.
+export const ABRUF_ZEITBUDGET_MS = 30_000
+
+export function zeitFuerWeitereMail(startMs: number, jetztMs: number): boolean {
+  return jetztMs - startMs < ABRUF_ZEITBUDGET_MS
+}
+
+export type BestehenderEingang = { id: string; richtung: string; ki_status: string | null }
+
+// Ein Eingang mit ki_status null ist ein Import, der vor gibEingangFrei abgebrochen ist
+// (z.B. Funktion während der Anhänge beendet): verwerfen und neu importieren, statt ihn
+// mit fehlenden Anhängen als Duplikat zu akzeptieren. Alles andere ist vollständig.
+export function duplikatNeuImportieren(bestehend: BestehenderEingang | null): bestehend is BestehenderEingang {
+  return bestehend !== null && bestehend.richtung === "eingang" && bestehend.ki_status === null
+}

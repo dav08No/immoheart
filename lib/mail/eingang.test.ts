@@ -3,11 +3,13 @@ import {
   ERLAUBTE_ANHANG_TYPEN,
   MAX_ANHANG_BYTES,
   absender,
+  duplikatNeuImportieren,
   anhangErlaubt,
   eingangFelderAusMail,
   htmlZuText,
   referenzListe,
   sichererDateiname,
+  zeitFuerWeitereMail,
   type GeparsteMail,
 } from "./eingang"
 
@@ -218,5 +220,34 @@ describe("eingangFelderAusMail", () => {
     const datum = new Date("2026-01-02T03:04:05.000Z")
     expect(eingangFelderAusMail({ ...LEERE_MAIL, date: datum }).empfangen_am).toBe(datum.toISOString())
     expect(eingangFelderAusMail(LEERE_MAIL).empfangen_am).toBeNull()
+  })
+})
+
+describe("zeitFuerWeitereMail", () => {
+  it("erlaubt eine weitere Mail bis knapp vor 30 s", () => {
+    expect(zeitFuerWeitereMail(1_000, 1_000)).toBe(true)
+    expect(zeitFuerWeitereMail(1_000, 30_999)).toBe(true)
+  })
+
+  it("fängt ab 30 s keine neue Mail mehr an", () => {
+    expect(zeitFuerWeitereMail(1_000, 31_000)).toBe(false)
+  })
+})
+
+describe("duplikatNeuImportieren", () => {
+  it("importiert einen abgebrochenen Eingang (ki_status null) neu", () => {
+    expect(duplikatNeuImportieren({ id: "a", richtung: "eingang", ki_status: null })).toBe(true)
+  })
+
+  it.each(["offen", "laeuft", "fertig", "fehler"])("behält einen vollständigen Eingang (%s)", (status) => {
+    expect(duplikatNeuImportieren({ id: "a", richtung: "eingang", ki_status: status })).toBe(false)
+  })
+
+  it("rührt eine gesendete Mail mit derselben message_id nie an", () => {
+    expect(duplikatNeuImportieren({ id: "a", richtung: "gesendet", ki_status: null })).toBe(false)
+  })
+
+  it("behandelt eine nicht mehr auffindbare Zeile als Duplikat", () => {
+    expect(duplikatNeuImportieren(null)).toBe(false)
   })
 })
