@@ -18,6 +18,14 @@ describe("htmlZuText", () => {
     expect(htmlZuText("<style>body{color:red}</style>Hallo")).toBe("Hallo")
   })
 
+  it("entfernt ein ungeschlossenes script-Tag samt allem danach", () => {
+    expect(htmlZuText("Hallo<script>alert(1)")).toBe("Hallo")
+  })
+
+  it("entfernt ein ungeschlossenes style-Tag samt allem danach", () => {
+    expect(htmlZuText('<STYLE type="x">a{}')).toBe("")
+  })
+
   it("ersetzt Absatz-/Zeilenumbruch-Tags durch Zeilenumbrüche", () => {
     expect(htmlZuText("<p>A</p><p>B</p>")).toBe("A\nB")
     expect(htmlZuText("Zeile1<br>Zeile2")).toBe("Zeile1\nZeile2")
@@ -93,6 +101,11 @@ describe("sichererDateiname", () => {
   it("liefert einen Fallback-Namen ohne Eingabe", () => {
     expect(sichererDateiname(undefined, 2)).toBe("anhang-2")
     expect(sichererDateiname("", 3)).toBe("anhang-3")
+  })
+
+  it("liefert einen Fallback-Namen, wenn nach der Bereinigung nur Punkte übrig bleiben", () => {
+    expect(sichererDateiname(".", 5)).toBe("anhang-5")
+    expect(sichererDateiname("..", 6)).toBe("anhang-6")
   })
 
   it("kürzt sehr lange Namen auf 80 Zeichen und behält die Endung", () => {

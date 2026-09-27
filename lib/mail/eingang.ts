@@ -3,11 +3,19 @@
 // nur so bleibt diese Datei ohne echte Mailbox unit-testbar.
 
 const SCRIPT_STYLE_REGEX = /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi
+// Fehlt die schliessende Tag (kaputtes/abgeschnittenes HTML), würde der Inhalt
+// ohne diese Regel als Text durchrutschen -- Script-/Style-Inhalt darf aber
+// nie im extrahierten Text landen, auch nicht bei fehlendem Ende.
+const UNGESCHLOSSENES_SCRIPT_STYLE_REGEX = /<(script|style)[^>]*>[\s\S]*$/i
 const ZEILENUMBRUCH_TAGS_REGEX = /<br\s*\/?>|<\/(p|div|li)>/gi
 const VERBLEIBENDE_TAGS_REGEX = /<[^>]+>/g
 
+function entferneScriptUndStyle(html: string): string {
+  return html.replace(SCRIPT_STYLE_REGEX, "").replace(UNGESCHLOSSENES_SCRIPT_STYLE_REGEX, "")
+}
+
 export function htmlZuText(html: string): string {
-  const ohneScriptStyle = html.replace(SCRIPT_STYLE_REGEX, "")
+  const ohneScriptStyle = entferneScriptUndStyle(html)
   const mitZeilenumbruechen = ohneScriptStyle.replace(ZEILENUMBRUCH_TAGS_REGEX, "\n")
   const ohneTags = mitZeilenumbruechen.replace(VERBLEIBENDE_TAGS_REGEX, "")
   const dekodiert = ohneTags
@@ -41,6 +49,10 @@ const MAX_DATEINAME_LAENGE = 80
 export function sichererDateiname(name: string | undefined, index: number): string {
   if (!name || name.trim().length === 0) return `anhang-${index}`
   const bereinigt = name.replace(UNERLAUBTE_ZEICHEN_REGEX, "_")
+  // "." oder ".." wären als Dateiname das aktuelle bzw. übergeordnete
+  // Verzeichnis -- nach der Bereinigung nur noch Punkte ist kein brauchbarer
+  // Dateiname.
+  if (/^\.+$/.test(bereinigt)) return `anhang-${index}`
   if (bereinigt.length <= MAX_DATEINAME_LAENGE) return bereinigt
   const punkt = bereinigt.lastIndexOf(".")
   const endung = punkt > 0 ? bereinigt.slice(punkt) : ""
