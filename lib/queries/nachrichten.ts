@@ -154,6 +154,29 @@ export async function gibReservierungFrei(id: string, fehler: string): Promise<v
   if (error) throw error
 }
 
+// Löst eine festsitzende Reservierung ("Versand unklar"): richtung noch
+// "entwurf", aber gesendet_am bereits gesetzt -- z.B. weil der Server zwischen
+// reserviereEntwurf und markiereGesendet/gibReservierungFrei abgestürzt ist.
+// Anders als gibReservierungFrei wird versand_fehler bewusst NICHT verändert:
+// ein vorheriger Hinweis "Mail wurde gesendet, Status konnte nicht gespeichert
+// werden" darf beim blossen Freigeben nicht verloren gehen. Die Bedingung ist
+// die Umkehrung von reserviereEntwurf (dort .is("gesendet_am", null), hier
+// .not(...)), damit nur ein tatsächlich reservierter Entwurf getroffen wird.
+export async function gibFestsitzendeReservierungFrei(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .update({ gesendet_am: null })
+    .eq("id", id)
+    .eq("richtung", "entwurf")
+    .not("gesendet_am", "is", null)
+    .is("geloescht_am", null)
+    .select("id")
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error("Entwurf ist nicht (mehr) reserviert.")
+}
+
 // .eq("richtung", "entwurf") + geprüfte Rückgabezeile: die Mail ist zu diesem
 // Zeitpunkt bereits beim SMTP-Server abgeliefert, ein UPDATE ohne Treffer
 // (z.B. weil die Zeile inzwischen anderweitig verändert wurde) darf hier

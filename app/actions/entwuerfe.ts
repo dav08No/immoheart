@@ -5,6 +5,7 @@ import { z } from "zod"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import {
   aktualisiereNachricht,
+  gibFestsitzendeReservierungFrei,
   gibReservierungFrei,
   holeGesendeteIdsFuerAnfrage,
   holeNachricht,
@@ -52,6 +53,23 @@ export async function entwurfLoeschen(id: string): Promise<void> {
   await holeEigenesProfil()
   await offenerEntwurf(id)
   await aktualisiereNachricht(id, { geloescht_am: new Date().toISOString() })
+  pfadeNeuLaden()
+}
+
+// Gegenstück zu offenerEntwurf: die einzige Aktion, die auf einem GERADE
+// reservierten Entwurf ("Versand unklar") arbeiten darf. Absichtlich strenger
+// als der Query-Helper allein -- die Bedingungen werden hier nochmal explizit
+// geprüft, damit ein Aufrufer aus einem veralteten Zustand (z.B. ein bereits
+// gelöschter Entwurf) eine klare Fehlermeldung statt eines stillen No-ops
+// bekommt, bevor überhaupt ein Schreibversuch unternommen wird.
+export async function reservierungFreigeben(id: string): Promise<void> {
+  await holeEigenesProfil()
+  const geprueft = idSchema.parse(id)
+  const entwurf = await holeNachricht(geprueft)
+  if (!entwurf || entwurf.richtung !== "entwurf" || entwurf.gesendet_am === null || entwurf.geloescht_am !== null) {
+    throw new Error("Dieser Entwurf ist nicht reserviert.")
+  }
+  await gibFestsitzendeReservierungFrei(geprueft)
   pfadeNeuLaden()
 }
 
@@ -138,9 +156,17 @@ export async function entwurfSenden(id: string): Promise<void> {
     throw new Error("Die Mail wurde gesendet, der Status konnte aber nicht gespeichert werden. Bitte nicht erneut senden.")
   }
 
+  // Best-effort: die Mail ist an diesem Punkt bereits erfolgreich versendet UND
+  // als "gesendet" markiert. Ein Fehler beim reinen Komfort-Feld letzter_kontakt
+  // darf der Nutzerin nicht als Versandfehler angezeigt werden -- sie hat sonst
+  // keinen Weg zu erkennen, dass die Mail trotzdem rausgegangen ist.
   if (entwurf.anfrage_id) {
-    await aktualisiereAnfrage(entwurf.anfrage_id, { letzter_kontakt: new Date().toISOString() })
-    revalidatePath("/admin/anfragen")
+    try {
+      await aktualisiereAnfrage(entwurf.anfrage_id, { letzter_kontakt: new Date().toISOString() })
+      revalidatePath("/admin/anfragen")
+    } catch (fehler) {
+      console.error("aktualisiereAnfrage fehlgeschlagen nach erfolgreichem Versand", fehler)
+    }
   }
   pfadeNeuLaden()
 }
