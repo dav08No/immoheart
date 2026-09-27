@@ -30,22 +30,25 @@ export function PostfachKopf({ abrufStatus }: { abrufStatus: AbrufStatus }) {
     if (sperre.current) return
     sperre.current = true
     setFortschritt("Mails werden abgerufen…")
-    let eingeordnet = 0
+    let verarbeitet = 0
+    let fehlgeschlagen = 0
     try {
       const abruf = await mailAbrufen()
       if (abruf.fehler) toast.error(abruf.fehler)
       // Auch nach einem Abruf-Fehler weiter einordnen: ältere, noch offene Mails
       // sollen trotzdem verarbeitet werden.
       for (let i = 0; i < MAX_EINORDNUNGEN; i++) {
-        setFortschritt(eingeordnet === 0 ? "Wird eingeordnet…" : `${eingeordnet} eingeordnet…`)
+        setFortschritt(verarbeitet === 0 ? "Wird eingeordnet…" : `${verarbeitet} eingeordnet…`)
         const schritt = await verarbeiteNaechste()
         if (!schritt.verarbeitet) break
-        eingeordnet += 1
-        if (schritt.fehler) toast.error(`Einordnung fehlgeschlagen: ${schritt.fehler}`)
+        verarbeitet += 1
+        if (schritt.fehler) fehlgeschlagen += 1
       }
-      toast.success(
-        `${abruf.neu} neue Mail${abruf.neu === 1 ? "" : "s"}, ${eingeordnet} eingeordnet.`
-      )
+      // Fehlgeschlagene Einordnungen zählen separat: sie stehen mit "Erneut verarbeiten"
+      // im Postfach und sollen nicht als Erfolg durchgehen.
+      const zusammenfassung = `${abruf.neu} neue Mail${abruf.neu === 1 ? "" : "s"}, ${verarbeitet - fehlgeschlagen} eingeordnet`
+      if (fehlgeschlagen > 0) toast.warning(`${zusammenfassung}, ${fehlgeschlagen} Fehler.`)
+      else toast.success(`${zusammenfassung}.`)
     } catch {
       toast.error("Unerwarteter Fehler beim Abrufen. Bitte Seite neu laden.")
     } finally {

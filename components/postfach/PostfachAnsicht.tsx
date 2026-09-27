@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { PostfachKopf } from "./PostfachKopf"
@@ -33,10 +33,12 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen 
   const sichtbar = filtereNachrichten(nachrichten, filter, chip)
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
 
-  // Was im Detail angezeigt wird, gilt als gelesen -- auch die beim Laden vorausgewählte Mail.
-  useEffect(() => {
-    if (!ausgewaehlt || !istUngelesen(ausgewaehlt) || markiert.current.has(ausgewaehlt.id)) return
-    const id = ausgewaehlt.id
+  // Nur eine aktive Auswahl markiert als gelesen -- die beim Laden vorausgewählte neueste
+  // Mail bleibt ungelesen, sonst verschwände sie unbemerkt aus den "neuen".
+  function auswaehlen(id: string) {
+    setAusgewaehlteId(id)
+    const nachricht = nachrichten.find((n) => n.id === id)
+    if (!nachricht || !istUngelesen(nachricht) || markiert.current.has(id)) return
     markiert.current.add(id)
     alsGelesenMarkieren(id)
       .then(({ fehler }) => {
@@ -46,7 +48,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen 
         // Nur Komfort-Status: kein Toast, beim nächsten Öffnen wird es erneut versucht.
         markiert.current.delete(id)
       })
-  }, [ausgewaehlt])
+  }
 
   function filterWechseln(neu: Filter) {
     setFilter(neu)
@@ -57,7 +59,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen 
   function gesendeteAuswaehlen(id: string) {
     setFilter("alle")
     setChip(null)
-    setAusgewaehlteId(id)
+    auswaehlen(id)
   }
 
   // Zuordnung primär über antwort_auf (eindeutig); typ+an nur als Fallback für Altdaten
@@ -87,7 +89,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen 
             onFilter={filterWechseln}
             onChip={setChip}
           />
-          <NachrichtenListe nachrichten={sichtbar} ausgewaehlteId={ausgewaehlteId} onAuswahl={setAusgewaehlteId} />
+          <NachrichtenListe nachrichten={sichtbar} ausgewaehlteId={ausgewaehlteId} onAuswahl={auswaehlen} />
         </div>
         <div className="rounded-card border border-line bg-surface">
           {!ausgewaehlt && <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>}

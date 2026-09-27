@@ -42,5 +42,8 @@ export async function anhangLinks(nachrichtId: string): Promise<{ fehler: string
   await holeEigenesProfil()
   const geprueft = idSchema.safeParse(nachrichtId)
   if (!geprueft.success) return { fehler: "Nachricht nicht gefunden.", links: [] }
-  return { fehler: null, links: await holeAnhangLinks(geprueft.data) }
+  // Gleiche Regel wie antwortEntwerfen: gelöschte Nachrichten geben nichts mehr heraus.
+  const nachricht = await holeNachricht(geprueft.data)
+  if (!nachricht || nachricht.geloescht_am) return { fehler: "Nachricht nicht gefunden.", links: [] }
+  return { fehler: null, links: await holeAnhangLinks(nachricht.id) }
 }

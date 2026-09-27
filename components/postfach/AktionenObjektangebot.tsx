@@ -14,13 +14,13 @@ export function AktionenObjektangebot({ nachricht }: { nachricht: PostfachNachri
       <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Angebotenes Objekt</div>
       {objekt ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Feld label="Titel" wert={objekt.titel} />
-          <Feld label="Adresse" wert={objekt.adresse} />
-          <Feld label="Ort" wert={objekt.ort} />
-          <Feld label="Fläche" wert={objekt.flaeche === null ? null : formatFlaeche(objekt.flaeche)} />
-          <Feld label="Preis" wert={objekt.preis_pro_m2 === null ? null : formatPreis(objekt.preis_pro_m2)} />
-          <Feld label="Nutzung" wert={nutzungLabel(objekt.nutzung)} />
-          <Feld label="Verfügbar ab" wert={objekt.verfuegbar_ab} />
+          <Feld label="Titel" wert={objekt.titel ?? null} />
+          <Feld label="Adresse" wert={objekt.adresse ?? null} />
+          <Feld label="Ort" wert={objekt.ort ?? null} />
+          <Feld label="Fläche" wert={objekt.flaeche == null ? null : formatFlaeche(objekt.flaeche)} />
+          <Feld label="Preis" wert={objekt.preis_pro_m2 == null ? null : formatPreis(objekt.preis_pro_m2)} />
+          <Feld label="Nutzung" wert={nutzungLabel(objekt.nutzung ?? null)} />
+          <Feld label="Verfügbar ab" wert={objekt.verfuegbar_ab ?? null} />
         </div>
       ) : (
         <p className="text-xs text-ink-3">Keine Objektdaten erkannt.</p>

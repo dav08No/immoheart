@@ -82,16 +82,19 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, onRueckfrageOeff
         )}
         {block === "objektangebot" && <AktionenObjektangebot nachricht={nachricht} />}
         <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3.5">
-          {(block === "antwort" || block === "objektangebot") && antwortEntwurf && (
+          {/* Gibt es schon einen offenen Entwurf (KI oder früher angelegt), wird dieser
+              geöffnet statt ein zweiter angelegt -- sonst stapeln sich Antworten. */}
+          {antwortEntwurf ? (
             <Button onClick={() => router.push(`/admin/entwuerfe?id=${antwortEntwurf.id}`)}>
               <FilePen className="size-4" aria-hidden />
-              Antwort-Entwurf öffnen
+              Entwurf öffnen
+            </Button>
+          ) : (
+            <Button disabled={laufend !== null} onClick={() => void entwerfen()}>
+              <Reply className="size-4" aria-hidden />
+              {laufend === "entwerfen" ? "Wird angelegt…" : "Antwort entwerfen"}
             </Button>
           )}
-          <Button disabled={laufend !== null} onClick={() => void entwerfen()}>
-            <Reply className="size-4" aria-hidden />
-            {laufend === "entwerfen" ? "Wird angelegt…" : "Antwort entwerfen"}
-          </Button>
         </div>
       </div>
     </article>

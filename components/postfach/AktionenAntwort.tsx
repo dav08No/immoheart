@@ -21,7 +21,8 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   const zugeordnet = anfragen.find((a) => a.id === nachricht.anfrage_id)
   const offene = anfragen.filter((a) => a.offen)
-  const neueAngaben = felder ? UEBERNEHMBARE_FELDER.filter((feld) => felder[feld] !== null) : []
+  // != null statt !== null: ältere/abweichende KI-Antworten können Schlüssel ganz weglassen.
+  const neueAngaben = felder ? UEBERNEHMBARE_FELDER.filter((feld) => felder[feld] != null) : []
 
   return (
     <section aria-label="Antwort" className="mt-4 flex flex-col gap-3">

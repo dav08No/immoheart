@@ -19,7 +19,7 @@ type Props = {
 
 function anzeigeWert(schluessel: keyof ErkannteFelder, felder: ErkannteFelder): string | null {
   const wert = felder[schluessel]
-  if (wert === null) return null
+  if (wert == null) return null
   return schluessel === "nutzung" ? nutzungLabel(String(wert)) : String(wert)
 }
 
@@ -28,7 +28,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
   const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
   // alsAnfrageSpeichern rät bei fehlender Nutzung bewusst nicht (hartes Matching-Kriterium);
   // die hier gewählte Nutzung wird nur mitgegeben, erkannte_felder bleibt die KI-Erkennung.
-  const nutzungFehlt = felder !== null && felder.nutzung === null
+  const nutzungFehlt = felder !== null && felder.nutzung == null
   const [nutzungAuswahl, setNutzungAuswahl] = useState<Nutzung | "">("")
   const gespeichert = nachricht.anfrage_id !== null
   const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "") && laufend === null

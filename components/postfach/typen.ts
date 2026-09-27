@@ -22,7 +22,7 @@ export const NUTZUNG_OPTIONEN: { wert: Nutzung; label: string }[] = [
 ]
 
 export function nutzungLabel(nutzung: string | null): string | null {
-  return NUTZUNG_OPTIONEN.find((o) => o.wert === nutzung)?.label ?? nutzung
+  return NUTZUNG_OPTIONEN.find((o) => o.wert === nutzung)?.label ?? nutzung ?? null
 }
 
 export const FELD_LABELS = {
