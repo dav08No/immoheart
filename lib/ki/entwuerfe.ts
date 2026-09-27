@@ -90,3 +90,46 @@ Schreibe eine kurze Nachfass-Mail, die freundlich fragt, ob die Suche noch aktue
 export function entwurfNachfass(anfrage: Anfrage, tageSeitKontakt: number): Promise<Mailentwurf> {
   return frageKi(baueNachfassPrompt(anfrage, tageSeitKontakt))
 }
+
+// Eingehende Mails können sehr lang sein; für einen Antwortentwurf reicht der Anfang.
+const MAX_PROMPT_TEXT = 6_000
+
+function zitat(text: string): string {
+  return `"""\n${text.slice(0, MAX_PROMPT_TEXT)}\n"""`
+}
+
+export function baueAntwortPrompt(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): string {
+  const bezug = p.anfrageKurz ? `\nDie Firma sucht: ${p.anfrageKurz}\n` : ""
+  return `Eine Firma hat auf eine Mail von immoheart (Vermittlung von Gewerbeflächen in der Region Solothurn) geantwortet.
+${bezug}
+Betreff:
+${zitat(p.eingangBetreff)}
+
+Mail:
+${zitat(p.eingangText)}
+
+Schreibe einen kurzen Antwortentwurf, der auf die Mail eingeht. Erfinde keine Objekte, Preise oder Termine. ${AUSGABEFORMAT}`
+}
+
+export function entwurfAntwort(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): Promise<Mailentwurf> {
+  return frageKi(baueAntwortPrompt(p))
+}
+
+export const FOTO_BITTE = "Bitte freundlich darum, Fotos der Fläche als Anhang zu schicken."
+
+export function baueObjektangebotPrompt(p: { betreff: string; text: string; hatBilder: boolean }): string {
+  const fotos = p.hatBilder ? "" : `\n${FOTO_BITTE}`
+  return `Ein Eigentümer bietet immoheart (Vermittlung von Gewerbeflächen in der Region Solothurn) eine Fläche zur Vermittlung an.
+
+Betreff:
+${zitat(p.betreff)}
+
+Mail:
+${zitat(p.text)}
+
+Schreibe eine kurze Antwort, die für das Angebot dankt und fehlende wichtige Angaben (Fläche, Preis, Verfügbarkeit, Nutzung) erfragt.${fotos} ${AUSGABEFORMAT}`
+}
+
+export function entwurfObjektangebot(p: { betreff: string; text: string; hatBilder: boolean }): Promise<Mailentwurf> {
+  return frageKi(baueObjektangebotPrompt(p))
+}

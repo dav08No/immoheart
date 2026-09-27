@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { baueRueckfragePrompt, baueAngebotPrompt, baueNachfassPrompt, parseMailAntwort } from "./entwuerfe"
+import {
+  baueRueckfragePrompt, baueAngebotPrompt, baueNachfassPrompt, parseMailAntwort,
+  baueAntwortPrompt, baueObjektangebotPrompt, FOTO_BITTE,
+} from "./entwuerfe"
 import type { ErkannteFelder } from "./erkennung"
 import type { Anfrage, Objekt } from "@/types"
 
@@ -52,5 +55,36 @@ describe("baueNachfassPrompt", () => {
     const prompt = baueNachfassPrompt(anfrage, 96)
     expect(prompt).toContain("96 Tagen")
     expect(prompt).toContain("Zuchwil")
+  })
+})
+
+describe("baueAntwortPrompt", () => {
+  it("enthält Betreff, Text und Anfrage-Zusammenfassung", () => {
+    const prompt = baueAntwortPrompt({
+      eingangBetreff: "Re: Büro Altstadt",
+      eingangText: "Wir möchten gerne besichtigen.",
+      anfrageKurz: "Büro, 200 m², Solothurn",
+    })
+    expect(prompt).toContain("Re: Büro Altstadt")
+    expect(prompt).toContain("Wir möchten gerne besichtigen.")
+    expect(prompt).toContain("Büro, 200 m², Solothurn")
+  })
+  it("kommt ohne Anfrage aus", () => {
+    const prompt = baueAntwortPrompt({ eingangBetreff: "Frage", eingangText: "Hallo", anfrageKurz: null })
+    expect(prompt).toContain("Frage")
+    expect(prompt).not.toContain("null")
+  })
+})
+
+describe("baueObjektangebotPrompt", () => {
+  it("enthält den Betreff und bittet ohne Bilder um Fotos", () => {
+    const prompt = baueObjektangebotPrompt({ betreff: "Lagerhalle Zuchwil", text: "Zu vermieten", hatBilder: false })
+    expect(prompt).toContain("Lagerhalle Zuchwil")
+    expect(prompt).toContain(FOTO_BITTE)
+  })
+  it("bittet mit Bildern nicht um Fotos", () => {
+    const prompt = baueObjektangebotPrompt({ betreff: "Lagerhalle Zuchwil", text: "Zu vermieten", hatBilder: true })
+    expect(prompt).toContain("Lagerhalle Zuchwil")
+    expect(prompt).not.toContain(FOTO_BITTE)
   })
 })
