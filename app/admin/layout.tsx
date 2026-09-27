@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { holeEigenesProfil } from "@/lib/queries/profile"
-import { zaehleNachrichten } from "@/lib/queries/nachrichten"
+import { zaehleEntwuerfe, zaehleNachrichten } from "@/lib/queries/nachrichten"
 import { Sidebar } from "@/components/layout/Sidebar"
 
 // KI-Aufrufe mit Retry/Ersatzmodell (siehe lib/ki/gemini.ts) können im
@@ -10,11 +10,15 @@ import { Sidebar } from "@/components/layout/Sidebar"
 export const maxDuration = 60
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const [profil, postfachAnzahl] = await Promise.all([holeEigenesProfil(), zaehleNachrichten()])
+  const [profil, postfachAnzahl, entwurfAnzahl] = await Promise.all([
+    holeEigenesProfil(),
+    zaehleNachrichten(),
+    zaehleEntwuerfe(),
+  ])
 
   return (
     <div className="grid h-screen grid-cols-[206px_minmax(0,1fr)]">
-      <Sidebar profil={profil} postfachAnzahl={postfachAnzahl} />
+      <Sidebar profil={profil} postfachAnzahl={postfachAnzahl} entwurfAnzahl={entwurfAnzahl} />
       <div className="flex min-h-0 flex-col">{children}</div>
     </div>
   )
