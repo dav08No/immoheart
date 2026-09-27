@@ -36,3 +36,16 @@ export function formatZeitpunkt(zeitpunkt: Date): string {
   const teilWert = (typ: string): string => teile.find((t) => t.type === typ)?.value ?? ""
   return `${teilWert("day")}.${teilWert("month")}.${teilWert("year")}`
 }
+
+// Gleiche Begründung wie formatZeitpunkt: feste Zone statt der UTC-Serverzeit, sonst
+// zeigt "Zuletzt abgerufen" auf Vercel eine um 1–2 Stunden falsche Uhrzeit.
+export function formatUhrzeit(zeitpunkt: Date): string {
+  const teile = new Intl.DateTimeFormat("de-CH", {
+    timeZone: "Europe/Zurich",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(zeitpunkt)
+  const teilWert = (typ: string): string => teile.find((t) => t.type === typ)?.value ?? ""
+  return `${teilWert("hour")}:${teilWert("minute")}`
+}

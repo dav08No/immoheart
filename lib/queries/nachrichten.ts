@@ -4,18 +4,6 @@ import type { Database } from "@/types/database"
 export type NachrichtRow = Database["public"]["Tables"]["nachrichten"]["Row"]
 type NachrichtEinfuegen = Database["public"]["Tables"]["nachrichten"]["Insert"]
 
-export async function holeNachrichten(): Promise<NachrichtRow[]> {
-  const supabase = await erstelleServerClient()
-  const { data, error } = await supabase
-    .from("nachrichten")
-    .select("*")
-    .is("geloescht_am", null)
-    .neq("richtung", "entwurf")
-    .order("created_at", { ascending: false })
-  if (error) throw error
-  return data
-}
-
 export async function holeNachricht(id: string): Promise<NachrichtRow | null> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("nachrichten").select("*").eq("id", id).maybeSingle()
@@ -36,30 +24,49 @@ export async function aktualisiereNachricht(id: string, aenderung: Partial<Nachr
   if (error) throw error
 }
 
-// Atomarer Lösch-und-Rückgabe-Aufruf (statt erst holen, dann getrennt löschen):
-// Postgres serialisiert konkurrierende DELETEs auf dieselbe Zeile über
-// Row-Level-Locking, sodass von zwei überlappenden Aufrufen für dieselbe id
-// (z.B. ein Doppelklick, der die clientseitige Sperre in PostfachAnsicht/
-// Task 44 umgeht) nur EINER die Zeile zurückbekommt -- der andere erhält
-// garantiert `null` statt derselben, in Wahrheit schon gelöschten Zeile.
-// Für `alsAnfrageSpeichern` (Task 39/44), wo genau dieses doppelte Lesen einer
-// noch-nicht-gelöschten Zeile sonst zu zwei doppelten Anfragen führen konnte.
-export async function loescheUndGibNachrichtZurueck(id: string): Promise<NachrichtRow | null> {
+// Bedingtes UPDATE statt eines separaten Lösch-Schritts (gleiches Muster wie
+// sperreAbruf/reserviereEntwurf): trifft die WHERE-Bedingung `anfrage_id is null`
+// nicht mehr, war ein zweiter, überlappender alsAnfrageSpeichern-Aufruf für
+// dieselbe Nachricht schneller -- der Aufrufer muss dann seine eigene, gerade
+// erst angelegte Anfrage wieder verwerfen statt eine zweite gültige stehen zu lassen.
+export async function setzeAnfrageIdFallsLeer(id: string, anfrageId: string): Promise<boolean> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("nachrichten").delete().eq("id", id).select().maybeSingle()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .update({ anfrage_id: anfrageId })
+    .eq("id", id)
+    .is("anfrage_id", null)
+    .select("id")
   if (error) throw error
-  return data
+  return (data?.length ?? 0) > 0
 }
 
-// Badge Postfach = unbearbeitete Eingänge: nur "eingang" ohne geloescht_am.
-// Entwürfe haben mit zaehleEntwuerfe (Task 3, N3) einen eigenen Zähler
-// bekommen, weil sie inzwischen eine eigene Ansicht (/admin/entwuerfe) sind.
+// Rückfrage-Entwürfe UND bereits gesendete Rückfragen zu diesem Eingang auf die neue
+// Anfrage umhängen: Senden pflegt anfragen.letzter_kontakt nur, wenn der Entwurf eine
+// anfrage_id trägt, und spätere Antworten der Firma sollen über den Verlauf
+// (findeAnfrageFuerAntwort) wieder bei derselben Anfrage landen.
+export async function verknuepfeAntwortenMitAnfrage(eingangId: string, anfrageId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ anfrage_id: anfrageId })
+    .eq("antwort_auf", eingangId)
+    .in("richtung", ["entwurf", "gesendet"])
+  if (error) throw error
+}
+
+// Badge Postfach = UNGELESENE Eingänge (gelesen = false), nicht bloss alle "eingang"
+// ohne geloescht_am (Task 7): sonst bliebe die Zahl nach dem Lesen alter Mails
+// dauerhaft hoch, obwohl nichts mehr zu tun ist. Entwürfe haben mit zaehleEntwuerfe
+// (Task 3, N3) einen eigenen Zähler, weil sie inzwischen eine eigene Ansicht
+// (/admin/entwuerfe) sind.
 export async function zaehleNachrichten(): Promise<number> {
   const supabase = await erstelleServerClient()
   const { count, error } = await supabase
     .from("nachrichten")
     .select("*", { count: "exact", head: true })
     .eq("richtung", "eingang")
+    .eq("gelesen", false)
     .is("geloescht_am", null)
   if (error) throw error
   return count ?? 0
@@ -95,6 +102,22 @@ export async function zaehleEntwuerfe(): Promise<number> {
     .is("geloescht_am", null)
   if (error) throw error
   return count ?? 0
+}
+
+// Objekt aus einer Mail übernommen (Task 7, "Als Objekt übernehmen" im Postfach): nur
+// bei richtung 'eingang' setzen -- WHERE richtung='eingang' ist Teil der UPDATE-
+// Bedingung selbst, ein inzwischen anderer Datensatz (z.B. bereits gelöscht oder gar
+// kein Eingang mehr) bleibt dann unverändert statt fälschlich verknüpft zu werden.
+export async function verknuepfeObjektMitEingang(eingangId: string, objektId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ objekt_id: objektId })
+    .eq("id", eingangId)
+    .eq("richtung", "eingang")
+    // Eine schon übernommene Mail behält ihr erstes Objekt (kein stilles Umhängen).
+    .is("objekt_id", null)
+  if (error) throw error
 }
 
 // Versand-Zustandsmaschine (reservieren/senden/markieren/freigeben) steht seit

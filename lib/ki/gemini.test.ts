@@ -43,16 +43,15 @@ describe("generiereText", () => {
 
     expect(ergebnis).toBe("Antwort")
     expect(erzeuge).toHaveBeenCalledTimes(2)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt")
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt", 20_000)
     expect(warte).toHaveBeenCalledWith(500)
   })
 
-  it("wechselt nach 3 vorübergehenden Fehlern auf das Ersatzmodell", async () => {
+  it("wechselt nach 2 vorübergehenden Fehlern auf das Ersatzmodell", async () => {
     const warte = vi.fn().mockResolvedValue(undefined)
     const erzeuge = vi
       .fn()
-      .mockRejectedValueOnce(fehlerMitStatus(503))
       .mockRejectedValueOnce(fehlerMitStatus(503))
       .mockRejectedValueOnce(fehlerMitStatus(503))
       .mockResolvedValueOnce("Antwort vom Ersatzmodell")
@@ -60,14 +59,33 @@ describe("generiereText", () => {
     const ergebnis = await generiereText("Prompt", { erzeuge, warte })
 
     expect(ergebnis).toBe("Antwort vom Ersatzmodell")
-    expect(erzeuge).toHaveBeenCalledTimes(4)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(4, "gemini-flash-latest", "Prompt")
-    expect(warte).toHaveBeenNthCalledWith(1, 500)
-    expect(warte).toHaveBeenNthCalledWith(2, 1500)
-    expect(warte).toHaveBeenCalledTimes(2)
+    expect(erzeuge).toHaveBeenCalledTimes(3)
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(3, "gemini-3.1-flash-lite", "Prompt", 20_000)
+    expect(warte).toHaveBeenCalledWith(500)
+    expect(warte).toHaveBeenCalledTimes(1)
+  })
+
+  it("wechselt bei erschöpftem Kontingent (429) sofort durch die Modellkette", async () => {
+    const warte = vi.fn().mockResolvedValue(undefined)
+    const erzeuge = vi
+      .fn()
+      .mockRejectedValueOnce(fehlerMitStatus(429))
+      .mockRejectedValueOnce(fehlerMitStatus(429))
+      .mockRejectedValueOnce(fehlerMitStatus(429))
+      .mockResolvedValueOnce("Antwort")
+
+    const ergebnis = await generiereText("Prompt", { erzeuge, warte })
+
+    expect(ergebnis).toBe("Antwort")
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(0))).toEqual([
+      "gemini-3.8-flash",
+      "gemini-3.1-flash-lite",
+      "gemini-3.5-flash",
+      "gemini-flash-latest",
+    ])
+    expect(warte).not.toHaveBeenCalled()
   })
 
   it("wirft bei 400 sofort, ohne Ersatzmodell zu versuchen", async () => {
@@ -90,8 +108,8 @@ describe("generiereText", () => {
 
     expect(ergebnis).toBe("Antwort vom Ersatzmodell")
     expect(erzeuge).toHaveBeenCalledTimes(2)
-    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt")
-    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-flash-latest", "Prompt")
+    expect(erzeuge).toHaveBeenNthCalledWith(1, "gemini-3.8-flash", "Prompt", 20_000)
+    expect(erzeuge).toHaveBeenNthCalledWith(2, "gemini-3.1-flash-lite", "Prompt", 20_000)
     expect(warte).not.toHaveBeenCalled()
   })
 
@@ -100,6 +118,23 @@ describe("generiereText", () => {
     const erzeuge = vi.fn().mockRejectedValue(fehlerMitStatus(503))
 
     await expect(generiereText("Prompt", { erzeuge, warte })).rejects.toMatchObject({ status: 503 })
-    expect(erzeuge).toHaveBeenCalledTimes(6)
+    expect(erzeuge).toHaveBeenCalledTimes(10)
+  })
+
+  it("gibt der Anfrage nur die Restzeit und bricht ab, wenn das Gesamtbudget aufgebraucht ist", async () => {
+    let uhr = 0
+    const warte = vi.fn(async (ms: number) => {
+      uhr += ms
+    })
+    // Jeder Versuch braucht 8 s und endet mit 503.
+    const erzeuge = vi.fn(async () => {
+      uhr += 8_000
+      throw fehlerMitStatus(503)
+    })
+
+    await expect(generiereText("Prompt", { erzeuge, warte, jetzt: () => uhr })).rejects.toMatchObject({ status: 503 })
+
+    // 0 s: 20 s Limit; 8,5 s: Rest 13,5 s; 16,5 s (Modellwechsel, ohne Warten): Rest 5,5 s; danach 24,5 s > Budget.
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(2))).toEqual([20_000, 13_500, 5_500])
   })
 })

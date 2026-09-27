@@ -14,8 +14,8 @@ type DetailDaten = { besterMatch: BesterMatch; verlauf: VerlaufEintrag[] }
 
 const DETAIL_LEER: DetailDaten = { besterMatch: null, verlauf: [] }
 
-export function AnfragenAnsicht({ anfragen }: { anfragen: AnfrageMitFirma[] }) {
-  const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(null)
+export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: AnfrageMitFirma[]; startId?: string | null }) {
+  const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(startId)
   const [sofortBearbeiten, setSofortBearbeiten] = useState(false)
   const [neuOffen, setNeuOffen] = useState(false)
   const [detailDaten, setDetailDaten] = useState<DetailDaten>(DETAIL_LEER)

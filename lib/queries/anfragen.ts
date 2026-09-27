@@ -42,6 +42,15 @@ export async function aktualisiereAnfrage(id: string, aenderung: Partial<Anfrage
   if (!data) throw new Error("Anfrage konnte nicht aktualisiert werden")
 }
 
+// Rollback-Pfad für alsAnfrageSpeichern: verliert der Aufruf den Doppelklick-Schutz
+// (anfrage_id war beim bedingten Update bereits gesetzt), muss die soeben angelegte,
+// nun verwaiste Anfrage wieder entfernt werden statt als Dublette stehen zu bleiben.
+export async function loescheAnfrage(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase.from("anfragen").delete().eq("id", id)
+  if (error) throw error
+}
+
 export async function holeOffeneAnfragen(): Promise<AnfrageRow[]> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("anfragen").select("*").eq("status", "offen")

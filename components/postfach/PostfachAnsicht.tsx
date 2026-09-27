@@ -1,158 +1,109 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { NachrichtenListe, type PostfachFilter } from "./NachrichtenListe"
+import { PostfachKopf } from "./PostfachKopf"
+import { PostfachFilter } from "./PostfachFilter"
+import { NachrichtenListe } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
 import { GesendetDetail } from "./GesendetDetail"
-import { MailEinfuegen } from "./MailEinfuegen"
-import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
-import type { NachrichtRow } from "@/lib/queries/nachrichten"
-import type { Nutzung } from "@/types"
+import { alsGelesenMarkieren } from "@/app/actions/eingang-aktionen"
+import { filtereNachrichten, istUngelesen, zaehleChips, type KategorieChip, type PostfachFilter as Filter } from "@/lib/postfach"
+import type { PostfachNachricht } from "@/lib/queries/postfach"
+import type { AbrufStatus } from "@/lib/queries/eingang"
+import type { AnfrageOption, EntwurfVerweis } from "./typen"
 
-// Minimaler Ausschnitt eines Entwurfs (aus holeEntwuerfe, page.tsx), nur für
-// die Rückfrage-Zuordnung in rueckfrageOeffnen unten benötigt.
-export type RueckfrageEntwurf = { id: string; antwort_auf: string | null; an: string; typ: string }
+type Props = {
+  nachrichten: PostfachNachricht[]
+  entwuerfe: EntwurfVerweis[]
+  abrufStatus: AbrufStatus
+  anfragen: AnfrageOption[]
+}
 
-export function PostfachAnsicht({
-  nachrichten,
-  rueckfragen,
-}: {
-  nachrichten: NachrichtRow[]
-  rueckfragen: RueckfrageEntwurf[]
-}) {
+export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen }: Props) {
   const router = useRouter()
-  const [filter, setFilter] = useState<PostfachFilter>("alle")
+  const [filter, setFilter] = useState<Filter>("alle")
+  const [chip, setChip] = useState<KategorieChip | null>(null)
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(nachrichten[0]?.id ?? null)
-  // alsAnfrageSpeichern (Task 39) wirft bewusst (siehe Kommentar dort), z.B. wenn
-  // nutzung trotz manueller Auswahl nicht bestimmt werden konnte. Ohne sichtbares
-  // Feedback landet der sorgfältig formulierte Fehlertext nur in der Browser-Konsole
-  // (Offener Punkt aus Task 39s Review, s. Plan). Milestone-Konvention (MailEinfuegen,
-  // EntwurfEditor): lokaler fehler-State, gerendert in text-crit.
-  const [fehler, setFehler] = useState<string | null>(null)
-  // Reviewer-Feedback Fix-Loop Runde 1: alsAnfrageSpeichern (app/actions/nachrichten.ts)
-  // macht holeNachricht -> legeAnfrageAn -> loescheUndGibNachrichtZurueck ohne
-  // Transaktion. Ohne Sperre könnte ein schneller Doppelklick auf "Als Anfrage
-  // speichern" zwei überlappende Aufrufe für dieselbe nachrichtId auslösen.
-  // speichernLaufend wird an EingangDetail durchgereicht, das seinen
-  // Speichern-Button damit sperrt.
-  const [speichernLaufend, setSpeichernLaufend] = useState(false)
-  // Kurze, optionale Erfolgsbestätigung nach dem Speichern (Reviewer-Vorschlag,
-  // Minor) -- ersetzt den "Nachricht wählen."-Platzhalter einmalig, bis die Nutzerin
-  // eine neue Nachricht (oder Rückfrage) auswählt.
-  const [erfolg, setErfolg] = useState<string | null>(null)
+  // IDs, für die "gelesen" schon angestossen wurde -- verhindert Doppelaufrufe, solange
+  // die Seite die aktualisierte Zeile noch nicht zurückgeliefert hat.
+  const markiert = useRef(new Set<string>())
 
-  // Gleiches Ref-Muster wie in anderen Detail-Komponenten: während alsAnfrageSpeichern
-  // läuft, könnte die Nutzerin in NachrichtenListe bereits eine andere Nachricht
-  // auswählen (die Liste wird während des Speicherns nicht gesperrt). Träfe die
-  // Antwort danach ein, dürfte ein Fehler aus dem ALTEN Aufruf nicht über der NEU
-  // ausgewählten Nachricht angezeigt werden. Der Ref hält deshalb immer die zuletzt
-  // ausgewählte ID, von der Speichern-Funktion unten verglichen statt aus einer
-  // veralteten Closure gelesen.
-  const ausgewaehlteIdRef = useRef(ausgewaehlteId)
-  useEffect(() => {
-    ausgewaehlteIdRef.current = ausgewaehlteId
-  }, [ausgewaehlteId])
-
+  const sichtbar = filtereNachrichten(nachrichten, filter, chip)
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
 
-  function gesendeteRueckfrageAuswaehlen(id: string) {
-    setFilter("alle")
+  // Nur eine aktive Auswahl markiert als gelesen -- die beim Laden vorausgewählte neueste
+  // Mail bleibt ungelesen, sonst verschwände sie unbemerkt aus den "neuen".
+  function auswaehlen(id: string) {
     setAusgewaehlteId(id)
-    setFehler(null)
-    setErfolg(null)
-    setSpeichernLaufend(false)
+    const nachricht = nachrichten.find((n) => n.id === id)
+    if (!nachricht || !istUngelesen(nachricht) || markiert.current.has(id)) return
+    markiert.current.add(id)
+    alsGelesenMarkieren(id)
+      .then(({ fehler }) => {
+        if (fehler) markiert.current.delete(id)
+      })
+      .catch(() => {
+        // Nur Komfort-Status: kein Toast, beim nächsten Öffnen wird es erneut versucht.
+        markiert.current.delete(id)
+      })
   }
 
-  // Zuordnung primär über antwort_auf (eindeutig); typ+an nur als Fallback für
-  // Altdaten ohne antwort_auf. Beide Quellen kommen bereits nach created_at
-  // absteigend sortiert an, .find() trifft daher jeweils den jüngsten Eintrag.
-  function rueckfrageOeffnen(eingang: NachrichtRow) {
+  function filterWechseln(neu: Filter) {
+    setFilter(neu)
+    // Gesendete Mails haben keine Kategorie -- ein aktiver Chip leerte sonst die Liste.
+    if (neu === "gesendet") setChip(null)
+  }
+
+  function gesendeteAuswaehlen(id: string) {
+    setFilter("alle")
+    setChip(null)
+    auswaehlen(id)
+  }
+
+  // Zuordnung primär über antwort_auf (eindeutig); typ+an nur als Fallback für Altdaten
+  // ohne antwort_auf. Beide Quellen sind nach created_at absteigend sortiert, .find()
+  // trifft also jeweils den jüngsten Eintrag.
+  function rueckfrageOeffnen(eingang: PostfachNachricht) {
     const gesendet = nachrichten.find((n) => n.richtung === "gesendet" && n.antwort_auf === eingang.id)
-    if (gesendet) return gesendeteRueckfrageAuswaehlen(gesendet.id)
-    const entwurf = rueckfragen.find((r) => r.antwort_auf === eingang.id)
+    if (gesendet) return gesendeteAuswaehlen(gesendet.id)
+    const entwurf = entwuerfe.find((r) => r.antwort_auf === eingang.id)
     if (entwurf) return router.push(`/admin/entwuerfe?id=${entwurf.id}`)
-    const legacyGesendet = nachrichten.find(
-      (n) => n.richtung === "gesendet" && n.typ === "rueckfrage" && n.an === eingang.von
-    )
-    if (legacyGesendet) return gesendeteRueckfrageAuswaehlen(legacyGesendet.id)
-    const legacyEntwurf = rueckfragen.find((r) => r.typ === "rueckfrage" && r.an === eingang.von)
-    if (legacyEntwurf) return router.push(`/admin/entwuerfe?id=${legacyEntwurf.id}`)
+    const altGesendet = nachrichten.find((n) => n.richtung === "gesendet" && n.typ === "rueckfrage" && n.an === eingang.von)
+    if (altGesendet) return gesendeteAuswaehlen(altGesendet.id)
+    const altEntwurf = entwuerfe.find((r) => r.typ === "rueckfrage" && r.an === eingang.von)
+    if (altEntwurf) return router.push(`/admin/entwuerfe?id=${altEntwurf.id}`)
     toast.info("Keine Rückfrage vorhanden.")
   }
 
-  // Nachtrag aus Task 42: EingangDetails onSpeichern reicht die von der Nutzerin
-  // manuell gewählte Nutzung als optionales Argument durch, falls die KI-Erkennung
-  // nutzung nicht bestimmen konnte -- das muss an alsAnfrageSpeichern weitergereicht
-  // werden. alsAnfrageSpeichern löscht bei Erfolg die Quelle-Nachricht -- die
-  // gespeicherte Nachricht verschwindet also aus der Liste. Die Auswahl wird
-  // deshalb explizit aufgehoben, statt darauf zu vertrauen, dass das
-  // `nachrichten`-Prop nach revalidatePath rechtzeitig nachzieht.
-  async function speichernAlsAnfrage(nachrichtId: string, nutzungUeberschreibung?: Nutzung) {
-    setFehler(null)
-    setErfolg(null)
-    // Wird beim Klick unconditional gesetzt -- nachrichtId ist zu diesem Zeitpunkt
-    // garantiert die gerade angezeigte Nachricht (der Klick kam von deren Button).
-    setSpeichernLaufend(true)
-    try {
-      await alsAnfrageSpeichern(nachrichtId, nutzungUeberschreibung)
-      if (ausgewaehlteIdRef.current === nachrichtId) {
-        setAusgewaehlteId(null)
-        setErfolg("Anfrage gespeichert.")
-      }
-    } catch (e) {
-      if (ausgewaehlteIdRef.current === nachrichtId) setFehler(e instanceof Error ? e.message : String(e))
-    } finally {
-      // Nur zurücksetzen, wenn nachrichtId noch die aktuell ausgewählte ist -- wurde
-      // in der Zwischenzeit weggewechselt, hat der onAuswahl-Handler speichernLaufend
-      // bereits synchron auf false gesetzt (siehe dort); ein verspätetes Zurücksetzen
-      // hier dürfte NICHT den Zustand einer inzwischen anders ausgewählten Nachricht
-      // überschreiben (analog zum fehler-Guard oben).
-      if (ausgewaehlteIdRef.current === nachrichtId) setSpeichernLaufend(false)
-    }
-  }
-
   return (
-    <div className="grid grid-cols-[minmax(0,340px)_minmax(0,1fr)] items-start gap-4">
-      <div className="flex flex-col gap-3">
-        <MailEinfuegen />
-        <NachrichtenListe
-          nachrichten={nachrichten}
-          filter={filter}
-          ausgewaehlteId={ausgewaehlteId}
-          onFilterWechsel={setFilter}
-          onAuswahl={(id) => {
-            setAusgewaehlteId(id)
-            setFehler(null)
-            setErfolg(null)
-            // Siehe Kommentar in rueckfrageOeffnen: sofortiges Zurücksetzen,
-            // unabhängig vom Ref-Guard in speichernAlsAnfrage, damit der
-            // Speichern-Button der neu ausgewählten Nachricht nicht durch einen noch
-            // laufenden Aufruf der VORHERIGEN Nachricht gesperrt bleibt.
-            setSpeichernLaufend(false)
-          }}
-        />
-      </div>
-      <div className="rounded-card border border-line bg-surface">
-        {fehler && <div className="border-b border-line p-3 text-sm text-crit">{fehler}</div>}
-        {!ausgewaehlt &&
-          (erfolg ? (
-            <p className="p-10 text-center text-sm text-good">{erfolg}</p>
-          ) : (
-            <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>
-          ))}
-        {ausgewaehlt?.richtung === "eingang" && (
-          <EingangDetail
-            nachricht={ausgewaehlt}
-            onSpeichern={(nutzungUeberschreibung) =>
-              void speichernAlsAnfrage(ausgewaehlt.id, nutzungUeberschreibung)
-            }
-            onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
-            speichernLaufend={speichernLaufend}
+    <div className="flex flex-col gap-4">
+      <PostfachKopf abrufStatus={abrufStatus} />
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div className="rounded-card border border-line bg-surface">
+          <PostfachFilter
+            filter={filter}
+            chip={chip}
+            zaehler={zaehleChips(nachrichten, filter)}
+            onFilter={filterWechseln}
+            onChip={setChip}
           />
-        )}
-        {ausgewaehlt?.richtung === "gesendet" && <GesendetDetail nachricht={ausgewaehlt} />}
+          <NachrichtenListe nachrichten={sichtbar} ausgewaehlteId={ausgewaehlteId} onAuswahl={auswaehlen} />
+        </div>
+        <div className="rounded-card border border-line bg-surface">
+          {!ausgewaehlt && <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>}
+          {ausgewaehlt?.richtung === "eingang" && (
+            <EingangDetail
+              key={ausgewaehlt.id}
+              nachricht={ausgewaehlt}
+              entwuerfe={entwuerfe}
+              anfragen={anfragen}
+              onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
+            />
+          )}
+          {ausgewaehlt?.richtung === "gesendet" && <GesendetDetail nachricht={ausgewaehlt} />}
+        </div>
       </div>
     </div>
   )

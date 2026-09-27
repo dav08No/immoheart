@@ -1,138 +1,102 @@
 "use client"
 
-import { useState } from "react"
-import { Feld } from "@/components/ui/Feld"
+import { useRouter } from "next/navigation"
+import { FilePen, Reply } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import type { NachrichtRow } from "@/lib/queries/nachrichten"
-import type { ErkannteFelder } from "@/lib/ki/erkennung"
-import type { Nutzung } from "@/types"
-
-const LABELS: Record<keyof ErkannteFelder, string> = {
-  firma: "Firma",
-  flaeche_min: "Fläche ab",
-  flaeche_max: "Fläche bis",
-  ort: "Ort",
-  budget_pro_m2: "Budget",
-  bezug: "Bezug",
-  branche: "Branche",
-  nutzung: "Nutzung",
-}
-
-const NUTZUNG_OPTIONEN: { wert: Nutzung; label: string }[] = [
-  { wert: "buero", label: "Büro" },
-  { wert: "gewerbe", label: "Gewerbe" },
-  { wert: "produktion", label: "Produktion" },
-  { wert: "lager", label: "Lager" },
-  { wert: "verkauf", label: "Verkauf" },
-  { wert: "bauland", label: "Bauland" },
-]
+import { Badge } from "@/components/shadcn/badge"
+import { antwortEntwerfen } from "@/app/actions/postfach"
+import { aktionsBlock, nichtGespeicherteAnhaenge } from "@/lib/postfach"
+import { formatUhrzeit, formatZeitpunkt } from "@/lib/format"
+import type { PostfachNachricht } from "@/lib/queries/postfach"
+import { AnhangGalerie } from "./AnhangGalerie"
+import { KiBereich } from "./KiBereich"
+import { AktionenSuchanfrage } from "./AktionenSuchanfrage"
+import { AktionenAntwort } from "./AktionenAntwort"
+import { AktionenObjektangebot } from "./AktionenObjektangebot"
+import { useAktion } from "./useAktion"
+import type { AnfrageOption, EntwurfVerweis } from "./typen"
 
 type Props = {
-  nachricht: NachrichtRow
-  // Optionales zweites Argument: von der Nutzerin manuell nachgetragene
-  // Nutzung, falls die KI-Erkennung `nutzung` nicht bestimmen konnte. Siehe
-  // Kommentar unten bei `nutzungFehlt` -- alsAnfrageSpeichern (Task 39) wirft
-  // ohne diesen Wert, statt lautlos zu raten.
-  onSpeichern: (nutzungUeberschreibung?: Nutzung) => void
+  nachricht: PostfachNachricht
+  entwuerfe: EntwurfVerweis[]
+  anfragen: AnfrageOption[]
   onRueckfrageOeffnen: () => void
-  // Von PostfachAnsicht (Task 44) gesetzt, während der alsAnfrageSpeichern-Aufruf
-  // läuft, den onSpeichern ausgelöst hat. alsAnfrageSpeichern macht
-  // holeNachricht -> legeAnfrageAn -> loescheNachricht ohne Transaktion; ohne diese
-  // Sperre würde ein schneller Doppelklick zwei überlappende Aufrufe für dieselbe
-  // nachrichtId auslösen, die beide die noch nicht gelöschte Zeile lesen und beide
-  // legeAnfrageAn aufrufen -- zwei doppelte Anfragen aus einer Quelle-Nachricht
-  // (dasselbe Muster wie in MailEinfuegen und EntwurfEditor durch laedt/laufend
-  // verhindert).
-  speichernLaufend: boolean
 }
 
-export function EingangDetail({ nachricht, onSpeichern, onRueckfrageOeffnen, speichernLaufend }: Props) {
-  const felder = nachricht.erkannte_felder as ErkannteFelder | null
-  const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
+// Wird mit key={nachricht.id} gerendert: ein Wechsel mountet neu, lokaler State
+// (laufende Aktion, Auswahlfelder, Anhang-Links) muss nicht zurückgesetzt werden.
+export function EingangDetail({ nachricht, entwuerfe, anfragen, onRueckfrageOeffnen }: Props) {
+  const router = useRouter()
+  const { laufend, ausfuehren } = useAktion()
+  const block = aktionsBlock(nachricht)
+  // Jüngster offener Entwurf zu diesem Eingang (holeEntwuerfe sortiert absteigend).
+  const antwortEntwurf = entwuerfe.find((e) => e.antwort_auf === nachricht.id)
+  const empfangen = nachricht.empfangen_am ?? nachricht.created_at
 
-  // alsAnfrageSpeichern (Task 39) wirft bewusst, wenn erkannte_felder.nutzung
-  // null ist, statt still auf "gewerbe" zu raten -- ein falscher Default
-  // würde die Anfrage wegen berechneMatchs (M2) hartem
-  // Nutzung-Ausschlusskriterium dauerhaft und lautlos unmatchbar machen. Ist
-  // nutzung nicht erkannt, muss die Nutzerin hier vor dem Speichern eine
-  // Nutzung auswählen; der gewählte Wert wird als zweites Argument an
-  // onSpeichern durchgereicht (siehe Props-Kommentar), NICHT in
-  // erkannte_felder zurückgeschrieben -- so bleibt sichtbar, was die KI
-  // tatsächlich erkannt hat ("?" bleibt stehen), und was die Nutzerin manuell
-  // ergänzt hat.
-  const nutzungFehlt = felder !== null && felder.nutzung === null
-  const [nutzungAuswahl, setNutzungAuswahl] = useState<Nutzung | "">("")
-
-  // Der Button darf nicht klickbar sein, wenn der Aufruf garantiert wirft:
-  // entweder gibt es gar keine erkannten Felder, oder nutzung fehlt und wurde
-  // noch nicht manuell nachgetragen. speichernLaufend sperrt zusätzlich während
-  // ein Aufruf bereits unterwegs ist (siehe Props-Kommentar zu speichernLaufend).
-  const speichernMoeglich = felder !== null && (!nutzungFehlt || nutzungAuswahl !== "") && !speichernLaufend
+  async function entwerfen() {
+    const neu: { id: string | null } = { id: null }
+    const ok = await ausfuehren("entwerfen", async () => {
+      const ergebnis = await antwortEntwerfen(nachricht.id)
+      neu.id = ergebnis.entwurfId
+      return ergebnis
+    })
+    if (ok && neu.id) router.push(`/admin/entwuerfe?id=${neu.id}`)
+  }
 
   return (
-    <div>
-      <div className="border-b border-line p-4">
-        <div className="font-display text-base font-bold text-ink">{nachricht.betreff}</div>
+    <article aria-label={nachricht.betreff}>
+      <header className="border-b border-line p-4">
+        <div className="flex items-start gap-2">
+          <h2 className="min-w-0 flex-1 font-display text-base font-bold text-ink">{nachricht.betreff || "(ohne Betreff)"}</h2>
+          {nachricht.quelle === "website" && <Badge variant="outline">Website</Badge>}
+        </div>
         <div className="mt-0.5 text-xs text-ink-3">
           Von{" "}
           <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">
             {nachricht.von}
           </a>
+          {` · empfangen am ${formatZeitpunkt(new Date(empfangen))} ${formatUhrzeit(new Date(empfangen))}`}
         </div>
-      </div>
+      </header>
       <div className="p-4">
+        {/* Nur Text, nie HTML: der Abruf speichert bereits reinen Text. */}
         <div className="whitespace-pre-wrap rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
           {nachricht.body}
         </div>
-        {felder && (
-          <>
-            <div className="mb-2.5 mt-4 border-b border-line pb-1.5 text-xs text-ink-3">
-              immoheart hat erkannt{luecken > 0 ? ` · ${luecken} fehlt` : ""}
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {(Object.keys(LABELS) as (keyof ErkannteFelder)[]).map((schluessel) => (
-                <Feld
-                  key={schluessel}
-                  label={LABELS[schluessel]}
-                  wert={felder[schluessel] === null ? null : String(felder[schluessel])}
-                />
-              ))}
-            </div>
-            {nutzungFehlt && (
-              <div className="mt-2.5">
-                <label htmlFor="eingang-nutzung-auswahl" className="mb-1 block text-xs text-ink-3">
-                  Nutzung nicht erkannt · bitte auswählen, um speichern zu können
-                </label>
-                <select
-                  id="eingang-nutzung-auswahl"
-                  value={nutzungAuswahl}
-                  onChange={(e) => setNutzungAuswahl(e.target.value as Nutzung)}
-                  className="w-full rounded-lg border border-warn bg-warn-bg px-3 py-2 text-sm text-ink"
-                >
-                  <option value="" disabled>
-                    Nutzung wählen …
-                  </option>
-                  {NUTZUNG_OPTIONEN.map((option) => (
-                    <option key={option.wert} value={option.wert}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </>
+        <AnhangGalerie
+          nachrichtId={nachricht.id}
+          anzahl={nachricht.anhangTypen.length}
+          nichtGespeichert={nichtGespeicherteAnhaenge(nachricht.anhaenge)}
+        />
+        <KiBereich nachricht={nachricht} laufend={laufend} ausfuehren={ausfuehren} />
+        {block === "suchanfrage" && (
+          <AktionenSuchanfrage
+            nachricht={nachricht}
+            laufend={laufend}
+            ausfuehren={ausfuehren}
+            onRueckfrageOeffnen={onRueckfrageOeffnen}
+          />
         )}
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          <Button
-            variante="primaer"
-            disabled={!speichernMoeglich}
-            onClick={() => onSpeichern(nutzungFehlt ? (nutzungAuswahl as Nutzung) : undefined)}
-          >
-            {speichernLaufend ? "Wird gespeichert…" : "Als Anfrage speichern"}
-          </Button>
-          {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
+        {block === "antwort" && (
+          <AktionenAntwort nachricht={nachricht} anfragen={anfragen} laufend={laufend} ausfuehren={ausfuehren} />
+        )}
+        {block === "objektangebot" && <AktionenObjektangebot nachricht={nachricht} />}
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3.5">
+          {/* Gibt es schon einen offenen Entwurf (KI oder früher angelegt), wird dieser
+              geöffnet statt ein zweiter angelegt -- sonst stapeln sich Antworten. */}
+          {antwortEntwurf ? (
+            <Button onClick={() => router.push(`/admin/entwuerfe?id=${antwortEntwurf.id}`)}>
+              <FilePen className="size-4" aria-hidden />
+              Entwurf öffnen
+            </Button>
+          ) : (
+            <Button disabled={laufend !== null} onClick={() => void entwerfen()}>
+              <Reply className="size-4" aria-hidden />
+              {laufend === "entwerfen" ? "Wird angelegt…" : "Antwort entwerfen"}
+            </Button>
+          )}
         </div>
       </div>
-    </div>
+    </article>
   )
 }

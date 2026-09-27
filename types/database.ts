@@ -97,6 +97,30 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_abruf: {
+        Row: {
+          id: number
+          letzter_erfolg: string | null
+          letzter_fehler: string | null
+          letzter_fehler_am: string | null
+          letzter_start: string | null
+        }
+        Insert: {
+          id?: number
+          letzter_erfolg?: string | null
+          letzter_fehler?: string | null
+          letzter_fehler_am?: string | null
+          letzter_start?: string | null
+        }
+        Update: {
+          id?: number
+          letzter_erfolg?: string | null
+          letzter_fehler?: string | null
+          letzter_fehler_am?: string | null
+          letzter_start?: string | null
+        }
+        Relationships: []
+      }
       matches: {
         Row: {
           anfrage_id: string
@@ -152,21 +176,70 @@ export type Database = {
           },
         ]
       }
+      nachricht_anhaenge: {
+        Row: {
+          created_at: string
+          dateiname: string
+          groesse: number
+          id: string
+          mime_type: string
+          nachricht_id: string
+          pfad: string
+        }
+        Insert: {
+          created_at?: string
+          dateiname: string
+          groesse: number
+          id?: string
+          mime_type: string
+          nachricht_id: string
+          pfad: string
+        }
+        Update: {
+          created_at?: string
+          dateiname?: string
+          groesse?: number
+          id?: string
+          mime_type?: string
+          nachricht_id?: string
+          pfad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nachricht_anhaenge_nachricht_id_fkey"
+            columns: ["nachricht_id"]
+            isOneToOne: false
+            referencedRelation: "nachrichten"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nachrichten: {
         Row: {
           an: string
           anfrage_id: string | null
+          anhaenge: Json
           antwort_auf: string | null
           betreff: string
           body: string
           created_at: string
+          empfangen_am: string | null
           erkannte_felder: Json | null
+          gelesen: boolean
           geloescht_am: string | null
           gesendet_am: string | null
           id: string
           in_reply_to: string | null
+          kategorie:
+            | Database["public"]["Enums"]["nachricht_kategorie_enum"]
+            | null
+          ki_fehler: string | null
+          ki_gestartet_am: string | null
+          ki_status: string | null
           match_id: string | null
           message_id: string | null
+          objekt_id: string | null
+          quelle: string
           referenzen: string | null
           richtung: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ: Database["public"]["Enums"]["nachricht_typ_enum"]
@@ -176,17 +249,28 @@ export type Database = {
         Insert: {
           an: string
           anfrage_id?: string | null
+          anhaenge?: Json
           antwort_auf?: string | null
           betreff: string
           body: string
           created_at?: string
+          empfangen_am?: string | null
           erkannte_felder?: Json | null
+          gelesen?: boolean
           geloescht_am?: string | null
           gesendet_am?: string | null
           id?: string
           in_reply_to?: string | null
+          kategorie?:
+            | Database["public"]["Enums"]["nachricht_kategorie_enum"]
+            | null
+          ki_fehler?: string | null
+          ki_gestartet_am?: string | null
+          ki_status?: string | null
           match_id?: string | null
           message_id?: string | null
+          objekt_id?: string | null
+          quelle?: string
           referenzen?: string | null
           richtung: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ: Database["public"]["Enums"]["nachricht_typ_enum"]
@@ -196,17 +280,28 @@ export type Database = {
         Update: {
           an?: string
           anfrage_id?: string | null
+          anhaenge?: Json
           antwort_auf?: string | null
           betreff?: string
           body?: string
           created_at?: string
+          empfangen_am?: string | null
           erkannte_felder?: Json | null
+          gelesen?: boolean
           geloescht_am?: string | null
           gesendet_am?: string | null
           id?: string
           in_reply_to?: string | null
+          kategorie?:
+            | Database["public"]["Enums"]["nachricht_kategorie_enum"]
+            | null
+          ki_fehler?: string | null
+          ki_gestartet_am?: string | null
+          ki_status?: string | null
           match_id?: string | null
           message_id?: string | null
+          objekt_id?: string | null
+          quelle?: string
           referenzen?: string | null
           richtung?: Database["public"]["Enums"]["nachricht_richtung_enum"]
           typ?: Database["public"]["Enums"]["nachricht_typ_enum"]
@@ -233,6 +328,20 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nachrichten_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nachrichten_objekt_id_fkey"
+            columns: ["objekt_id"]
+            isOneToOne: false
+            referencedRelation: "objekte_oeffentlich"
             referencedColumns: ["id"]
           },
         ]
@@ -360,6 +469,12 @@ export type Database = {
     Enums: {
       anfrage_status_enum: "offen" | "vermittelt" | "ruhend"
       match_status_enum: "neu" | "gesendet" | "verworfen"
+      nachricht_kategorie_enum:
+        | "suchanfrage"
+        | "antwort"
+        | "objektangebot"
+        | "objektanfrage"
+        | "sonstiges"
       nachricht_richtung_enum: "eingang" | "entwurf" | "gesendet"
       nachricht_typ_enum:
         | "anfrage"
@@ -505,6 +620,13 @@ export const Constants = {
     Enums: {
       anfrage_status_enum: ["offen", "vermittelt", "ruhend"],
       match_status_enum: ["neu", "gesendet", "verworfen"],
+      nachricht_kategorie_enum: [
+        "suchanfrage",
+        "antwort",
+        "objektangebot",
+        "objektanfrage",
+        "sonstiges",
+      ],
       nachricht_richtung_enum: ["eingang", "entwurf", "gesendet"],
       nachricht_typ_enum: [
         "anfrage",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatDatum, formatFlaeche, formatPreis, formatZeitpunkt } from "./format"
+import { formatDatum, formatFlaeche, formatPreis, formatUhrzeit, formatZeitpunkt } from "./format"
 
 describe("formatFlaeche", () => {
   it("formatiert mit Tausendertrennzeichen und Einheit", () => {
@@ -44,5 +44,14 @@ describe("formatZeitpunkt", () => {
   })
   it("stimmt mit formatDatum überein, wenn der Zeitstempel weit vom Tageswechsel entfernt liegt", () => {
     expect(formatZeitpunkt(new Date("2026-08-25T12:00:00.000Z"))).toBe("25.08.2026")
+  })
+})
+
+describe("formatUhrzeit", () => {
+  it("zeigt Stunden und Minuten in Schweizer Zeit (Sommerzeit, UTC+2)", () => {
+    expect(formatUhrzeit(new Date("2026-09-27T06:05:00Z"))).toBe("08:05")
+  })
+  it("zeigt Mitternacht als 00, nicht als 24 (Winterzeit, UTC+1)", () => {
+    expect(formatUhrzeit(new Date("2026-01-10T23:30:00Z"))).toBe("00:30")
   })
 })

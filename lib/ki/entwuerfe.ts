@@ -90,3 +90,53 @@ Schreibe eine kurze Nachfass-Mail, die freundlich fragt, ob die Suche noch aktue
 export function entwurfNachfass(anfrage: Anfrage, tageSeitKontakt: number): Promise<Mailentwurf> {
   return frageKi(baueNachfassPrompt(anfrage, tageSeitKontakt))
 }
+
+// Eingehende Mails können sehr lang sein; für einen Antwortentwurf reicht der Anfang.
+const MAX_PROMPT_TEXT = 6_000
+
+function zitat(text: string): string {
+  return `"""\n${text.slice(0, MAX_PROMPT_TEXT)}\n"""`
+}
+
+// Ohne klare Rolle schrieb die KI im Live-Test aus Sicht der Firma ("Hier die
+// gewünschten Angaben: …") statt als Vermittler an die Firma.
+export const ANTWORT_ROLLE =
+  "Du schreibst im Namen von immoheart (dem Vermittler) an die Firma, von der die Mail stammt. Gib ihre Angaben nicht als eigene aus."
+
+export function baueAntwortPrompt(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): string {
+  const bezug = p.anfrageKurz ? `\nDie Firma sucht: ${p.anfrageKurz}\n` : ""
+  return `Eine Firma hat auf eine Mail von immoheart (Vermittlung von Gewerbeflächen in der Region Solothurn) geantwortet.
+${bezug}
+Betreff:
+${zitat(p.eingangBetreff)}
+
+Mail:
+${zitat(p.eingangText)}
+
+${ANTWORT_ROLLE} Bedanke dich für die Rückmeldung, bestätige kurz die erhaltenen Angaben und schreibe, dass immoheart passende Flächen prüft und sich meldet. Frage nur nach, wenn für die Suche noch etwas Wichtiges fehlt. Erfinde keine Objekte, Preise oder Termine. ${AUSGABEFORMAT}`
+}
+
+export function entwurfAntwort(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): Promise<Mailentwurf> {
+  return frageKi(baueAntwortPrompt(p))
+}
+
+export const FOTO_BITTE = "Bitte freundlich darum, Fotos der Fläche als Anhang zu schicken."
+// Ohne diesen Satz bat die KI im Live-Test trotz mitgeschicktem Foto um "Bilder".
+export const FOTOS_VORHANDEN = "Fotos wurden bereits mitgeschickt: bedanke dich dafür und bitte nicht erneut um Bilder."
+
+export function baueObjektangebotPrompt(p: { betreff: string; text: string; hatBilder: boolean }): string {
+  const fotos = `\n${p.hatBilder ? FOTOS_VORHANDEN : FOTO_BITTE}`
+  return `Ein Eigentümer bietet immoheart (Vermittlung von Gewerbeflächen in der Region Solothurn) eine Fläche zur Vermittlung an.
+
+Betreff:
+${zitat(p.betreff)}
+
+Mail:
+${zitat(p.text)}
+
+Schreibe eine kurze Antwort, die für das Angebot dankt und fehlende wichtige Angaben (Fläche, Preis, Verfügbarkeit, Nutzung) erfragt.${fotos} ${AUSGABEFORMAT}`
+}
+
+export function entwurfObjektangebot(p: { betreff: string; text: string; hatBilder: boolean }): Promise<Mailentwurf> {
+  return frageKi(baueObjektangebotPrompt(p))
+}
