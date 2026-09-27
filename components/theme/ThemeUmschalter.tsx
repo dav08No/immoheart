@@ -29,8 +29,10 @@ export function ThemeUmschalter({ className }: { className?: string }) {
 
   return (
     <button
+      type="button"
       onClick={umschalten}
-      aria-label="Hell oder Dunkel"
+      aria-label="Dunkelmodus"
+      aria-pressed={dunkel}
       className={cn(
         "inline-flex items-center justify-center rounded-lg border border-line-2 p-1.5 text-ink-2 hover:bg-surface-2",
         className
