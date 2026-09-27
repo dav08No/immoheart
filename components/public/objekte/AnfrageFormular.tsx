@@ -32,6 +32,10 @@ export function AnfrageFormular({ objektId, zeitToken: startToken, nachrichtVorl
   const [feldFehler, setFeldFehler] = useState<Partial<Record<FeldName, string>>>({})
   const [gesendet, setGesendet] = useState(false)
   const [laeuft, starte] = useTransition()
+  // Vor der Hydrierung (oder ohne JS) würde der Browser das Formular selbst als GET
+  // abschicken -- Name und E-Mail landeten dann in der URL und in Server-Logs.
+  const [bereit, setBereit] = useState(false)
+  useEffect(() => setBereit(true), [])
   const fehlerRef = useRef<HTMLDivElement>(null)
   const dankeRef = useRef<HTMLDivElement>(null)
 
@@ -92,7 +96,7 @@ export function AnfrageFormular({ objektId, zeitToken: startToken, nachrichtVorl
   const feld = (name: FeldName | "webseite") => `${id}-${name}`
 
   return (
-    <form onSubmit={senden} noValidate aria-labelledby={`${id}-titel`} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
+    <form method="post" onSubmit={senden} noValidate aria-labelledby={`${id}-titel`} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
       <h2 id={`${id}-titel`} className="font-display text-xl font-bold text-ink">Objekt anfragen</h2>
       {fehler && (
         <div ref={fehlerRef} tabIndex={-1} role="alert" className="rounded-md bg-crit-bg px-3 py-2 text-sm text-crit outline-none">
@@ -117,7 +121,7 @@ export function AnfrageFormular({ objektId, zeitToken: startToken, nachrichtVorl
           value={webseite} onChange={(e) => setWebseite(e.target.value)} />
       </div>
 
-      <Button type="submit" disabled={laeuft} className="self-start">
+      <Button type="submit" disabled={!bereit || laeuft} className="self-start">
         {laeuft ? "Wird gesendet …" : "Anfrage senden"}
       </Button>
       <p className="text-xs text-ink-3">Ihre Angaben verwenden wir nur, um Ihre Anfrage zu beantworten.</p>
