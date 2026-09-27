@@ -5,6 +5,7 @@ import { z } from "zod"
 import { legeObjektAn, aktualisiereObjekt } from "@/lib/queries/objekte"
 import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
+import { holeEigenesProfil } from "@/lib/queries/profile"
 import type { Database } from "@/types/database"
 
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
@@ -14,6 +15,7 @@ type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
 // Objekt übernehmen" im Postfach, ?aus=<Eingangs-id>) -- kein Teil des Objekts selbst,
 // deshalb ein eigener Parameter statt eines Felds in ObjektEinfuegen.
 export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId?: string): Promise<void> {
+  await holeEigenesProfil()
   const neues = await legeObjektAn(objekt)
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
   if (herkunftNachrichtId) {
@@ -58,6 +60,7 @@ const MATCH_RELEVANTE_FELDER = [
 ] as const satisfies readonly (keyof ObjektEinfuegen)[]
 
 export async function objektAktualisieren(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
+  await holeEigenesProfil()
   await aktualisiereObjekt(id, aenderung)
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerObjekt(id)

@@ -13,9 +13,12 @@ export async function holeFirmaPerEmail(email: string): Promise<FirmaRow | null>
     .from("firmen")
     .select("*")
     .eq("kontakt_email", email.toLowerCase())
-    .maybeSingle()
+    // kontakt_email ist nicht unique (zwei parallele Speichervorgänge können zwei Firmen
+    // anlegen): die älteste nehmen statt mit maybeSingle() ab dann immer zu werfen.
+    .order("created_at", { ascending: true })
+    .limit(1)
   if (error) throw error
-  return data
+  return data[0] ?? null
 }
 
 export async function legeFirmaAn(firma: FirmaEinfuegen): Promise<FirmaRow> {

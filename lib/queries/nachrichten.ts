@@ -115,6 +115,8 @@ export async function verknuepfeObjektMitEingang(eingangId: string, objektId: st
     .update({ objekt_id: objektId })
     .eq("id", eingangId)
     .eq("richtung", "eingang")
+    // Eine schon übernommene Mail behält ihr erstes Objekt (kein stilles Umhängen).
+    .is("objekt_id", null)
   if (error) throw error
 }
 

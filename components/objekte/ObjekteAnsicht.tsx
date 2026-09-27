@@ -26,10 +26,11 @@ export function ObjekteAnsicht({
   const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : null)
   const bearbeitetesObjekt = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
 
-  function beiFertig() {
+  // Nach Speichern UND nach Abbrechen ?aus= entfernen: sonst öffnet ein Reload den
+  // Link erneut, und jedes spätere "Objekt anlegen" wäre noch mit der Mail vorbelegt
+  // und würde sie still verknüpfen (Final-Review I5).
+  function schliessen() {
     setModus(null)
-    // Verhindert, dass ein Reload nach dem Speichern denselben ?aus=-Link erneut mit
-    // den (jetzt schon übernommenen) Werten öffnet.
     if (vorbelegung) router.replace("/admin/objekte")
   }
 
@@ -46,7 +47,7 @@ export function ObjekteAnsicht({
         offen={modus !== null}
         titel={bearbeitetesObjekt ? bearbeitetesObjekt.titel : "Neues Objekt"}
         untertitel=""
-        onSchliessen={() => setModus(null)}
+        onSchliessen={schliessen}
       >
         {/*
           key={objekt?.id ?? "neu"} erzwingt einen vollständigen Remount von
@@ -67,7 +68,7 @@ export function ObjekteAnsicht({
           objekt={bearbeitetesObjekt}
           vorbelegung={vorbelegung?.werte}
           herkunftNachrichtId={vorbelegung?.nachrichtId}
-          onFertig={beiFertig}
+          onFertig={schliessen}
         />
       </Drawer>
     </>
