@@ -123,7 +123,8 @@ export async function holeLetztenGesendetenBetreff(anfrageId: string): Promise<s
     .select("betreff")
     .eq("anfrage_id", anfrageId)
     .eq("richtung", "gesendet")
-    .order("gesendet_am", { ascending: false })
+    .not("message_id", "is", null)
+    .order("gesendet_am", { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle()
   if (error) throw error
@@ -153,11 +154,23 @@ export async function gibReservierungFrei(id: string, fehler: string): Promise<v
   if (error) throw error
 }
 
+// .eq("richtung", "entwurf") + geprüfte Rückgabezeile: die Mail ist zu diesem
+// Zeitpunkt bereits beim SMTP-Server abgeliefert, ein UPDATE ohne Treffer
+// (z.B. weil die Zeile inzwischen anderweitig verändert wurde) darf hier
+// NICHT still verschluckt werden -- der Aufrufer muss den Sonderfall
+// "gesendet, aber Status nicht gespeichert" erkennen und behandeln können.
 export async function markiereGesendet(
   id: string,
   felder: { von: string; message_id: string; in_reply_to: string | null; referenzen: string | null }
 ): Promise<void> {
   const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("nachrichten").update({ ...felder, richtung: "gesendet" }).eq("id", id)
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .update({ ...felder, richtung: "gesendet" })
+    .eq("id", id)
+    .eq("richtung", "entwurf")
+    .select("id")
+    .maybeSingle()
   if (error) throw error
+  if (!data) throw new Error("Nachricht konnte nicht als gesendet markiert werden")
 }

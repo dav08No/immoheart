@@ -26,9 +26,16 @@ function pfadeNeuLaden() {
   revalidatePath("/admin", "layout")
 }
 
+// Lehnt zusätzlich zu bereits gelöschten auch gerade reservierte (gesendet_am
+// gesetzt, aber richtung noch "entwurf") Entwürfe ab: entwurfSpeichern/
+// entwurfLoeschen dürfen einen Entwurf, der sich mitten im Versand befindet
+// (siehe reserviereEntwurf), nicht mehr unter dem laufenden Versand verändern
+// oder löschen -- das würde z.B. den Text nach dem SMTP-Versand, aber vor dem
+// markiereGesendet-Update überschreiben.
 async function offenerEntwurf(id: string) {
   const entwurf = await holeNachricht(idSchema.parse(id))
   if (!entwurf || entwurf.richtung !== "entwurf" || entwurf.geloescht_am) throw new Error("Entwurf nicht gefunden")
+  if (entwurf.gesendet_am) throw new Error("Dieser Entwurf wird gerade gesendet.")
   return entwurf
 }
 
@@ -65,17 +72,17 @@ export async function neueMail(eingabe: EntwurfEingabe & { anfrageId?: string })
 }
 
 // Einziger Pfad, über den eine Kundenmail das System verlässt -- immer durch einen
-// Klick ausgelöst. Reihenfolge: Entwurf prüfen -> atomar reservieren -> senden ->
-// als gesendet markieren; bei SMTP-Fehler wird die Reservierung mit Fehlertext
-// zurückgenommen, der Entwurf bleibt bestehen.
+// Klick ausgelöst. Reihenfolge: Entwurf prüfen -> Verlauf lesen -> atomar
+// reservieren -> senden -> als gesendet markieren. Die lesenden Schritte
+// (Verlauf) stehen bewusst VOR reserviereEntwurf: schlägt einer von ihnen fehl,
+// bleibt der Entwurf unreserviert und ganz normal erneut sendbar, statt dass
+// ein reiner Lesefehler bereits einen "wird gesendet"-Zustand hinterlässt, der
+// erst durch gibReservierungFrei wieder aufgeräumt werden müsste.
 export async function entwurfSenden(id: string): Promise<void> {
   await holeEigenesProfil()
   const entwurf = await offenerEntwurf(id)
   const geprueft = entwurfSchema.safeParse({ an: entwurf.an, betreff: entwurf.betreff, body: entwurf.body })
   if (!geprueft.success) throw new Error("Empfängeradresse, Betreff oder Text ist ungültig. Bitte zuerst bearbeiten.")
-
-  const reserviert = await reserviereEntwurf(id)
-  if (!reserviert) throw new Error("Dieser Entwurf wird bereits gesendet oder wurde geändert.")
 
   const gesendet = entwurf.anfrage_id ? await holeGesendeteIdsFuerAnfrage(entwurf.anfrage_id) : []
   const beantwortet = entwurf.antwort_auf ? await holeNachricht(entwurf.antwort_auf) : null
@@ -87,12 +94,31 @@ export async function entwurfSenden(id: string): Promise<void> {
   const verlauf = verlaufsKoepfe(bisherige)
   const { betreff, body, an } = geprueft.data
 
+  const reserviert = await reserviereEntwurf(id)
+  if (!reserviert) throw new Error("Dieser Entwurf wird bereits gesendet oder wurde geändert.")
+
+  let messageId: string
   try {
-    const { messageId } = await sendeMail(
+    const versandt = await sendeMail(
       an,
       { betreff, text: body, html: `<div style="font-family:Arial,sans-serif;white-space:pre-wrap">${escapeHtml(body)}</div>` },
       verlauf
     )
+    messageId = versandt.messageId
+  } catch (fehler) {
+    console.error("entwurfSenden fehlgeschlagen", fehler)
+    await gibReservierungFrei(id, "Versand fehlgeschlagen. Bitte später erneut versuchen.")
+    pfadeNeuLaden()
+    throw new Error("Versand fehlgeschlagen. Der Entwurf ist gespeichert.")
+  }
+
+  // Ab hier hat die Mail den SMTP-Server bereits verlassen -- ein Fehler beim
+  // Speichern des Status darf NIE dazu führen, dass die Reservierung wieder
+  // freigegeben wird (das würde einen zweiten Klick erlauben und die Mail ein
+  // zweites Mal verschicken). gesendet_am bleibt gesetzt, reserviereEntwurf
+  // lehnt einen erneuten Versand damit weiterhin ab; versand_fehler wird nur
+  // noch best-effort für die Anzeige im Postfach gesetzt.
+  try {
     await markiereGesendet(id, {
       von: process.env.GMAIL_USER ?? "",
       message_id: messageId,
@@ -100,10 +126,16 @@ export async function entwurfSenden(id: string): Promise<void> {
       referenzen: verlauf.referenzen,
     })
   } catch (fehler) {
-    console.error("entwurfSenden fehlgeschlagen", fehler)
-    await gibReservierungFrei(id, "Versand fehlgeschlagen. Bitte später erneut versuchen.")
+    console.error("markiereGesendet fehlgeschlagen nach erfolgreichem Versand", messageId, fehler)
+    try {
+      await aktualisiereNachricht(id, {
+        versand_fehler: "Mail wurde gesendet, Status konnte nicht gespeichert werden. Nicht erneut senden.",
+      })
+    } catch (schreibFehler) {
+      console.error("versand_fehler-Hinweis konnte nicht gespeichert werden", schreibFehler)
+    }
     pfadeNeuLaden()
-    throw new Error("Versand fehlgeschlagen. Der Entwurf ist gespeichert.")
+    throw new Error("Die Mail wurde gesendet, der Status konnte aber nicht gespeichert werden. Bitte nicht erneut senden.")
   }
 
   if (entwurf.anfrage_id) {
