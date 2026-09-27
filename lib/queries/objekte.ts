@@ -1,6 +1,7 @@
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
 import type { Objekt } from "@/types"
+import { zaehleJeObjekt } from "@/lib/objekt-fotos"
 
 type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
@@ -95,4 +96,18 @@ export async function holeAnzahlOeffentlicherObjekte(): Promise<number | null> {
     return null
   }
   return count
+}
+
+// Eine Abfrage für alle Objekte statt einer je Karte; gezählt wird in JS.
+export async function zaehleDirektanfragen(): Promise<Record<string, number>> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .select("objekt_id")
+    .eq("kategorie", "objektanfrage")
+    .eq("richtung", "eingang")
+    .is("geloescht_am", null)
+    .not("objekt_id", "is", null)
+  if (error) throw error
+  return zaehleJeObjekt(data)
 }

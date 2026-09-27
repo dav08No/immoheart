@@ -2,6 +2,7 @@ import { erstelleServerClient } from "@/lib/supabase/server"
 import { berechneMatch } from "@/lib/matching"
 import { holeAnfrage, holeOffeneAnfragen, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, holeVerfuegbareObjekte, zuObjektDomain } from "@/lib/queries/objekte"
+import { holeTitelbilder } from "@/lib/queries/fotos"
 import type { Kriterium } from "@/types"
 
 // Richtung Anfrage -> Objekte (aufgerufen nach jedem Anlegen/Ändern einer
@@ -64,40 +65,10 @@ export async function berechneUndSpeichereMatchesFuerAnfrage(anfrageId: string):
 // Matches unverändert, nur status='neu' wird bei zu schwachem Score
 // entfernt) ist identisch zur Anfrage-Richtung, siehe deren Kommentar oben.
 //
-// Kritischer Fund (M7 Whole-Branch-Review): diese Funktion holte das Objekt
-// bisher ungefiltert über holeObjekt(id) und matchte es gegen JEDE offene
-// Anfrage, ganz ohne auf objekt.status zu schauen -- anders als die
-// Gegenrichtung, die über holeVerfuegbareObjekte() nur status='verfuegbar'-
-// Objekte überhaupt erst in die Schleife lässt (lib/queries/objekte.ts).
-// Das war beim M6-Review noch "aktuell unerreichbar" (nichts konnte den
-// Status setzen), bis Task 57s ObjektFormular einen Status-<select> im
-// Bearbeiten-Modus einführte, dessen absenden() im selben werte-Objekt
-// aber IMMER auch flaeche/ort/nutzung/verfuegbar_ab mitschickt (siehe
-// MATCH_RELEVANTE_FELDER-Kommentar in app/actions/objekte.ts) -- jede
-// Bearbeitung, auch ein reines "auf Vermietet setzen", löst damit einen
-// vollen Rematch-Lauf aus. Ohne die Sperre unten würde dieser Lauf frische
-// status='neu'-Matches zwischen einem gerade vermieteten Objekt und jeder
-// offenen Anfrage anlegen -- ein Zustand, den die Anfrage-Richtung über
-// ihren eigenen Verfügbarkeits-Filter nie herstellen würde (dieselbe
-// berechneMatch-Logik, aber ein divergentes Ergebnis je nachdem, welche
-// Seite den Rematch auslöst).
-//
-// Bei einem Nicht-verfuegbar-Objekt werden zusätzlich dessen bestehende
-// status='neu'-Matches gelöscht statt nur keine neuen anzulegen: ohne diese
-// Aufräumung blieben Matches, die entstanden, während das Objekt noch
-// verfuegbar war, nach einem Statuswechsel auf reserviert/vermietet
-// unbegrenzt liegen -- die Anfrage-Richtung besucht ein nicht mehr
-// verfuegbares Objekt nie wieder (holeVerfuegbareObjekte() lässt es aus
-// ihrer Schleife fallen, statt es zu besuchen und aufzuräumen), und
-// holeBesterMatchFuerAnfrage (M6) filtert selbst nicht nach objekt.status --
-// eine solche Altzeile könnte also weiterhin als "Bester Treffer" einer
-// Anfrage auftauchen und in ObjektRasters "N neue Treffer"-Badge
-// (zaehleNeueMatchesFuerObjekt) einfliessen, obwohl das zugehörige Objekt
-// bereits als vermietet markiert ist. Wie beim score-basierten Löschzweig
-// oben bleibt das gezielt auf status='neu' beschränkt: gesendet/verworfen-
-// Zeilen (bereits bearbeitete Matches) werden nie angetastet, konsistent
-// mit dem in diesem Milestone durchgehend eingehaltenen Prinzip "keine
-// bereits bearbeiteten Matches zerstören".
+// Nicht-verfuegbare Objekte werden nie gematcht; ihre status='neu'-Matches werden
+// entfernt, weil die Anfrage-Richtung sie nie mehr besucht und sonst veraltete Treffer
+// (z.B. "Bester Treffer", "N neue Treffer") stehen blieben (M7 Whole-Branch-Review).
+// gesendet/verworfen bleiben wie überall unangetastet.
 export async function berechneUndSpeichereMatchesFuerObjekt(objektId: string): Promise<void> {
   const [objektRow, anfrageRows] = await Promise.all([holeObjekt(objektId), holeOffeneAnfragen()])
   // Kein Fehler, sondern ein no-op -- siehe die analoge Begründung bei
@@ -154,7 +125,8 @@ export type NeuerMatch = {
   score: number
   kriterien: Kriterium[]
   hinweis: string
-  objekt: { titel: string; adresse: string; flaeche: number; preis_pro_m2: number | null; foto_url: string | null }
+  // titelbild: erstes hochgeladenes Foto, sonst die alte foto_url.
+  objekt: { titel: string; adresse: string; flaeche: number; preis_pro_m2: number | null; titelbild: string | null }
   anfrage: { id: string; flaeche_min: number | null; flaeche_max: number | null; letzter_kontakt: string }
   firma: { name: string; website: string | null } | null
 }
@@ -180,17 +152,19 @@ export async function holeNeueMatches(): Promise<NeuerMatch[]> {
 
   const anfragenNachId = new Map(anfragenData.map((a) => [a.id, a]))
   const firmenNachId = new Map(firmenData.map((f) => [f.id, f]))
+  const titelbilder = await holeTitelbilder(matchRows.map((m) => m.objekt_id))
 
   return matchRows.flatMap((m) => {
     const anfrage = anfragenNachId.get(m.anfrage_id)
     if (!anfrage || !m.objekte) return []
+    const { foto_url, ...objekt } = m.objekte
     return [
       {
         id: m.id,
         score: m.score,
         kriterien: m.kriterien as Kriterium[],
         hinweis: m.hinweis,
-        objekt: m.objekte,
+        objekt: { ...objekt, titelbild: titelbilder[m.objekt_id] ?? foto_url },
         anfrage: {
           id: anfrage.id,
           flaeche_min: anfrage.flaeche_min,

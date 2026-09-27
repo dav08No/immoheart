@@ -13,10 +13,12 @@ type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
 export type ObjektVorbelegung = { nachrichtId: string; werte: ObjektVorbelegungWerte }
 
 export function ObjekteAnsicht({
-  objekte, treffer, vorbelegung,
+  objekte, treffer, titelbilder, direktanfragen, vorbelegung,
 }: {
   objekte: ObjektRow[]
   treffer: Record<string, number>
+  titelbilder: Record<string, string>
+  direktanfragen: Record<string, number>
   vorbelegung?: ObjektVorbelegung | null
 }) {
   const router = useRouter()
@@ -41,7 +43,13 @@ export function ObjekteAnsicht({
           Objekt anlegen
         </Button>
       </div>
-      <ObjektRaster objekte={objekte} treffer={treffer} onKarteWahl={setModus} />
+      <ObjektRaster
+        objekte={objekte}
+        treffer={treffer}
+        titelbilder={titelbilder}
+        direktanfragen={direktanfragen}
+        onKarteWahl={setModus}
+      />
 
       <Drawer
         offen={modus !== null}

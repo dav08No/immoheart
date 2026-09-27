@@ -24,9 +24,9 @@ export function MatchCard({
     <article onClick={onOeffnen} className="cursor-pointer overflow-hidden rounded-card border border-line bg-surface hover:border-line-2">
       <div className="grid grid-cols-[118px_minmax(0,1fr)_34px_minmax(0,1fr)_auto] items-center gap-3.5 p-3">
         <div className="h-20 w-[118px] overflow-hidden rounded-lg bg-surface-3">
-          {match.objekt.foto_url && (
-            // eslint-disable-next-line @next/next/no-img-element -- freie Foto-URL ohne Upload, siehe README
-            <img src={match.objekt.foto_url} alt={match.objekt.titel} className="h-full w-full object-cover" />
+          {match.objekt.titelbild && (
+            // eslint-disable-next-line @next/next/no-img-element -- Storage- oder freie URL, kein next/image-Loader konfiguriert
+            <img src={match.objekt.titelbild} alt={match.objekt.titel} className="h-full w-full object-cover" />
           )}
         </div>
         <div>

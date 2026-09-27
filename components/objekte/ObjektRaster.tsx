@@ -1,3 +1,4 @@
+import { EyeOff } from "lucide-react"
 import { Chip } from "@/components/ui/Chip"
 import type { Database } from "@/types/database"
 
@@ -44,10 +45,14 @@ const STATUS_CHIP_KIND: Record<ObjektStatus, "gut" | "warn" | "neutral"> = {
 export function ObjektRaster({
   objekte,
   treffer,
+  titelbilder,
+  direktanfragen,
   onKarteWahl,
 }: {
   objekte: ObjektRow[]
   treffer: Record<string, number>
+  titelbilder: Record<string, string>
+  direktanfragen: Record<string, number>
   onKarteWahl: (id: string) => void
 }) {
   return (
@@ -63,6 +68,9 @@ export function ObjektRaster({
         // Chip + Abblendung nicht-verfügbarer Karten, obwohl `status` heute
         // praktisch immer `verfuegbar` ist.
         const nichtVerfuegbar = o.status !== "verfuegbar"
+        // Hochgeladenes Titelbild vor der alten Foto-URL (Spalte bleibt als Fallback).
+        const bild = titelbilder[o.id] ?? o.foto_url
+        const anfragen = direktanfragen[o.id] ?? 0
         return (
           <article
             key={o.id}
@@ -70,16 +78,21 @@ export function ObjektRaster({
             className={`cursor-pointer overflow-hidden rounded-card border border-line bg-surface ${nichtVerfuegbar ? "opacity-70" : ""}`}
           >
             <div className="grid h-32 place-items-center bg-surface-3 text-xs text-ink-3">
-              {o.foto_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- Fotos sind freie URLs ohne eigenen Upload (README: "zunächst als URL-Feld").
-                <img src={o.foto_url} alt={o.titel} className="h-32 w-full object-cover" />
+              {bild ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Storage- oder freie URL, kein next/image-Loader konfiguriert
+                <img src={bild} alt={o.titel} className="h-32 w-full object-cover" />
               ) : (
                 "Foto"
               )}
             </div>
             <div className="p-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-ink">{o.titel}</div>
+                <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-ink">
+                  {!o.oeffentlich && (
+                    <EyeOff className="size-3.5 shrink-0 text-ink-3" role="img" aria-label="Nicht auf der Website" />
+                  )}
+                  <span className="truncate">{o.titel}</span>
+                </div>
                 <Chip kind={STATUS_CHIP_KIND[o.status]}>{STATUS_LABEL[o.status]}</Chip>
               </div>
               <div className="mt-0.5 text-xs text-ink-2">
@@ -97,6 +110,9 @@ export function ObjektRaster({
                   Karte ↗
                 </a>
                 <span className="text-ink-3">{treffer[o.id] ?? 0} neue Treffer</span>
+                <span className="text-ink-3">
+                  {anfragen} {anfragen === 1 ? "Direktanfrage" : "Direktanfragen"}
+                </span>
               </div>
             </div>
           </article>

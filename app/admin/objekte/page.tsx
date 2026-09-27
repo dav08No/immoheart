@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header"
 import { ObjekteAnsicht, type ObjektVorbelegung } from "@/components/objekte/ObjekteAnsicht"
-import { holeObjekte, zaehleNeueMatchesFuerObjekt } from "@/lib/queries/objekte"
+import { holeObjekte, zaehleDirektanfragen, zaehleNeueMatchesFuerObjekt } from "@/lib/queries/objekte"
+import { holeTitelbilder } from "@/lib/queries/fotos"
 import { holeNachricht } from "@/lib/queries/nachrichten"
 import { objektVorbelegung } from "@/lib/objekt-vorbelegung"
 import { idSchema } from "@/app/actions/entwuerfe-hilfen"
@@ -27,12 +28,22 @@ export default async function ObjektePage({ searchParams }: { searchParams: Prom
     objekte.map(async (o) => [o.id, await zaehleNeueMatchesFuerObjekt(o.id)] as const),
   )
   const treffer = Object.fromEntries(trefferPaare)
+  const [titelbilder, direktanfragen] = await Promise.all([
+    holeTitelbilder(objekte.map((o) => o.id)),
+    zaehleDirektanfragen(),
+  ])
 
   return (
     <>
       <Header titel="Objekte" untertitel={`${objekte.length} im Bestand`} />
       <main className="flex-1 overflow-y-auto p-5">
-        <ObjekteAnsicht objekte={objekte} treffer={treffer} vorbelegung={vorbelegung} />
+        <ObjekteAnsicht
+          objekte={objekte}
+          treffer={treffer}
+          titelbilder={titelbilder}
+          direktanfragen={direktanfragen}
+          vorbelegung={vorbelegung}
+        />
       </main>
     </>
   )
