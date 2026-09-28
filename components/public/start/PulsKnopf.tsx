@@ -13,7 +13,7 @@ export function PulsKnopf({ href, ton, hauptsache = false, children }: Props) {
       className={cn(
         "relative inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-on-hero/70 motion-safe:transition-colors",
         hauptsache
-          ? "bg-surface text-brand hover:bg-surface-3"
+          ? "bg-hero-cta-bg text-hero-cta-fg hover:bg-hero-cta-bg-hover"
           : "border border-on-hero/50 text-on-hero hover:bg-on-hero/10"
       )}
     >
@@ -21,7 +21,8 @@ export function PulsKnopf({ href, ton, hauptsache = false, children }: Props) {
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-0 animate-pulsring rounded-full",
-          ton === "herz" ? "text-heart" : "text-brand-2"
+          // Hell-Modus: brand-2 (#1C7293) verschwände auf dem Petrol-Verlauf -- darum dort hell.
+          ton === "herz" ? "text-heart" : "text-on-hero-2 dark:text-brand-2"
         )}
       />
       {children}

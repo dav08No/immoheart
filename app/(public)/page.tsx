@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { holeStartDaten } from "@/lib/queries/oeffentlich"
+import { holeStartDaten } from "@/lib/queries/startseite"
 import { Hero } from "@/components/public/start/Hero"
 import { Kennzahlen } from "@/components/public/start/Kennzahlen"
 import { SoFunktionierts } from "@/components/public/start/SoFunktionierts"

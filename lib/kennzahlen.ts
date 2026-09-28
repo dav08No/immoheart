@@ -23,3 +23,15 @@ export function waehleHighlights<T extends { titelbild: string | null; created_a
     })
     .slice(0, Math.max(0, max))
 }
+
+export type StartDaten<T> = { kennzahlen: Kennzahlen | null; highlights: T[] }
+
+// "verfügbare Objekte": reservierte bleiben gelistet (und dürfen Highlight sein),
+// zählen aber nicht in die Zahlen der Startseite.
+export function startDatenAus<T extends { status: string; ort: string; flaeche: number; titelbild: string | null; created_at: string }>(
+  objekte: T[],
+  maxHighlights: number
+): StartDaten<T> {
+  const verfuegbar = objekte.filter((o) => o.status === "verfuegbar")
+  return { kennzahlen: berechneKennzahlen(verfuegbar), highlights: waehleHighlights(objekte, maxHighlights) }
+}

@@ -12,7 +12,7 @@ export function HeroText() {
         <span className="sr-only">{TITEL}</span>
         <span aria-hidden>
           {WOERTER.map((wort, i) => (
-            <span key={wort}>
+            <span key={`${wort}-${i}`}>
               <span
                 // Koralle als Unterstrich statt Schriftfarbe: Koralle auf Petrol hätte zu wenig Kontrast.
                 className={`inline-block animate-wort-ein ${wort.startsWith("Herzschlag") ? "underline decoration-heart decoration-4 underline-offset-8" : ""}`}

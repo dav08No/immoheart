@@ -16,6 +16,9 @@
   --heart: #E24B5B; --heart-soft: #FCE9EB;
   /* Hero-Fläche (Petrol→Navy) ist in beiden Modi dunkel, Schrift darauf immer hell. */
   --hero-von: #065A82; --hero-bis: #21295C; --on-hero: #FFFFFF; --on-hero-2: #D5E6F0;
+  /* Haupt-Knopf im Hero: bewusst in beiden Modi gleich (weiss/Petrol), sonst kippt
+     der Kontrast auf dem dunklen Verlauf. */
+  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
 
   /* shadcn/ui-Namen, auf die bestehenden Tokens abgebildet */
   --background: var(--bg); --foreground: var(--ink);
@@ -41,6 +44,7 @@
   --crit: #F0908B; --crit-bg: #3D2020;
   --heart: #F27A87; --heart-soft: #3D2027;
   --hero-von: #0F4566; --hero-bis: #0E1330; --on-hero: #EEF2F7; --on-hero-2: #B8C2D4;
+  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
 }
 
 @theme inline {
@@ -70,6 +74,9 @@
   --color-hero-bis: var(--hero-bis);
   --color-on-hero: var(--on-hero);
   --color-on-hero-2: var(--on-hero-2);
+  --color-hero-cta-bg: var(--hero-cta-bg);
+  --color-hero-cta-bg-hover: var(--hero-cta-bg-hover);
+  --color-hero-cta-fg: var(--hero-cta-fg);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

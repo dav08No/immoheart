@@ -2,12 +2,10 @@
 // (Rolle anon), nie der Admin-Client -- Konstraint N5 verbietet erhöhte Rechte auf
 // öffentlichen Seiten, damit nie mehr als objekte_oeffentlich/objekt_fotos sichtbar wird.
 import "server-only"
-import { unstable_rethrow } from "next/navigation"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
 import { erstesJeObjekt, FOTO_BUCKET } from "@/lib/objekt-fotos"
-import { berechneKennzahlen, waehleHighlights, type Kennzahlen } from "@/lib/kennzahlen"
 
 type OeffentlichesObjektRow = Database["public"]["Views"]["objekte_oeffentlich"]["Row"]
 
@@ -108,22 +106,4 @@ export async function holeOeffentlicheFotos(objektId: string): Promise<Oeffentli
     .order("id")
   if (error) throw error
   return data.map((f) => ({ id: f.id, url: fotoUrl(supabase, f.pfad) }))
-}
-
-export type StartDaten = { kennzahlen: Kennzahlen | null; highlights: OeffentlichesObjekt[] }
-
-// Eine Abfrage für Zahlen und Highlights der Startseite. Fällt die DB aus, soll die
-// Startseite trotzdem erscheinen -- dann ohne Zahlen und ohne Highlights.
-export async function holeStartDaten(maxHighlights: number): Promise<StartDaten> {
-  try {
-    const objekte = await holeOeffentlicheObjekte()
-    // "verfügbare Objekte": reservierte bleiben gelistet, zählen aber nicht mit.
-    const verfuegbar = objekte.filter((o) => o.status === "verfuegbar")
-    return { kennzahlen: berechneKennzahlen(verfuegbar), highlights: waehleHighlights(objekte, maxHighlights) }
-  } catch (fehler) {
-    // Next-interne Signale (z.B. "dynamisch rendern" wegen cookies()) nicht schlucken.
-    unstable_rethrow(fehler)
-    console.error("holeStartDaten", fehler)
-    return { kennzahlen: null, highlights: [] }
-  }
 }
