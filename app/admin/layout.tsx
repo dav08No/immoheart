@@ -28,12 +28,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {/* Unter lg eine Spalte: die Seitenleiste ist ausgeblendet und steckt im
           Menü des Seitenkopfs (MobilLeiste). h-dvh statt h-screen, damit die
           mobile Adressleiste den unteren Rand nicht verdeckt. */}
-      <div className="grid h-dvh grid-cols-1 lg:grid-cols-[206px_minmax(0,1fr)]">
+      <div className="grid h-dvh grid-cols-1 bg-bg lg:grid-cols-[220px_minmax(0,1fr)]">
         {/* Rendert nichts sichtbares -- hält nur den Hintergrund-Mailabruf am Laufen,
             solange irgendeine /admin-Seite offen ist (Task 7). */}
         <MailAbrufer />
         <Sidebar />
-        <div className="flex min-h-0 flex-col">{children}</div>
+        {/* Arbeitsfläche in --bg: Panels (surface) heben sich davon ab. Den
+            Innenabstand (p-4 lg:p-6, gap-4) setzt jede Seite in ihrem main. */}
+        <div className="flex min-h-0 min-w-0 flex-col bg-bg">{children}</div>
       </div>
     </AdminNavAnbieter>
   )
