@@ -1,21 +1,8 @@
 // Statisches Bild des Stadtmodells: isometrische Gewerbebauten in Petrol-Tönen,
 // ein Gebäude in Koralle, EKG-Linie am Boden. Steht im Server-HTML und bleibt der
-// Fallback, wenn Task 6 kein WebGL laden darf (reduzierte Bewegung, schwaches Gerät).
+// Fallback, wenn kein WebGL geladen werden darf (reduzierte Bewegung, schwaches Gerät).
 
-type Bau = { x: number; y: number; b: number; t: number; h: number; herz?: boolean }
-
-// Raster-Koordinaten (x nach rechts unten, y nach links unten), Höhe h.
-const BAUTEN: Bau[] = [
-  { x: 0, y: 0, b: 2, t: 2, h: 5 },
-  { x: 3, y: 0, b: 2, t: 1.5, h: 3 },
-  { x: 6, y: 0, b: 1.5, t: 2, h: 6.5 },
-  { x: 0, y: 3, b: 1.5, t: 2, h: 3.5 },
-  { x: 3, y: 2.5, b: 2, t: 2, h: 4.5, herz: true },
-  { x: 6, y: 3, b: 2, t: 1.5, h: 2.5 },
-  { x: 0, y: 6, b: 2.5, t: 1.5, h: 2 },
-  { x: 3.5, y: 5.5, b: 1.5, t: 1.5, h: 5.5 },
-  { x: 6, y: 5.5, b: 2, t: 2, h: 3.5 },
-]
+import { BAUTEN, EKG_PUNKTE, EKG_Y, type Bau } from "./stadtDaten"
 
 const MASS = 20
 const COS = Math.cos(Math.PI / 6) * MASS
@@ -44,11 +31,7 @@ const SORTIERT = [...BAUTEN].sort((a, b) => a.x + a.y - (b.x + b.y))
 
 const BODEN = [punkt(-1, -1, 0), punkt(9.5, -1, 0), punkt(9.5, 9, 0), punkt(-1, 9, 0)].join(" ")
 
-// EKG entlang der vorderen Kante (y = 8.3), ein Ausschlag vor dem Korallen-Bau.
-const EKG_PUNKTE: [number, number][] = [
-  [-0.5, 0], [2.5, 0], [3, 0.6], [3.4, -1.6], [3.8, 1.2], [4.2, 0], [9, 0],
-]
-const EKG = EKG_PUNKTE.map(([x, z]) => punkt(x, 8.3, z * 0.5)).join(" ")
+const EKG = EKG_PUNKTE.map(([x, z]) => punkt(x, EKG_Y, z * 0.5)).join(" ")
 
 export function StadtFallback() {
   return (
