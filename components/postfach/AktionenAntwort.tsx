@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { anfrageZuordnen, feldUebernehmen } from "@/app/actions/eingang-aktionen"
-import { UEBERNEHMBARE_FELDER } from "@/lib/eingang/anfrage-aus-eingang"
+import { feldUnterscheidetSich, UEBERNEHMBARE_FELDER } from "@/lib/eingang/anfrage-aus-eingang"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 import { AUSWAHL_KLASSE, FELD_LABELS, nutzungLabel, type AktionAusfuehren, type AnfrageOption } from "./typen"
@@ -22,7 +22,14 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
   const zugeordnet = anfragen.find((a) => a.id === nachricht.anfrage_id)
   const offene = anfragen.filter((a) => a.offen)
   // != null statt !== null: ältere/abweichende KI-Antworten können Schlüssel ganz weglassen.
-  const neueAngaben = felder ? UEBERNEHMBARE_FELDER.filter((feld) => felder[feld] != null) : []
+  // Ohne zugeordnete Anfrage gibt es nichts zum Vergleichen -- dann zeigt die Liste alle
+  // erkannten Felder (informativ, bevor überhaupt zugeordnet werden kann); ist eine Anfrage
+  // zugeordnet, bietet "Übernehmen" nur Felder an, deren Wert tatsächlich abweicht (Task 6).
+  const neueAngaben = felder
+    ? UEBERNEHMBARE_FELDER.filter(
+        (feld) => felder[feld] != null && (!zugeordnet || feldUnterscheidetSich(feld, felder, zugeordnet.werte))
+      )
+    : []
 
   return (
     <section aria-label="Antwort" className="mt-4 flex flex-col gap-3">

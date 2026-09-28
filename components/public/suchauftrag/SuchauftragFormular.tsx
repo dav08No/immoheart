@@ -50,7 +50,7 @@ export function SuchauftragFormular({ zeitToken }: { zeitToken: string }) {
         <AnfrageFeld {...p("flaecheMin")} label="Fläche von (m²)" pflicht={false} inputMode="numeric" maxLength={6} />
         <AnfrageFeld {...p("flaecheMax")} label="Fläche bis (m²)" pflicht={false} inputMode="numeric" maxLength={6} />
         <AnfrageFeld {...p("budgetProM2")} label="Budget (CHF pro m²)" pflicht={false} inputMode="numeric" maxLength={5} />
-        <AnfrageFeld {...p("bezug")} label="Bezug ab" pflicht={false} maxLength={80} hinweis="z.B. sofort, Frühling 2027" />
+        <AnfrageFeld {...p("bezug")} label="Bezug ab" pflicht={false} maxLength={80} hinweis="z.B. sofort, Frühling 2027" breit />
       </div>
       <AnfrageFeld {...p("nachricht")} label="Nachricht" mehrzeilig pflicht={false} maxLength={2000} />
 

@@ -1,8 +1,12 @@
+import type { AnfrageWerte } from "@/lib/eingang/anfrage-aus-eingang"
+
 // Minimaler Ausschnitt eines Entwurfs (holeEntwuerfe, page.tsx): reicht, um zu einem
 // Eingang den Rückfrage-/Antwort-Entwurf zu finden und zu öffnen.
 export type EntwurfVerweis = { id: string; antwort_auf: string | null; an: string; typ: string }
 
-export type AnfrageOption = { id: string; label: string; offen: boolean }
+// werte: aktuelle Feldwerte der Anfrage -- AktionenAntwort vergleicht sie mit den
+// KI-erkannten Angaben, damit "Übernehmen" nur für tatsächlich abweichende Felder erscheint.
+export type AnfrageOption = { id: string; label: string; offen: boolean; werte: AnfrageWerte }
 
 export type AktionAusfuehren = (
   schluessel: string,
