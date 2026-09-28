@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatDatum, formatFlaeche, formatPreis, formatUhrzeit, formatZeitpunkt } from "./format"
+import { formatDatum, formatFlaeche, formatPreis, formatUhrzeit, formatZahl, formatZeitpunkt } from "./format"
 
 describe("formatFlaeche", () => {
   it("formatiert mit Tausendertrennzeichen und Einheit", () => {
@@ -53,5 +53,14 @@ describe("formatUhrzeit", () => {
   })
   it("zeigt Mitternacht als 00, nicht als 24 (Winterzeit, UTC+1)", () => {
     expect(formatUhrzeit(new Date("2026-01-10T23:30:00Z"))).toBe("00:30")
+  })
+})
+
+describe("formatZahl", () => {
+  it("trennt Tausender mit Schweizer Apostroph", () => {
+    expect(formatZahl(0)).toBe("0")
+    expect(formatZahl(999)).toBe("999")
+    expect(formatZahl(1234)).toBe("1’234")
+    expect(formatZahl(1234567)).toBe("1’234’567")
   })
 })

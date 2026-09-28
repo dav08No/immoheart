@@ -49,3 +49,10 @@ export function formatUhrzeit(zeitpunkt: Date): string {
   const teilWert = (typ: string): string => teile.find((t) => t.type === typ)?.value ?? ""
   return `${teilWert("hour")}:${teilWert("minute")}`
 }
+
+// Tausendertrennung für Zählwerte (öffentliche Seite und Admin-Kennzahlen). Eigene
+// Umsetzung statt Intl: Server (Node-ICU) und Browser müssen für die Hydration exakt
+// denselben Text liefern.
+export function formatZahl(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "’")
+}

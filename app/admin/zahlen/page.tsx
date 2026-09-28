@@ -1,104 +1,111 @@
 import { Header } from "@/components/layout/Header"
-import { holeZahlenKennzahlen, holeErfolgsquoteVerlauf, holeFlaechenVerteilung } from "@/lib/queries/zahlen"
+import { ChartKarte } from "@/components/zahlen/ChartKarte"
+import { Kachel } from "@/components/zahlen/Kachel"
+import { SpeicherKachel } from "@/components/zahlen/SpeicherKachel"
+import { AnfragenMonatChart } from "@/components/zahlen/AnfragenMonatChart"
+import { MailsWocheChart } from "@/components/zahlen/MailsWocheChart"
+import { EntwuerfeChart } from "@/components/zahlen/EntwuerfeChart"
+import { BalkenChart } from "@/components/zahlen/BalkenChart"
+import { PulsBalken } from "@/components/zahlen/PulsBalken"
+import { holeEigenesProfil } from "@/lib/queries/profile"
+import { holeSpeicher, holeZahlen } from "@/lib/queries/zahlen"
+import { formatZahl } from "@/lib/format"
+import { formatProzent, formatTage, istLeer } from "@/lib/zahlen/anzeige"
 
-function liniendiagramm(daten: { monat: string; prozent: number }[]): string {
-  if (daten.length === 0) return ""
-  const W = 480, H = 180, L = 32, R = 12, T = 12, B = 26
-  const iw = W - L - R, ih = H - T - B, max = 100
-  const x = (i: number) => L + (i / Math.max(1, daten.length - 1)) * iw
-  const y = (v: number) => T + ih - (v / max) * ih
-  return daten.map((d, i) => `${x(i).toFixed(1)},${y(d.prozent).toFixed(1)}`).join(" ")
-}
-
-// Flache Mittellinie fürs Liniendiagramm im Leerzustand -- dieselbe Koordinatenbasis
-// wie liniendiagramm(), damit sie exakt in den Chart-Bereich (T..T+ih) passt.
-function mittellinie(): string {
-  const W = 480, T = 12, B = 26, H = 180
-  const y = T + (H - T - B) / 2
-  return `M32,${y} L${W - 12},${y}`
-}
-
+// Kein try/catch: Ladefehler fängt app/admin/error.tsx (Error-Boundary des Segments).
 export default async function ZahlenPage() {
-  // Keine try/catch hier: ZahlenPage ist eine reine Server-Component ohne
-  // Nutzerinteraktion, ein Fehler beim Laden (z. B. Netzwerkausfall) wird
-  // bereits von app/admin/error.tsx abgefangen (Next.js Error-Boundary für
-  // Fehler, die während des Server-Renderns eines Segments geworfen werden) --
-  // ein lokaler try/catch mit eigenem Fehlerbanner wäre hier nur eine zweite,
-  // redundante Fehleroberfläche für denselben Fall.
-  const [kennzahlen, verlauf, verteilung] = await Promise.all([
-    holeZahlenKennzahlen(),
-    holeErfolgsquoteVerlauf(),
-    holeFlaechenVerteilung(),
-  ])
-  const punkte = liniendiagramm(verlauf)
-  const maxAnzahl = Math.max(1, ...verteilung.map((v) => v.anzahl))
-
-  // Ohne Anfragen gibt es keinen Verlauf -- dann zeigen alle abgeleiteten Kacheln "keine Daten".
-  const hatDaten = verlauf.length > 0
+  // Explizit vor dem Admin-Client (holeSpeicher umgeht RLS), auch wenn das Layout
+  // den Login schon prüft -- die Seite soll nicht vom Layout abhängen.
+  await holeEigenesProfil()
+  // Ein Stichtag für alle Zeitfenster; gerechnet wird nur hier auf dem Server, die
+  // Diagramme bekommen fertige Labels (keine Datumslogik im Client -> hydrationssicher).
+  const jetzt = new Date()
+  const [z, speicher] = await Promise.all([holeZahlen(jetzt), holeSpeicher()])
+  const { anfragen, erstangebot } = z
+  const groessen = z.groessen.map((g) => ({ label: g.bereich === "unbekannt" ? "unbekannt" : `${g.bereich} m²`, anzahl: g.anzahl }))
+  const nutzung = z.nutzung.map((n) => ({ label: n.label, anzahl: n.anzahl }))
+  const top = z.topObjekte.map((t) => ({ label: t.titel, anzahl: t.anzahl }))
 
   return (
     <>
-      <Header titel="Zahlen" untertitel={new Date().getFullYear().toString()} />
-      <main className="flex-1 overflow-y-auto p-5">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <div className="text-xs text-ink-3">Bis Erstangebot{!hatDaten && " · keine Daten"}</div>
-            <div className="font-display text-2xl font-bold text-ink">
-              {kennzahlen.bisErstangebotTage ?? "–"}{" "}
-              {kennzahlen.bisErstangebotTage !== null && <span className="text-sm text-ink-3">Tage</span>}
-            </div>
-          </div>
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <div className="text-xs text-ink-3">Erfolgsquote{!hatDaten && " · keine Daten"}</div>
-            <div className="font-display text-2xl font-bold text-ink">
-              {hatDaten ? kennzahlen.erfolgsquoteProzent : "–"}{" "}
-              {hatDaten && <span className="text-sm text-ink-3">%</span>}
-            </div>
-          </div>
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <div className="text-xs text-ink-3">Nacharbeit / Tag</div>
-            <div className="font-display text-2xl font-bold text-ink">
-              {kennzahlen.nacharbeitProTagMinuten} <span className="text-sm text-ink-3">Min.</span>
-            </div>
-          </div>
+      <Header titel="Zahlen" untertitel="Zeitraum: letzte 12 Monate (Mails 12 Wochen)" />
+      <main className="flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kachel
+            label="Anfragen gesamt"
+            wert={anfragen.gesamt > 0 ? formatZahl(anfragen.gesamt) : null}
+            zusatz={`${formatZahl(anfragen.offen)} offen`}
+          />
+          <Kachel
+            label="Vermittlungsquote"
+            wert={anfragen.quote !== null ? formatProzent(anfragen.quote) : null}
+            zusatz={`${formatZahl(anfragen.vermittelt)} von ${formatZahl(anfragen.gesamt)} vermittelt`}
+          />
+          <Kachel
+            label="Tage bis Erstangebot (Median)"
+            wert={erstangebot.median !== null ? `${formatTage(erstangebot.median)} Tage` : null}
+            zusatz={`aus ${formatZahl(erstangebot.anzahl)} ${erstangebot.anzahl === 1 ? "Anfrage" : "Anfragen"}`}
+          />
+          <SpeicherKachel buckets={speicher} />
         </div>
 
-        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3.5">
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <h2 className="mb-2 font-display text-sm font-bold text-ink">
-              Erfolgsquote{!hatDaten && <span className="font-normal text-ink-3"> · keine Daten</span>}
-            </h2>
-            <svg
-              viewBox="0 0 480 180"
-              className="h-auto w-full"
-              role="img"
-              aria-label={hatDaten ? "Erfolgsquote über die Monate" : "Erfolgsquote über die Monate, keine Daten sichtbar"}
-            >
-              {hatDaten ? (
-                <polyline points={punkte} fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              ) : (
-                <path d={mittellinie()} fill="none" stroke="var(--ink-3)" strokeWidth="2" strokeDasharray="4 4" />
-              )}
-            </svg>
-          </div>
-          <div className="rounded-card border border-line bg-surface p-3.5">
-            <h2 className="mb-2 font-display text-sm font-bold text-ink">
-              Gesuchte Grössen{!hatDaten && <span className="font-normal text-ink-3"> · keine Daten</span>}
-            </h2>
-            {hatDaten ? (
-              verteilung.map((v) => (
-                <div key={v.bereich} className="grid grid-cols-[92px_1fr_28px] items-center gap-2.5 py-1 text-xs">
-                  <span className="text-right text-ink-2">{v.bereich}</span>
-                  <span className="h-3.5 overflow-hidden rounded-r bg-surface-2">
-                    <span className="block h-full rounded-r bg-brand" style={{ width: `${(v.anzahl / maxAnzahl) * 100}%` }} />
-                  </span>
-                  <span className="text-ink-2">{v.anzahl}</span>
-                </div>
-              ))
-            ) : (
-              <p className="py-6 text-center text-xs text-ink-3">Keine Daten sichtbar</p>
-            )}
-          </div>
+        <div className="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+          <ChartKarte
+            titel="Anfragen pro Monat"
+            beschreibung="Neue Anfragen der letzten 12 Monate, nach Quelle gestapelt."
+            leer={istLeer(z.proMonat, ["mail", "website", "manuell"])}
+            tabelle={{ spalten: ["Monat", "Mail", "Website", "Manuell"], zeilen: z.proMonat.map((m) => [m.label, m.mail, m.website, m.manuell]) }}
+          >
+            <AnfragenMonatChart daten={z.proMonat} />
+          </ChartKarte>
+          <ChartKarte
+            titel="Mails pro Woche"
+            beschreibung="Eingegangene und gesendete Mails der letzten 12 Kalenderwochen."
+            leer={istLeer(z.mails, ["ein", "aus"])}
+            tabelle={{ spalten: ["Woche", "Eingang", "Ausgang"], zeilen: z.mails.map((w) => [w.label, w.ein, w.aus]) }}
+          >
+            <MailsWocheChart daten={z.mails} />
+          </ChartKarte>
+          <ChartKarte
+            titel="Entwürfe"
+            beschreibung="Gesendete und verworfene Entwürfe der letzten 6 Monate, nach Versand- bzw. Löschdatum."
+            leer={istLeer(z.entwuerfe, ["gesendet", "geloescht"])}
+            tabelle={{ spalten: ["Monat", "Gesendet", "Gelöscht"], zeilen: z.entwuerfe.map((m) => [m.label, m.gesendet, m.geloescht]) }}
+          >
+            <EntwuerfeChart daten={z.entwuerfe} />
+          </ChartKarte>
+          <ChartKarte
+            titel="Gefragteste Objekte"
+            beschreibung="Die fünf Objekte mit den meisten Objektanfragen im Postfach."
+            leer={istLeer(top, ["anzahl"])}
+            tabelle={{ spalten: ["Objekt", "Direktanfragen"], zeilen: top.map((t) => [t.label, t.anzahl]) }}
+          >
+            <BalkenChart daten={top} liegend />
+          </ChartKarte>
+          <ChartKarte
+            titel="Gesuchte Grössen"
+            beschreibung="Offene Anfragen nach gesuchter Fläche (Mitte von min/max)."
+            leer={istLeer(groessen, ["anzahl"])}
+            tabelle={{ spalten: ["Fläche", "Anfragen"], zeilen: groessen.map((g) => [g.label, g.anzahl]) }}
+          >
+            <BalkenChart daten={groessen} />
+          </ChartKarte>
+          <ChartKarte
+            titel="Gesuchte Nutzungen"
+            beschreibung="Offene Anfragen nach gewünschter Nutzungsart."
+            leer={istLeer(nutzung, ["anzahl"])}
+            tabelle={{ spalten: ["Nutzung", "Anfragen"], zeilen: nutzung.map((n) => [n.label, n.anzahl]) }}
+          >
+            <BalkenChart daten={nutzung} liegend />
+          </ChartKarte>
+          <ChartKarte
+            titel="Puls der offenen Anfragen"
+            beschreibung="Wie frisch der letzte Kontakt ist: gut, nachfassen oder kritisch."
+            leer={istLeer([z.puls], ["gut", "warn", "kritisch"])}
+            tabelle={{ spalten: ["Stufe", "Anfragen"], zeilen: [["Gut", z.puls.gut], ["Nachfassen", z.puls.warn], ["Kritisch", z.puls.kritisch]] }}
+          >
+            <PulsBalken puls={z.puls} />
+          </ChartKarte>
         </div>
       </main>
     </>
