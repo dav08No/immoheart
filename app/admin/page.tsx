@@ -1,9 +1,9 @@
-import { Header } from "@/components/layout/Header"
+import { Seitenkopf, SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
 import { MatchesAnsicht } from "@/components/matches/MatchesAnsicht"
 import { holeNeueMatches, type NeuerMatch } from "@/lib/queries/matches"
 import { holeOffenePulsWerte, holeAnfragen } from "@/lib/queries/anfragen"
 import { holeObjekte } from "@/lib/queries/objekte"
-import { formatZeitpunkt } from "@/lib/format"
+import { kontextMatches } from "@/lib/admin/kontext"
 import { puls } from "@/lib/puls"
 
 export default async function MatchesPage() {
@@ -27,8 +27,8 @@ export default async function MatchesPage() {
 
   return (
     <>
-      <Header titel="Matches" untertitel={formatZeitpunkt(new Date())} />
-      <main className="flex-1 overflow-y-auto p-5">
+      <Seitenkopf titel="Matches" kontext={kontextMatches(matches.length, langeStillAnzahl)} />
+      <main className={SEITEN_INHALT_KLASSE}>
         <MatchesAnsicht
           matches={matches satisfies NeuerMatch[]}
           letzteKontakte={letzteKontakte}

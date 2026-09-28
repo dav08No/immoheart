@@ -13,14 +13,20 @@ type Props = {
   onClick?: () => void
   href?: string
   ariaLabel?: string
+  // Rechte Aktion (echter Button) statt Zeit oder zusätzlich dazu -- nur gesetzt,
+  // wenn die Zeile selbst NICHT klickbar ist (sonst Button-im-Button). Für Zeilen
+  // mit eigenem, unabhängigem Knopf (z.B. "Nachfass entwerfen" in Matches).
+  aktion?: ReactNode
 }
 
 const BASIS =
   "relative flex w-full min-w-0 items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring"
 
 // Eine Zeile für Postfach, Entwürfe usw.: immer echter Button oder Link, damit
-// Tastatur und Screenreader sie wie jede andere Aktion bedienen.
-export function ListenZeile({ titel, unterzeile, zeit, badges, icon, ungelesen, ausgewaehlt, onClick, href, ariaLabel }: Props) {
+// Tastatur und Screenreader sie wie jede andere Aktion bedienen. Ohne onClick/href
+// (nur `aktion` gesetzt) wird sie ein reines div -- die Zeile selbst ist dann nicht
+// bedienbar, nur die eingebettete Aktion (echtes button-Element).
+export function ListenZeile({ titel, unterzeile, zeit, badges, icon, ungelesen, ausgewaehlt, onClick, href, ariaLabel, aktion }: Props) {
   const inhalt = (
     <>
       {/* Korallroter Balken markiert die Auswahl (zusätzlich zu Hintergrund und aria-current). */}
@@ -46,6 +52,7 @@ export function ListenZeile({ titel, unterzeile, zeit, badges, icon, ungelesen, 
         {badges && <span className="mt-1.5 flex flex-wrap gap-1">{badges}</span>}
       </span>
       {zeit && <span className="shrink-0 whitespace-nowrap text-xs text-ink-2">{zeit}</span>}
+      {aktion && <span className="shrink-0">{aktion}</span>}
     </>
   )
 
@@ -59,9 +66,12 @@ export function ListenZeile({ titel, unterzeile, zeit, badges, icon, ungelesen, 
       </Link>
     )
   }
-  return (
-    <button type="button" onClick={onClick} aria-label={ariaLabel} aria-current={aktuell} className={klasse}>
-      {inhalt}
-    </button>
-  )
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel} aria-current={aktuell} className={klasse}>
+        {inhalt}
+      </button>
+    )
+  }
+  return <div className={klasse}>{inhalt}</div>
 }

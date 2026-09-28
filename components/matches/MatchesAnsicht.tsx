@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation"
 import { PulsHero } from "./PulsHero"
 import { MatchCard } from "./MatchCard"
 import { MatchDetail } from "./MatchDetail"
+import { Panel, PanelKopf } from "@/components/ui/Panel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
+import { ListenZeile } from "@/components/ui/ListenZeile"
+import { Button } from "@/components/ui/Button"
 import { matchSenden, matchVerwerfen, anfrageNachfragen } from "@/app/actions/matches"
+import { formatZahl } from "@/lib/format"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { AnfrageMitFirma } from "@/lib/queries/anfragen"
 
@@ -100,85 +105,70 @@ export function MatchesAnsicht({
 
   return (
     <>
-      <PulsHero letzteKontakte={letzteKontakte} />
+      <Panel>
+        <PanelKopf
+          titel="Bestandspuls"
+          beschreibung={`${formatZahl(offeneAnzahl)} offene Anfragen · ${formatZahl(langeStillAnzahl)} lange still · ${formatZahl(objektAnzahl)} Objekte im Bestand`}
+        />
+        <PulsHero letzteKontakte={letzteKontakte} />
+      </Panel>
 
       {fehler && (
-        <div className="my-3 rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
+        <div className="rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
           {fehler}
         </div>
       )}
 
-      <div className="my-4 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-        <div className="rounded-card border-y border-r border-l-[3px] border-line border-l-brand bg-surface p-3.5">
-          <div className="text-xs text-ink-3">Neue Matches</div>
-          <div className="font-display text-2xl font-bold text-ink">{matches.length}</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-3.5">
-          <div className="text-xs text-ink-3">Offene Anfragen</div>
-          <div className="font-display text-2xl font-bold text-ink">{offeneAnzahl}</div>
-        </div>
-        <div className="rounded-card border border-line bg-surface p-3.5">
-          <div className="text-xs text-ink-3">Objekte</div>
-          <div className="font-display text-2xl font-bold text-ink">{objektAnzahl}</div>
-        </div>
-        <div className="rounded-card border-y border-r border-l-[3px] border-line border-l-warn bg-surface p-3.5">
-          <div className="text-xs text-ink-3">Lange still</div>
-          <div className="font-display text-2xl font-bold text-ink">{langeStillAnzahl}</div>
-        </div>
-      </div>
-
-      <div className="mb-2.5 flex items-baseline gap-2.5">
-        <h2 className="font-display text-base font-bold text-ink">Neue Matches</h2>
-        <span className="ml-auto text-xs text-ink-3">{matches.length} Vorschläge</span>
-      </div>
-      <div className="flex flex-col gap-3">
-        {matches.length === 0 && (
-          <div className="rounded-card border border-line bg-surface p-8 text-center text-sm text-ink-3">
-            Keine offenen Matches.
+      <Panel>
+        <PanelKopf titel="Neue Treffer" aktionen={<span className="text-xs text-ink-2">{matches.length} Vorschläge</span>} />
+        {matches.length === 0 ? (
+          <Leerzustand text="Keine offenen Matches." />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {matches.map((m) => (
+              <MatchCard
+                key={m.id} match={m}
+                laufend={laufendId === m.id}
+                onOeffnen={() => setAusgewaehlteId(m.id)}
+                onSenden={() => void senden(m.id)}
+                onVerwerfen={() => void verwerfen(m.id)}
+              />
+            ))}
           </div>
         )}
-        {matches.map((m) => (
-          <MatchCard
-            key={m.id} match={m}
-            laufend={laufendId === m.id}
-            onOeffnen={() => setAusgewaehlteId(m.id)}
-            onSenden={() => void senden(m.id)}
-            onVerwerfen={() => void verwerfen(m.id)}
-          />
-        ))}
-      </div>
+      </Panel>
 
-      <div className="mt-4 rounded-card border border-line bg-surface">
-        <div className="flex items-center gap-2.5 border-b border-line p-3.5">
-          <h2 className="font-display text-base font-bold text-ink">Lange nichts gehört</h2>
-          <span className="ml-auto text-xs text-ink-3">{langeStillAnfragen.length} Anfragen</span>
-        </div>
-        {langeStillAnfragen.map((a) => {
-          const id = a.id
-          const wer = a.firma?.name ?? "diese Anfrage"
-          const tage = Math.floor((Date.now() - new Date(a.letzter_kontakt).getTime()) / 86_400_000)
-          return (
-            <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line p-3 last:border-b-0">
-              <span className={`h-2 w-2 flex-none rounded-full ${tage > 60 ? "bg-crit" : "bg-warn"}`} />
-              {/* basis-40: auf dem Handy rutscht der Knopf in eine eigene Zeile statt den Text zu quetschen. */}
-              <div className="min-w-0 flex-1 basis-40">
-                <div className="wrap-break-word text-sm font-medium text-ink">{a.firma?.name ?? "?"}</div>
-                <div className="text-xs text-ink-3">
-                  {a.flaeche_min ?? "?"}–{a.flaeche_max ?? "?"} m² · {a.ort ?? "?"}
-                </div>
-              </div>
-              <span className="text-xs text-ink-2">{tage} Tage</span>
-              <button
-                onClick={() => void nachfragen(id, wer)}
-                disabled={laufendId === id}
-                className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface-2 disabled:opacity-60"
-              >
-                {laufendId === id ? "Wird bearbeitet…" : "Nachfass entwerfen"}
-              </button>
-            </div>
-          )
-        })}
-      </div>
+      <Panel>
+        <PanelKopf
+          titel="Lange nichts gehört"
+          aktionen={<span className="text-xs text-ink-2">{langeStillAnfragen.length} Anfragen</span>}
+        />
+        {langeStillAnfragen.length === 0 ? (
+          <Leerzustand text="Alle offenen Anfragen wurden kürzlich kontaktiert." klein />
+        ) : (
+          <div className="flex flex-col gap-1">
+            {langeStillAnfragen.map((a) => {
+              const id = a.id
+              const wer = a.firma?.name ?? "diese Anfrage"
+              const tage = Math.floor((Date.now() - new Date(a.letzter_kontakt).getTime()) / 86_400_000)
+              return (
+                <ListenZeile
+                  key={id}
+                  icon={<span aria-hidden className={`block size-2 rounded-full ${tage > 60 ? "bg-crit" : "bg-warn"}`} />}
+                  titel={a.firma?.name ?? "?"}
+                  unterzeile={`${a.flaeche_min ?? "?"}–${a.flaeche_max ?? "?"} m² · ${a.ort ?? "?"}`}
+                  zeit={`${tage} Tage`}
+                  aktion={
+                    <Button variante="sekundaer" onClick={() => void nachfragen(id, wer)} disabled={laufendId === id}>
+                      {laufendId === id ? "Wird bearbeitet…" : "Nachfass entwerfen"}
+                    </Button>
+                  }
+                />
+              )
+            })}
+          </div>
+        )}
+      </Panel>
 
       <MatchDetail
         match={ausgewaehlt}

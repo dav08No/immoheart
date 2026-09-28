@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Drawer } from "@/components/layout/Drawer"
+import { Button } from "@/components/ui/Button"
+import { StatusChip } from "@/components/ui/StatusChip"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { KriteriumStatus } from "@/types"
 
@@ -43,22 +45,33 @@ export function MatchDetail({
     <Drawer
       offen={offen}
       onSchliessen={onSchliessen}
-      titel={`${letzterMatch.score}% Treffer`}
-      untertitel={`${letzterMatch.objekt.titel} ↔ ${letzterMatch.firma?.name ?? "?"}`}
+      titel={letzterMatch.objekt.titel}
+      untertitel={`↔ ${letzterMatch.firma?.name ?? "?"}`}
+      chip={<StatusChip ton="neutral">{letzterMatch.score}% Treffer</StatusChip>}
+      fuss={
+        <>
+          <Button variante="sekundaer" onClick={onVerwerfen} disabled={laufend}>
+            Verwerfen
+          </Button>
+          <Button variante="primaer" onClick={onSenden} disabled={laufend}>
+            {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
+          </Button>
+        </>
+      }
     >
       <table className="w-full border-collapse text-xs wrap-break-word">
         <thead>
           <tr>
             <th></th>
-            <th className="pb-1.5 text-left font-medium text-ink-3">Gesucht</th>
-            <th className="pb-1.5 text-left font-medium text-ink-3">Objekt</th>
+            <th className="pb-1.5 text-left font-medium text-ink-2">Gesucht</th>
+            <th className="pb-1.5 text-left font-medium text-ink-2">Objekt</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {letzterMatch.kriterien.map((k) => (
             <tr key={k.kriterium} className="border-b border-line last:border-b-0">
-              <td className="py-2 pr-2 text-ink-3">{k.kriterium}</td>
+              <td className="py-2 pr-2 text-ink-2">{k.kriterium}</td>
               <td className="py-2 pr-2">{k.gesucht}</td>
               <td className="py-2 pr-2">{k.angeboten}</td>
               <td className={`py-2 text-right font-bold ${STATUS_FARBE[k.status]}`}>{STATUS_ZEICHEN[k.status]}</td>
@@ -67,22 +80,6 @@ export function MatchDetail({
         </tbody>
       </table>
       <p className="text-xs text-ink-2">{letzterMatch.hinweis}</p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={onSenden}
-          disabled={laufend}
-          className="rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-on-brand disabled:opacity-60"
-        >
-          {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
-        </button>
-        <button
-          onClick={onVerwerfen}
-          disabled={laufend}
-          className="rounded-lg border border-line-2 px-3 py-1.5 text-sm text-ink disabled:opacity-60"
-        >
-          Verwerfen
-        </button>
-      </div>
     </Drawer>
   )
 }

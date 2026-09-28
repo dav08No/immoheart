@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/Button"
+import { StatusChip, type StatusTon } from "@/components/ui/StatusChip"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { KriteriumStatus } from "@/types"
 
@@ -9,7 +11,7 @@ function webLink(name: string): string {
 }
 
 const STATUS_ZEICHEN: Record<KriteriumStatus, string> = { ok: "✓", teilweise: "~", nein: "✕" }
-const STATUS_FARBE: Record<KriteriumStatus, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
+const STATUS_TON: Record<KriteriumStatus, StatusTon> = { ok: "gut", teilweise: "warn", nein: "kritisch" }
 
 export function MatchCard({
   match, laufend, onOeffnen, onSenden, onVerwerfen,
@@ -60,34 +62,23 @@ export function MatchCard({
         </div>
         <div className="text-right">
           <div className="font-display text-2xl font-bold text-good">{match.score}%</div>
-          <div className="text-xs text-ink-3">Treffer</div>
+          <div className="text-xs text-ink-2">Treffer</div>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-3.5 py-2.5">
         <span className="mr-auto flex flex-wrap gap-1.5">
           {match.kriterien.map((k) => (
-            <span
-              key={k.kriterium}
-              className={`rounded-full border border-line bg-surface px-2 py-0.5 text-[11.5px] ${STATUS_FARBE[k.status]}`}
-            >
+            <StatusChip key={k.kriterium} ton={STATUS_TON[k.status]}>
               {k.kriterium} {STATUS_ZEICHEN[k.status]}
-            </span>
+            </StatusChip>
           ))}
         </span>
-        <button
-          onClick={(e) => { e.stopPropagation(); onSenden() }}
-          disabled={laufend}
-          className="rounded-lg bg-brand px-2.5 py-1 text-xs font-medium text-on-brand hover:bg-brand-2 disabled:opacity-60"
-        >
+        <Button variante="primaer" onClick={(e) => { e.stopPropagation(); onSenden() }} disabled={laufend}>
           {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onVerwerfen() }}
-          disabled={laufend}
-          className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-surface disabled:opacity-60"
-        >
+        </Button>
+        <Button variante="sekundaer" onClick={(e) => { e.stopPropagation(); onVerwerfen() }} disabled={laufend}>
           Verwerfen
-        </button>
+        </Button>
       </div>
     </article>
   )
