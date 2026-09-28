@@ -6,6 +6,8 @@ import { Feld } from "@/components/ui/Feld"
 import { Button } from "@/components/ui/Button"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
+import { suchanfrageKontakt } from "@/lib/eingang/anfrage-aus-eingang"
+import { suchanfrageKopf } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 import type { Nutzung } from "@/types"
 import { AUSWAHL_KLASSE, FELD_LABELS, NUTZUNG_OPTIONEN, nutzungLabel, type AktionAusfuehren } from "./typen"
@@ -25,7 +27,9 @@ function anzeigeWert(schluessel: keyof ErkannteFelder, felder: ErkannteFelder): 
 
 export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfrageOeffnen }: Props) {
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
-  const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
+  // Nur Website-Suchaufträge tragen Kontaktangaben; Mail-Eingänge haben dafür den Absender.
+  const kontakt = suchanfrageKontakt(nachricht.erkannte_felder)
+  const kopf = felder ? suchanfrageKopf(nachricht.quelle, felder) : null
   // alsAnfrageSpeichern rät bei fehlender Nutzung bewusst nicht (hartes Matching-Kriterium);
   // die hier gewählte Nutzung wird nur mitgegeben, erkannte_felder bleibt die KI-Erkennung.
   const nutzungFehlt = felder !== null && felder.nutzung == null
@@ -40,11 +44,23 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
 
   return (
     <section aria-label="Suchanfrage" className="mt-4">
-      {felder && (
-        <>
-          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">
-            immoheart hat erkannt{luecken > 0 ? ` · ${luecken} fehlt` : ""}
+      {kontakt && (
+        <div className="mb-4">
+          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Kontakt aus dem Formular</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Feld label="Name" wert={kontakt.name} />
+            <Feld label="E-Mail" wert={kontakt.email} />
+            <Feld label="Telefon" wert={kontakt.telefon} optional />
           </div>
+          {/* Nur Text, nie HTML: die Besucherin hat das frei eingetippt. */}
+          {kontakt.nachricht && (
+            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line p-3 text-sm text-ink-2">{kontakt.nachricht}</p>
+          )}
+        </div>
+      )}
+      {felder && kopf && (
+        <>
+          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">{kopf.ueberschrift}</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(Object.keys(FELD_LABELS) as (keyof ErkannteFelder)[]).map((schluessel) => (
               <Feld key={schluessel} label={FELD_LABELS[schluessel]} wert={anzeigeWert(schluessel, felder)} />
@@ -87,7 +103,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
             {laufend === "speichern" ? "Wird gespeichert…" : "Als Anfrage speichern"}
           </Button>
         )}
-        {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
+        {kopf?.rueckfrage && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
       </div>
     </section>
   )

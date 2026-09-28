@@ -3,9 +3,8 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { anfrageAnlegen } from "@/app/actions/anfragen"
+import { NUTZUNGEN } from "@/lib/nutzung"
 import type { Nutzung } from "@/types"
-
-const NUTZUNGEN: Nutzung[] = ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"]
 
 const LEER = { ort: "", nutzung: "gewerbe" as Nutzung, flaecheMin: "", flaecheMax: "", budget: "", bezug: "" }
 

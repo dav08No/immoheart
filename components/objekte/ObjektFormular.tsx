@@ -7,14 +7,13 @@ import { ObjektFotos } from "./ObjektFotos"
 import { objektAnlegen, objektAktualisieren } from "@/app/actions/objekte"
 import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
 import type { Database } from "@/types/database"
+import { NUTZUNGEN as NUTZUNG_WERTE } from "@/lib/nutzung"
 import type { Nutzung } from "@/types"
 
 type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
 type ObjektStatus = Database["public"]["Enums"]["objekt_status_enum"]
 
-const NUTZUNGEN: { wert: Nutzung; label: string }[] = (
-  ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"] as Nutzung[]
-).map((n) => ({ wert: n, label: n }))
+const NUTZUNGEN: { wert: Nutzung; label: string }[] = NUTZUNG_WERTE.map((n) => ({ wert: n, label: n }))
 const STATUS_OPTIONEN: { wert: ObjektStatus; label: string }[] = [
   { wert: "verfuegbar", label: "Verfügbar" },
   { wert: "reserviert", label: "Reserviert" },

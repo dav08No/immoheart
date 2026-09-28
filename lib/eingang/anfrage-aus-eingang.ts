@@ -1,10 +1,35 @@
 // Reine Ableitungen aus KI-erkannten Feldern (kein DB-Zugriff) -- so lassen sie sich
 // ohne Supabase-Mocking testen, siehe *.test.ts daneben.
+import { z } from "zod"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { Nutzung } from "@/types"
-import type { Database } from "@/types/database"
+import type { Database, Json } from "@/types/database"
 
 type AnfrageEinfuegen = Database["public"]["Tables"]["anfragen"]["Insert"]
+
+export type AnfrageQuelle = "mail" | "website"
+
+// Die Herkunft der Anfrage folgt dem Eingang: ein Suchauftrag vom Website-Formular soll
+// in den Anfragen auch als Website-Anfrage erscheinen, nicht als Mail.
+export function anfrageQuelle(nachrichtQuelle: string | null | undefined): AnfrageQuelle {
+  return nachrichtQuelle === "website" ? "website" : "mail"
+}
+
+// Kontaktangaben, die suchauftragNachricht (lib/suchauftrag.ts) unter
+// erkannte_felder.kontakt ablegt; defensiv geprüft, weil jsonb alles halten kann.
+const kontaktSchema = z.object({
+  name: z.string(),
+  email: z.string(),
+  telefon: z.string().nullable().catch(null),
+  nachricht: z.string().nullable().catch(null),
+})
+
+export type SuchanfrageKontakt = z.infer<typeof kontaktSchema>
+
+export function suchanfrageKontakt(erkannteFelder: Json | null): SuchanfrageKontakt | null {
+  const geprueft = z.object({ kontakt: kontaktSchema }).safeParse(erkannteFelder)
+  return geprueft.success ? geprueft.data.kontakt : null
+}
 
 // Ohne von der KI erkannten Firmennamen bleibt die Absenderadresse selbst der einzige
 // greifbare Bezeichner für die neu anzulegende Firmenzeile.
@@ -12,7 +37,12 @@ export function firmenName(felder: ErkannteFelder, von: string): string {
   return felder.firma ?? von
 }
 
-export function baueAnfrageEinfuegung(felder: ErkannteFelder, nutzung: Nutzung, firmaId: string): AnfrageEinfuegen {
+export function baueAnfrageEinfuegung(
+  felder: ErkannteFelder,
+  nutzung: Nutzung,
+  firmaId: string,
+  quelle: AnfrageQuelle
+): AnfrageEinfuegen {
   return {
     ort: felder.ort,
     nutzung,
@@ -21,6 +51,7 @@ export function baueAnfrageEinfuegung(felder: ErkannteFelder, nutzung: Nutzung, 
     budget_pro_m2: felder.budget_pro_m2,
     bezug: felder.bezug,
     firma_id: firmaId,
+    quelle,
   }
 }
 

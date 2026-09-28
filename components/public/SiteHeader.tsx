@@ -1,27 +1,30 @@
 import Link from "next/link"
 import { LogIn } from "lucide-react"
 import { HerzLogo } from "./HerzLogo"
+import { HauptNavigation } from "./HauptNavigation"
+import { MobilMenue } from "./MobilMenue"
+import { GlasHeader } from "./GlasHeader"
+import { ThemeUmschalter } from "@/components/theme/ThemeUmschalter"
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-surface/75 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4">
+    <GlasHeader>
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
         <Link href="/" aria-label="immoheart Startseite">
           <HerzLogo />
         </Link>
-        <nav aria-label="Hauptnavigation" className="flex-1">
-          <Link href="/objekte" className="rounded-md px-2 py-1 text-sm font-medium text-ink-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-            Objekte
-          </Link>
-        </nav>
+        <HauptNavigation className="hidden flex-1 md:flex" />
+        <span className="flex-1 md:hidden" />
+        <ThemeUmschalter />
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2"
+          className="hidden items-center gap-1.5 rounded-lg border border-line-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 md:inline-flex"
         >
           <LogIn className="size-4" aria-hidden />
           Login
         </Link>
+        <MobilMenue />
       </div>
-    </header>
+    </GlasHeader>
   )
 }

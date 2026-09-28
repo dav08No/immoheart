@@ -14,6 +14,11 @@
   --warn: #A85D14; --warn-bg: #FDF3E3;
   --crit: #9B3232; --crit-bg: #F8EBEB;
   --heart: #E24B5B; --heart-soft: #FCE9EB;
+  /* Hero-Fläche (Petrol→Navy) ist in beiden Modi dunkel, Schrift darauf immer hell. */
+  --hero-von: #065A82; --hero-bis: #21295C; --on-hero: #FFFFFF; --on-hero-2: #D5E6F0;
+  /* Haupt-Knopf im Hero: bewusst in beiden Modi gleich (weiss/Petrol), sonst kippt
+     der Kontrast auf dem dunklen Verlauf. */
+  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
 
   /* shadcn/ui-Namen, auf die bestehenden Tokens abgebildet */
   --background: var(--bg); --foreground: var(--ink);
@@ -38,6 +43,8 @@
   --warn: #E5B23C; --warn-bg: #3A2E14;
   --crit: #F0908B; --crit-bg: #3D2020;
   --heart: #F27A87; --heart-soft: #3D2027;
+  --hero-von: #0F4566; --hero-bis: #0E1330; --on-hero: #EEF2F7; --on-hero-2: #B8C2D4;
+  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
 }
 
 @theme inline {
@@ -63,6 +70,13 @@
   --color-crit-bg: var(--crit-bg);
   --color-heart: var(--heart);
   --color-heart-soft: var(--heart-soft);
+  --color-hero-von: var(--hero-von);
+  --color-hero-bis: var(--hero-bis);
+  --color-on-hero: var(--on-hero);
+  --color-on-hero-2: var(--on-hero-2);
+  --color-hero-cta-bg: var(--hero-cta-bg);
+  --color-hero-cta-bg-hover: var(--hero-cta-bg-hover);
+  --color-hero-cta-fg: var(--hero-cta-fg);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -102,6 +116,19 @@
 
 @theme {
   --animate-herzschlag: herzschlag 1.2s ease-in-out infinite;
+  --animate-pulsring: pulsring 2.4s ease-out infinite;
+  --animate-wort-ein: wort-ein 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Ring um Haupt-Knöpfe: Farbe kommt über currentColor vom Ring-Element. */
+@keyframes pulsring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 65%, transparent); }
+  60%, 100% { box-shadow: 0 0 0 14px color-mix(in srgb, currentColor 0%, transparent); }
+}
+
+@keyframes wort-ein {
+  from { opacity: 0; transform: translateY(0.4em); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes herzschlag {
@@ -112,5 +139,46 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-herzschlag { animation: none; }
+  .animate-herzschlag, .animate-pulsring, .animate-wort-ein { animation: none; }
+}
+
+@layer components {
+  /* Eigene, schlanke "prose"-Klasse für Textseiten (Impressum, Datenschutz) statt
+     eines Typography-Plugins: max. ~70 Zeichen Zeilenlänge, Überschriften in
+     Fraunces, Links unterstrichen. */
+  .text-inhalt {
+    max-width: 70ch;
+    color: var(--ink-2);
+  }
+  .text-inhalt :where(h2) {
+    margin-top: 2rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .text-inhalt :where(h2:first-child) {
+    margin-top: 0;
+  }
+  .text-inhalt :where(p, ul, ol) {
+    margin-top: 0.75rem;
+  }
+  .text-inhalt :where(ul, ol) {
+    padding-left: 1.25rem;
+  }
+  .text-inhalt :where(li) {
+    margin-top: 0.25rem;
+  }
+  .text-inhalt :where(li)::marker {
+    color: var(--ink-3);
+  }
+  .text-inhalt :where(a) {
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .text-inhalt :where(strong) {
+    color: var(--ink);
+    font-weight: 600;
+  }
 }

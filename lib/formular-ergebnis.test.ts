@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
-import { feldFehlerAus, limitErgebnis, zeitTokenErgebnis, zodFehlerErgebnis } from "./objektanfrage-ergebnis"
+import { feldFehlerAus, limitErgebnis, zeitTokenErgebnis, zodFehlerErgebnis } from "./formular-ergebnis"
 import { objektanfrageSchema } from "./website-eintrag"
 
 describe("feldFehlerAus", () => {

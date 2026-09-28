@@ -7,7 +7,7 @@ import type { Database } from "@/types/database"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 import { ergaenzeKontaktName, holeFirmaPerEmail, legeFirmaAn } from "@/lib/queries/firmen"
 import { holeObjekt } from "@/lib/queries/objekte"
-import { baueAnfrageEinfuegung, firmenName } from "@/lib/eingang/anfrage-aus-eingang"
+import { anfrageQuelle, baueAnfrageEinfuegung, firmenName, suchanfrageKontakt } from "@/lib/eingang/anfrage-aus-eingang"
 import { baueObjektanfrageEinfuegung, objektanfrageFelder, objektanfrageFirma } from "@/lib/eingang/anfrage-aus-objektanfrage"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 
@@ -49,12 +49,15 @@ export async function suchanfrageVorbereiten(
     )
   }
 
+  // Website-Suchaufträge bringen einen Kontaktnamen mit; Mail-Eingänge nicht.
+  const kontakt = suchanfrageKontakt(eingang.erkannte_felder)
   const firma = await firmaFuer(eingang.von, () => ({
     name: firmenName(felder, eingang.von),
     branche: felder.branche,
+    kontakt_name: kontakt?.name.trim() || null,
     kontakt_email: eingang.von,
   }))
-  return { firma, einfuegung: baueAnfrageEinfuegung(felder, nutzung, firma.id) }
+  return { firma, einfuegung: baueAnfrageEinfuegung(felder, nutzung, firma.id, anfrageQuelle(eingang.quelle)) }
 }
 
 // Das Objekt wird erst jetzt gelesen: es kann seit der Website-Anfrage geändert oder

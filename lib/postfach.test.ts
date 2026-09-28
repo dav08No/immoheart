@@ -10,6 +10,7 @@ import {
   kiAnzeige,
   nichtGespeicherteAnhaenge,
   objektDatenAus,
+  suchanfrageKopf,
   zaehleChips,
 } from "./postfach"
 
@@ -151,5 +152,21 @@ describe("fotoUebernahme", () => {
   it("erkennt HEIC/HEIF für den Hinweis", () => {
     expect(fotoUebernahme("image/heic")).toBe("heic")
     expect(fotoUebernahme("image/heif")).toBe("heic")
+  })
+})
+
+describe("suchanfrageKopf", () => {
+  const felder = { firma: "Muster AG", branche: null, ort: "Solothurn", bezug: null }
+
+  it("zählt bei Mail-Eingängen fehlende Felder und bietet die Rückfrage an", () => {
+    expect(suchanfrageKopf("mail", felder)).toEqual({ ueberschrift: "immoheart hat erkannt · 2 fehlt", rueckfrage: true })
+  })
+
+  it("ohne Lücken keine Rückfrage", () => {
+    expect(suchanfrageKopf("mail", { firma: "Muster AG" })).toEqual({ ueberschrift: "immoheart hat erkannt", rueckfrage: false })
+  })
+
+  it("zeigt Website-Suchaufträge neutral, ohne Zähler und ohne Rückfrage", () => {
+    expect(suchanfrageKopf("website", felder)).toEqual({ ueberschrift: "Angaben aus dem Formular", rueckfrage: false })
   })
 })

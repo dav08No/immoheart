@@ -1,4 +1,5 @@
 import { generiereText } from "./gemini"
+import { NUTZUNGEN } from "@/lib/nutzung"
 import type { Nutzung } from "@/types"
 
 export type ErkannteFelder = {
@@ -12,8 +13,6 @@ export type ErkannteFelder = {
   nutzung: Nutzung | null
 }
 
-const NUTZUNGEN: Nutzung[] = ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"]
-
 // Exportiert, damit einordnung.ts dieselbe Feldvalidierung nutzen kann statt
 // sie für ObjektDaten/ErkannteFelder zu duplizieren.
 export function alsString(wert: unknown): string | null {
@@ -25,7 +24,7 @@ export function alsZahl(wert: unknown): number | null {
 }
 
 export function alsNutzung(wert: unknown): Nutzung | null {
-  return typeof wert === "string" && (NUTZUNGEN as string[]).includes(wert) ? (wert as Nutzung) : null
+  return typeof wert === "string" && (NUTZUNGEN as readonly string[]).includes(wert) ? (wert as Nutzung) : null
 }
 
 // Google umschliesst JSON-Antworten manchmal mit Markdown-Codezäunen; beide

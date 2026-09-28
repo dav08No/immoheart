@@ -88,16 +88,6 @@ export async function zaehleNeueMatchesFuerObjekt(objektId: string): Promise<num
   return count ?? 0
 }
 
-export async function holeAnzahlOeffentlicherObjekte(): Promise<number | null> {
-  const supabase = await erstelleServerClient()
-  const { count, error } = await supabase.from("objekte_oeffentlich").select("id", { count: "exact", head: true })
-  if (error) {
-    console.error("holeAnzahlOeffentlicherObjekte", error)
-    return null
-  }
-  return count
-}
-
 const SEITE = 1000
 
 // Eine Abfrage für alle Objekte statt einer je Karte; gezählt wird in JS. Seitenweise,

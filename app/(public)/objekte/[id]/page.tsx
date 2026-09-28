@@ -6,8 +6,8 @@ import { ArrowLeft, MapPin } from "lucide-react"
 import { z } from "zod"
 import { aehnlicheObjekte } from "@/lib/objektsuche"
 import { holeOeffentlicheFotos, holeOeffentlicheObjekte, holeOeffentlichesObjekt } from "@/lib/queries/oeffentlich"
-import { erstelleZeitToken } from "@/lib/formular-schutz"
-import { formularGeheimnis } from "@/lib/formular-geheimnis"
+import { zeitTokenOderLeer } from "@/lib/formular-token"
+import { OPEN_GRAPH_BASIS, STANDARD_OG_BILD } from "@/lib/open-graph"
 import { AehnlicheObjekte } from "@/components/public/objekte/AehnlicheObjekte"
 import { AnfrageFormular } from "@/components/public/objekte/AnfrageFormular"
 import { Eckdaten } from "@/components/public/objekte/Eckdaten"
@@ -26,17 +26,6 @@ const ladeObjekt = cache(async (id: string) => {
   return holeOeffentlichesObjekt(id)
 })
 
-// Fehlt das Geheimnis, soll die Seite trotzdem erscheinen; das Formular holt bei
-// leerem Token beim Laden ein neues nach (zeitTokenHolen).
-function neuesZeitToken(): string {
-  try {
-    return erstelleZeitToken(Date.now(), formularGeheimnis())
-  } catch (fehler) {
-    console.error("Objektseite: Zeit-Token fehlgeschlagen", fehler)
-    return ""
-  }
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const objekt = await ladeObjekt(id)
@@ -47,10 +36,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // absolute, weil das Root-Layout sonst ein zweites "· immoheart" anhängt.
     title: { absolute: titel },
     description: beschreibung,
+    // Ersetzt das openGraph des Root-Layouts komplett -- daher Basis und ohne
+    // Titelbild das Standardbild selbst mitgeben.
     openGraph: {
+      ...OPEN_GRAPH_BASIS,
       title: titel,
       description: beschreibung,
-      images: objekt.titelbild ? [{ url: objekt.titelbild }] : undefined,
+      images: [{ url: objekt.titelbild ?? STANDARD_OG_BILD }],
     },
   }
 }
@@ -124,7 +116,7 @@ export default async function ObjektDetailPage({ params }: Props) {
 
         <aside className="flex flex-col gap-6 lg:self-start" aria-label="Eckdaten und Anfrage">
           <Eckdaten objekt={objekt} heute={heute} />
-          <AnfrageFormular objektId={objekt.id} zeitToken={neuesZeitToken()} nachrichtVorlage={vorbelegteNachricht(objekt.titel)} />
+          <AnfrageFormular objektId={objekt.id} zeitToken={zeitTokenOderLeer("Objektseite")} nachrichtVorlage={vorbelegteNachricht(objekt.titel)} />
         </aside>
       </div>
 

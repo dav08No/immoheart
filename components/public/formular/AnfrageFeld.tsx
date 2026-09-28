@@ -13,12 +13,18 @@ type Props = {
   pflicht?: boolean
   autoComplete?: string
   maxLength: number
+  // "numeric" für Zahlenfelder: Ziffern-Tastatur am Handy, aber ein Textfeld, damit
+  // die Eingabe unverändert beim Server ankommt und dort die Meldung erzeugt.
+  inputMode?: "numeric"
+  hinweis?: string
 }
 
 // Ein Feld mit Fehler direkt darunter: aria-invalid + aria-describedby, damit
 // Screenreader die Meldung beim Feld vorlesen.
-export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", mehrzeilig, pflicht = true, autoComplete, maxLength }: Props) {
+export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", mehrzeilig, pflicht = true, autoComplete, maxLength, inputMode, hinweis }: Props) {
   const fehlerId = `${id}-fehler`
+  const hinweisId = `${id}-hinweis`
+  const beschreibung = [hinweis && hinweisId, fehler && fehlerId].filter(Boolean).join(" ")
   const gemeinsam = {
     id,
     name: id,
@@ -26,8 +32,9 @@ export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", 
     required: pflicht,
     maxLength,
     autoComplete,
+    inputMode,
     "aria-invalid": fehler ? true : undefined,
-    "aria-describedby": fehler ? fehlerId : undefined,
+    "aria-describedby": beschreibung || undefined,
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onWechsel(e.target.value),
   }
   return (
@@ -45,6 +52,7 @@ export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", 
       ) : (
         <Input {...gemeinsam} type={typ} className="bg-surface" />
       )}
+      {hinweis && <p id={hinweisId} className="text-xs text-ink-3">{hinweis}</p>}
       {fehler && (
         <p id={fehlerId} className="text-sm text-crit">{fehler}</p>
       )}
