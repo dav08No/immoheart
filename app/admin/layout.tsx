@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import type { ReactNode } from "react"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { zaehleEntwuerfe, zaehleNachrichten } from "@/lib/queries/nachrichten"
@@ -9,6 +10,10 @@ import { MailAbrufer } from "@/components/layout/MailAbrufer"
 // Standard-Timeout; 60s ist das Maximum im Hobby-Plan. Gilt auch für Server
 // Actions, die von /admin-Seiten ausgelöst werden.
 export const maxDuration = 60
+
+// robots.ts verbietet /admin Crawlern bereits per Disallow, aber nicht jeder
+// Bot hält sich daran -- der Meta-Tag ist die zweite, zuverlässigere Sperre.
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const [profil, postfachAnzahl, entwurfAnzahl] = await Promise.all([
