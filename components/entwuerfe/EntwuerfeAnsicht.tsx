@@ -56,7 +56,9 @@ export function EntwuerfeAnsicht({ entwuerfe, startId }: { entwuerfe: EntwurfMit
         </Panel>
       </div>
       <div ref={detailRef} className="min-w-0 scroll-mt-3">
-        <Panel polster={false} className="flex flex-col overflow-hidden">
+        {/* Kein overflow-hidden: es würde die sticky Aktionsleiste des Editors an diese
+            (nie scrollende) Fläche binden statt an den scrollenden Seiteninhalt. */}
+        <Panel polster={false} className="flex flex-col">
           <ZurueckZurListe onKlick={zurListe} />
           {!ausgewaehlt && (
             <Leerzustand text={entwuerfe.length === 0 ? "Keine offenen Entwürfe." : "Kein Entwurf ausgewählt."} />

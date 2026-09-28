@@ -130,7 +130,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
           Sekundär/gefährlich (Speichern/Löschen) links -- bleibt beim Scrollen langer
           Mailtexte sichtbar, wie der Drawer-Fuss in Matches/Anfragen. */}
       {!reserviert && (
-        <div className="sticky bottom-0 flex flex-col gap-3 border-t border-line bg-surface px-4 py-3 sm:px-5">
+        <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-b-panel border-t border-line bg-surface px-4 py-3 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap gap-2">
               <Button variante="gefaehrlich" onClick={() => setBestaetigung("loeschen")} disabled={gesperrt}>
