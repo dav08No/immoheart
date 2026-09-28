@@ -1,8 +1,12 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { BarChart3, Building2, ExternalLink, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { BarChart3, Building2, ExternalLink, Heart, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { NEUE_MAILS_EREIGNIS, zeigeMailToast, type NeueMailsDetail } from "@/lib/neue-mails-ereignis"
 import type { Profil } from "@/types"
 
 const EINTRAEGE = [
@@ -24,6 +28,26 @@ export function Sidebar({
   entwurfAnzahl: number
 }) {
   const pfad = usePathname()
+  const router = useRouter()
+  // Zählt Ereignisse statt nur boolean an/aus: als React-`key` unten erzwingt eine
+  // Änderung einen Remount des Herz-Icons/Badges, was die (nicht-endlose, siehe
+  // globals.css) CSS-Animation zuverlässig neu startet -- ein zweites "neue Mails"-
+  // Ereignis mitten in der ersten Animation würde sonst ignoriert.
+  const [herzschlagNr, setHerzschlagNr] = useState(0)
+
+  useEffect(() => {
+    function beiNeueMails(ereignis: Event) {
+      const { neu } = (ereignis as CustomEvent<NeueMailsDetail>).detail
+      setHerzschlagNr((nr) => nr + 1)
+      if (!zeigeMailToast(pfad)) return
+      toast(neu === 1 ? "1 neue Mail" : `${neu} neue Mails`, {
+        action: { label: "Postfach öffnen", onClick: () => router.push("/admin/postfach") },
+      })
+    }
+    window.addEventListener(NEUE_MAILS_EREIGNIS, beiNeueMails)
+    return () => window.removeEventListener(NEUE_MAILS_EREIGNIS, beiNeueMails)
+  }, [pfad, router])
+
   // filter(Boolean) fängt doppelte Leerzeichen und leere Namen ab.
   const initialen =
     profil.name
@@ -39,7 +63,15 @@ export function Sidebar({
 
   return (
     <aside className="flex h-screen w-[206px] flex-none flex-col border-r border-line bg-surface">
-      <div className="flex items-center gap-2 px-4 pb-3.5 pt-4">
+      <div className="flex items-center gap-1.5 px-4 pb-3.5 pt-4">
+        {/* Sonst ruht das Icon (kein Dauer-Herzschlag wie HerzLogo auf der Website --
+            im Admin liefe das den ganzen Tag mit); key erzwingt den Neustart der
+            "zweimal kräftig"-Animation bei jedem neuen Ereignis. */}
+        <Heart
+          key={herzschlagNr}
+          className={cn("size-4 fill-heart text-heart", herzschlagNr > 0 && "animate-herzschlag-stark")}
+          aria-hidden
+        />
         <span className="font-display text-lg font-bold text-ink">immoheart</span>
       </div>
       <span className="border-b border-line px-4 pb-3.5 text-xs text-ink-3">Admin</span>
@@ -63,7 +95,15 @@ export function Sidebar({
               <Icon className="size-4 opacity-80" aria-hidden />
               {label}
               {badge > 0 && (
-                <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-on-brand">
+                <span
+                  key={ziel === "/admin/postfach" ? herzschlagNr : undefined}
+                  className={cn(
+                    "ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-on-brand",
+                    // Nur das Postfach-Badge pulsiert beim Ereignis -- Entwürfe hat
+                    // nichts mit dem Mailabruf zu tun.
+                    ziel === "/admin/postfach" && herzschlagNr > 0 && "animate-herzschlag-stark"
+                  )}
+                >
                   {badge}
                 </span>
               )}

@@ -9,6 +9,7 @@
 "use client"
 
 import { mailAbrufen, verarbeiteNaechste } from "@/app/actions/eingang"
+import { meldeNeueMails } from "@/lib/neue-mails-ereignis"
 
 let abrufLaeuft = false
 
@@ -29,6 +30,9 @@ export async function fuehreAbrufRundeAus(
   abrufLaeuft = true
   try {
     const abruf = await mailAbrufen()
+    // Ein Ereignis pro Runde mit neuer Post -- Sidebar (Herzschlag) und ggf. ein Toast
+    // hören beide zu, unabhängig davon, welcher der beiden Aufrufer diese Runde gestartet hat.
+    meldeNeueMails(abruf.neu)
     let verarbeitet = 0
     let fehlgeschlagen = 0
     for (let i = 0; i < maxEinordnungen; i++) {

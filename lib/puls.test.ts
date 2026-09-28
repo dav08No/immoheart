@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { puls, pulsFarbe } from "./puls"
+import { puls, pulsDauerMs, pulsFarbe } from "./puls"
 
 function vorTagen(tage: number): Date {
   return new Date(Date.now() - tage * 86_400_000)
@@ -33,5 +33,23 @@ describe("pulsFarbe", () => {
   it("ist kritisch unter 25", () => {
     expect(pulsFarbe(24)).toBe("kritisch")
     expect(pulsFarbe(4)).toBe("kritisch")
+  })
+})
+
+describe("pulsDauerMs", () => {
+  it("schlägt ruhig (3s) bei vollem, gesundem Puls", () => {
+    expect(pulsDauerMs(100)).toBe(3000)
+  })
+  it("schlägt schnell (1.2s) bei Puls 0", () => {
+    expect(pulsDauerMs(0)).toBe(1200)
+  })
+  it("liegt in der Mitte bei Puls 50", () => {
+    expect(pulsDauerMs(50)).toBe(2100)
+  })
+  it("klemmt Werte über 100 auf das gesunde Tempo", () => {
+    expect(pulsDauerMs(140)).toBe(3000)
+  })
+  it("klemmt negative Werte auf das kritische Tempo", () => {
+    expect(pulsDauerMs(-10)).toBe(1200)
   })
 })

@@ -1,4 +1,4 @@
-import { puls, pulsFarbe } from "@/lib/puls"
+import { puls, pulsDauerMs, pulsFarbe } from "@/lib/puls"
 
 function ekgPfad(w: number, h: number, wert: number, beats: number): string {
   const mid = h / 2
@@ -34,13 +34,26 @@ export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
   const W = 1000
   const H = 72
   const pfad = hatDaten ? ekgPfad(W, H, durchschnitt, 9) : `M0 ${H / 2} L${W} ${H / 2}`
+  // Gesund = ruhiger Umlauf, kritisch = schneller (lib/puls.ts) -- als Inline-Style statt
+  // Tailwind-Klasse, weil der Wert pro Render/Instanz unterschiedlich ist.
+  const ekgDauerMs = pulsDauerMs(durchschnitt)
 
   return (
     <div className="overflow-hidden rounded-card border border-line bg-surface p-4">
       <div className="flex flex-wrap items-end gap-5">
         <div>
-          <div className="font-display text-4xl font-bold" style={{ color: farbe }}>
-            {hatDaten ? durchschnitt : "–"}
+          <div className="flex items-center gap-2">
+            <div className="font-display text-4xl font-bold" style={{ color: farbe }}>
+              {hatDaten ? durchschnitt : "–"}
+            </div>
+            {hatDaten && (
+              // Live-Punkt: reine CSS-Animation (pulsring, bereits reduced-motion-fest),
+              // eingefärbt über currentColor.
+              <span className="relative inline-flex size-2.5 shrink-0" style={{ color: farbe }} aria-hidden>
+                <span className="absolute inset-0 animate-pulsring rounded-full" />
+                <span className="size-2.5 rounded-full" style={{ background: "currentColor" }} />
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-xs text-ink-3">
             {hatDaten ? "Bestandspuls" : "Bestandspuls · keine Daten"}
@@ -58,12 +71,14 @@ export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
           {hatDaten && (
             <>
               <path d={pfad} fill="none" stroke={farbe} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity={0.26} />
+              {/* Reine CSS-Animation statt SMIL <animate>: nur so lässt sich die Dauer per
+                  Inline-Style setzen und über die globale prefers-reduced-motion-Regel
+                  (app/globals.css) abschalten -- SMIL ignoriert diese Media Query. */}
               <path
                 d={pfad} fill="none" stroke={farbe} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
                 strokeDasharray="150 3000" strokeDashoffset="150"
-              >
-                <animate attributeName="stroke-dashoffset" from="150" to="-3000" dur="7s" repeatCount="indefinite" />
-              </path>
+                className="animate-ekg-lauf" style={{ animationDuration: `${ekgDauerMs}ms` }}
+              />
             </>
           )}
         </svg>

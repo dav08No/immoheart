@@ -120,8 +120,14 @@
 
 @theme {
   --animate-herzschlag: herzschlag 1.2s ease-in-out infinite;
+  /* Zwei kräftige Schläge statt Dauerschleife -- für den einmaligen "neue Mail"-Effekt
+     in der Sidebar (Logo + Badge), react über einen key-Remount neu gestartet. */
+  --animate-herzschlag-stark: herzschlag 0.75s ease-in-out 2;
   --animate-pulsring: pulsring 2.4s ease-out infinite;
   --animate-wort-ein: wort-ein 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Dauer wird pro PulsHero-Instanz per Inline-style (animationDuration) überschrieben
+     -- gesund schlägt ruhig, kritisch schnell (lib/puls.ts pulsDauerMs). */
+  --animate-ekg-lauf: ekg-lauf 3s linear infinite;
 }
 
 /* Ring um Haupt-Knöpfe: Farbe kommt über currentColor vom Ring-Element. */
@@ -142,8 +148,18 @@
   30% { transform: scale(1.12); }
 }
 
+/* Die EKG-Linie in PulsHero: läuft am Pfad entlang (stroke-dasharray/-dashoffset sind
+   dort als 150/3000 gesetzt, siehe PulsHero.tsx). */
+@keyframes ekg-lauf {
+  from { stroke-dashoffset: 150; }
+  to { stroke-dashoffset: -3000; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-herzschlag, .animate-pulsring, .animate-wort-ein { animation: none; }
+  .animate-herzschlag, .animate-herzschlag-stark, .animate-pulsring, .animate-wort-ein { animation: none; }
+  /* ekg-lauf statisch: volle, durchgezogene Linie statt des laufenden Punkts --
+     die dash-Werte kommen sonst aus dem SVG-Attribut, nicht aus dem Keyframe. */
+  .animate-ekg-lauf { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
 }
 
 @layer components {
