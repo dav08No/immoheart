@@ -114,3 +114,44 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-herzschlag { animation: none; }
 }
+
+@layer components {
+  /* Eigene, schlanke "prose"-Klasse für Textseiten (Impressum, Datenschutz) statt
+     eines Typography-Plugins: max. ~70 Zeichen Zeilenlänge, Überschriften in
+     Fraunces, Links unterstrichen. */
+  .text-inhalt {
+    max-width: 70ch;
+    color: var(--ink-2);
+  }
+  .text-inhalt :where(h2) {
+    margin-top: 2rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .text-inhalt :where(h2:first-child) {
+    margin-top: 0;
+  }
+  .text-inhalt :where(p, ul, ol) {
+    margin-top: 0.75rem;
+  }
+  .text-inhalt :where(ul, ol) {
+    padding-left: 1.25rem;
+  }
+  .text-inhalt :where(li) {
+    margin-top: 0.25rem;
+  }
+  .text-inhalt :where(li)::marker {
+    color: var(--ink-3);
+  }
+  .text-inhalt :where(a) {
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .text-inhalt :where(strong) {
+    color: var(--ink);
+    font-weight: 600;
+  }
+}
