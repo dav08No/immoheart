@@ -1,8 +1,11 @@
 // Reine Aggregationen über nachrichten (Entwürfe, Ein-/Ausgang) für die Admin-Kennzahlenseite.
 import { isoWocheSchluessel, letzteMonate, letzteWochen, monatLabel, monatSchluessel, wocheLabel } from "./zeitraeume"
 
-// Entwürfe im Erstellungsmonat gebucketet, mit ihrem späteren Schicksal (gesendet
-// oder gelöscht) -- ein Entwurf ohne beides ist noch offen und zählt in keiner Spalte.
+// Gebucketet nach Ereignisdatum, nicht nach Erstellungsdatum: "gesendet" im Monat des
+// tatsächlichen Versands (gesendet_am), "gelöscht" im Monat der Löschung (geloescht_am).
+// Ein im August erstellter, aber erst im September versandter Entwurf zählt also in
+// September -- alles andere würde die Kennzahl gegenüber dem realen Verlauf verzerren.
+// Ein Entwurf ohne beides ist noch offen und zählt in keiner Spalte.
 export function entwuerfeVerlauf(
   entwuerfe: { richtung: string; created_at: string; gesendet_am: string | null; geloescht_am: string | null }[],
   jetzt: Date,
@@ -11,14 +14,15 @@ export function entwuerfeVerlauf(
   const monate_ = letzteMonate(jetzt, monate)
   const erlaubt = new Set(monate_)
   const zaehler = new Map<string, { gesendet: number; geloescht: number }>()
-  for (const e of entwuerfe) {
-    if (e.richtung !== "entwurf") continue
-    const schluessel = monatSchluessel(new Date(e.created_at))
-    if (!erlaubt.has(schluessel)) continue
+  const zaehle = (schluessel: string, feld: "gesendet" | "geloescht"): void => {
+    if (!erlaubt.has(schluessel)) return
     const eintrag = zaehler.get(schluessel) ?? { gesendet: 0, geloescht: 0 }
-    if (e.gesendet_am) eintrag.gesendet++
-    else if (e.geloescht_am) eintrag.geloescht++
+    eintrag[feld]++
     zaehler.set(schluessel, eintrag)
+  }
+  for (const e of entwuerfe) {
+    if (e.richtung === "gesendet" && e.gesendet_am) zaehle(monatSchluessel(new Date(e.gesendet_am)), "gesendet")
+    else if (e.richtung === "entwurf" && e.geloescht_am) zaehle(monatSchluessel(new Date(e.geloescht_am)), "geloescht")
   }
   return monate_.map((monat) => ({ monat, label: monatLabel(monat), ...(zaehler.get(monat) ?? { gesendet: 0, geloescht: 0 }) }))
 }

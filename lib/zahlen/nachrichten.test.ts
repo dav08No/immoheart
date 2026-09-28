@@ -9,14 +9,15 @@ describe("entwuerfeVerlauf", () => {
     ])
   })
 
-  it("zählt gesendet/gelöscht im Erstellungsmonat, ignoriert andere Richtungen und ausserhalb liegende Monate", () => {
+  it("zählt gesendet im Versandmonat und gelöscht im Löschmonat -- nicht im Erstellungsmonat", () => {
     const ergebnis = entwuerfeVerlauf(
       [
-        { richtung: "entwurf", created_at: "2026-09-01T10:00:00Z", gesendet_am: "2026-09-02T10:00:00Z", geloescht_am: null },
+        // Entwurf im August erstellt, aber erst im September versandt -> zählt in September
+        { richtung: "gesendet", created_at: "2026-08-20T10:00:00Z", gesendet_am: "2026-09-02T10:00:00Z", geloescht_am: null },
         { richtung: "entwurf", created_at: "2026-09-03T10:00:00Z", gesendet_am: null, geloescht_am: "2026-09-04T10:00:00Z" },
         { richtung: "entwurf", created_at: "2026-09-05T10:00:00Z", gesendet_am: null, geloescht_am: null }, // noch offen -> zählt nirgends
-        { richtung: "gesendet", created_at: "2026-09-06T10:00:00Z", gesendet_am: "2026-09-06T10:00:00Z", geloescht_am: null }, // keine Entwurf-Richtung
-        { richtung: "entwurf", created_at: "2026-01-01T10:00:00Z", gesendet_am: "2026-01-02T10:00:00Z", geloescht_am: null }, // ausserhalb
+        { richtung: "gesendet", created_at: "2026-09-06T10:00:00Z", gesendet_am: null, geloescht_am: null }, // Datenfehler: gesendet ohne gesendet_am -> ignoriert
+        { richtung: "gesendet", created_at: "2026-01-01T10:00:00Z", gesendet_am: "2026-01-02T10:00:00Z", geloescht_am: null }, // ausserhalb der letzten 2 Monate
       ],
       new Date("2026-09-15T10:00:00Z"),
       2
