@@ -65,7 +65,7 @@ function Inhalt({ anhang, objekte, vorauswahl, onSchliessen }: Props & { anhang:
         <DialogTitle>Als Objektfoto übernehmen</DialogTitle>
         <DialogDescription className="truncate">{anhang.dateiname}</DialogDescription>
       </DialogHeader>
-      <label className="flex flex-col gap-1 text-xs text-ink-3">
+      <label className="flex flex-col gap-1 text-xs text-ink-2">
         Objekt
         <select
           value={auswahl}

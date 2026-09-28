@@ -3,13 +3,15 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { PostfachKopf } from "./PostfachKopf"
+import { AbrufFehler } from "./PostfachKopf"
 import { PostfachFilter } from "./PostfachFilter"
 import { NachrichtenListe } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
 import { GesendetDetail } from "./GesendetDetail"
 import { useListeDetail } from "@/components/layout/useListeDetail"
 import { ZurueckZurListe } from "@/components/layout/ZurueckZurListe"
+import { Panel } from "@/components/ui/Panel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
 import { alsGelesenMarkieren } from "@/app/actions/eingang-aktionen"
 import { filtereNachrichten, istUngelesen, zaehleChips, type KategorieChip, type PostfachFilter as Filter } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
@@ -81,41 +83,47 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen,
     toast.info("Keine Rückfrage vorhanden.")
   }
 
+  // Ref-Hüllen um die Panels: Panel reicht keinen ref durch, useListeDetail braucht ihn fürs Scrollen.
   return (
     <div className="flex flex-col gap-4">
-      <PostfachKopf abrufStatus={abrufStatus} />
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-        <div ref={listeRef} className="scroll-mt-3 rounded-card border border-line bg-surface">
-          <PostfachFilter
-            filter={filter}
-            chip={chip}
-            zaehler={zaehleChips(nachrichten, filter)}
-            onFilter={filterWechseln}
-            onChip={setChip}
-          />
-          <NachrichtenListe
-            nachrichten={sichtbar}
-            ausgewaehlteId={ausgewaehlteId}
-            onAuswahl={(id) => {
-              auswaehlen(id)
-              zumDetail()
-            }}
-          />
-        </div>
-        <div ref={detailRef} className="min-w-0 scroll-mt-3 rounded-card border border-line bg-surface">
-          <ZurueckZurListe onKlick={zurListe} />
-          {!ausgewaehlt && <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>}
-          {ausgewaehlt?.richtung === "eingang" && (
-            <EingangDetail
-              key={ausgewaehlt.id}
-              nachricht={ausgewaehlt}
-              entwuerfe={entwuerfe}
-              anfragen={anfragen}
-              objekte={objekte}
-              onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
+      <AbrufFehler abrufStatus={abrufStatus} />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+        <div ref={listeRef} className="min-w-0 scroll-mt-3">
+          <Panel as="section" polster={false}>
+            <h2 className="sr-only">Nachrichten</h2>
+            <PostfachFilter
+              filter={filter}
+              chip={chip}
+              zaehler={zaehleChips(nachrichten, filter)}
+              onFilter={filterWechseln}
+              onChip={setChip}
             />
-          )}
-          {ausgewaehlt?.richtung === "gesendet" && <GesendetDetail nachricht={ausgewaehlt} />}
+            <NachrichtenListe
+              nachrichten={sichtbar}
+              ausgewaehlteId={ausgewaehlteId}
+              onAuswahl={(id) => {
+                auswaehlen(id)
+                zumDetail()
+              }}
+            />
+          </Panel>
+        </div>
+        <div ref={detailRef} className="min-w-0 scroll-mt-3">
+          <Panel polster={false} className="overflow-hidden">
+            <ZurueckZurListe onKlick={zurListe} />
+            {!ausgewaehlt && <Leerzustand text="Nachricht wählen." />}
+            {ausgewaehlt?.richtung === "eingang" && (
+              <EingangDetail
+                key={ausgewaehlt.id}
+                nachricht={ausgewaehlt}
+                entwuerfe={entwuerfe}
+                anfragen={anfragen}
+                objekte={objekte}
+                onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
+              />
+            )}
+            {ausgewaehlt?.richtung === "gesendet" && <GesendetDetail nachricht={ausgewaehlt} />}
+          </Panel>
         </div>
       </div>
     </div>

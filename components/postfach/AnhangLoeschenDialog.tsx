@@ -47,7 +47,8 @@ export function AnhangLoeschenDialog({ anhang, onSchliessen, onGeloescht }: Prop
           <Button onClick={onSchliessen} disabled={laeuft}>
             Abbrechen
           </Button>
-          <Button variante="primaer" disabled={laeuft} onClick={() => void loeschen()}>
+          {/* Endgültiges Löschen: rot statt Petrol, damit es nicht wie eine Routineaktion wirkt. */}
+          <Button variante="gefaehrlich" disabled={laeuft} onClick={() => void loeschen()}>
             {laeuft ? "Wird gelöscht…" : "Löschen"}
           </Button>
         </DialogFooter>

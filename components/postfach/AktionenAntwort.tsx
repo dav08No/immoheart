@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { anfrageZuordnen, feldUebernehmen } from "@/app/actions/eingang-aktionen"
 import { feldUnterscheidetSich, UEBERNEHMBARE_FELDER } from "@/lib/eingang/anfrage-aus-eingang"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
@@ -32,8 +33,8 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
     : []
 
   return (
-    <section aria-label="Antwort" className="mt-4 flex flex-col gap-3">
-      <div className="border-b border-line pb-1.5 text-xs text-ink-3">Antwort auf eine Anfrage</div>
+    <section aria-label="Antwort" className="flex flex-col gap-3">
+      <Abschnittstitel>Antwort auf eine Anfrage</Abschnittstitel>
       {nachricht.anfrage_id ? (
         <Link
           href={`/admin/anfragen?id=${nachricht.anfrage_id}`}
@@ -43,7 +44,7 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
         </Link>
       ) : (
         <div className="flex flex-wrap items-end gap-2">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-ink-3">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-ink-2">
             Keine Anfrage erkannt · Anfrage zuordnen
             <select
               value={auswahl}
@@ -72,12 +73,12 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
       )}
       {felder && neueAngaben.length > 0 && (
         <div className="flex flex-col gap-1.5">
-          <div className="text-xs text-ink-3">Neue Angaben in dieser Mail</div>
+          <div className="text-xs text-ink-2">Neue Angaben in dieser Mail</div>
           {neueAngaben.map((feld) => {
             const wert = feld === "nutzung" ? nutzungLabel(felder.nutzung) : String(felder[feld])
             return (
               <div key={feld} className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5">
-                <span className="w-20 flex-none text-xs sm:w-28 text-ink-3">{FELD_LABELS[feld]}</span>
+                <span className="w-20 flex-none text-xs sm:w-28 text-ink-2">{FELD_LABELS[feld]}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{wert}</span>
                 <Button
                   disabled={!nachricht.anfrage_id || laufend !== null}
@@ -91,7 +92,7 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
               </div>
             )
           })}
-          {!nachricht.anfrage_id && <p className="text-xs text-ink-3">Zum Übernehmen zuerst eine Anfrage zuordnen.</p>}
+          {!nachricht.anfrage_id && <p className="text-xs text-ink-2">Zum Übernehmen zuerst eine Anfrage zuordnen.</p>}
         </div>
       )}
     </section>

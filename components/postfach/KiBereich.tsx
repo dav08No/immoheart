@@ -4,6 +4,8 @@ import { useState } from "react"
 import { AlertTriangle, Clock, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
 import { Button } from "@/components/ui/Button"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
+import { cn } from "@/lib/utils"
 import { erneutVerarbeiten, kategorieAendern } from "@/app/actions/eingang"
 import { chipVon, kiAnzeige, KATEGORIE_CHIPS, type KategorieChip } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
@@ -26,9 +28,10 @@ export function KiBereich({ nachricht, laufend, ausfuehren }: Props) {
   }
 
   return (
-    <section aria-label="Einordnung" className="mt-4 flex flex-col gap-2 rounded-lg border border-line bg-surface-2 p-3">
+    <section aria-label="Einordnung" className="flex flex-col gap-2">
+      <Abschnittstitel>KI-Einordnung</Abschnittstitel>
       {anzeige === "wartet" && (
-        <p className="flex items-center gap-1.5 text-xs text-ink-3">
+        <p className="flex items-center gap-1.5 text-xs text-ink-2">
           <Clock className="size-3.5" aria-hidden /> Noch nicht eingeordnet · „Jetzt abrufen“ ordnet offene Mails ein.
         </p>
       )}
@@ -49,13 +52,13 @@ export function KiBereich({ nachricht, laufend, ausfuehren }: Props) {
           </Button>
         </div>
       )}
-      <label className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
+      <label className="flex flex-wrap items-center gap-2 text-xs text-ink-2">
         <span>Kategorie</span>
         <select
           value={aktuell ?? ""}
           disabled={gesperrt}
           onChange={(e) => setNeueKategorie(e.target.value as KategorieChip)}
-          className={`${AUSWAHL_KLASSE} w-auto py-1 text-xs`}
+          className={cn(AUSWAHL_KLASSE, "w-auto py-1 text-xs")}
         >
           <option value="" disabled>
             nicht eingeordnet

@@ -1,3 +1,4 @@
+import { EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import type { AnfrageWerte } from "@/lib/eingang/anfrage-aus-eingang"
 
 // Minimaler Ausschnitt eines Entwurfs (holeEntwuerfe, page.tsx): reicht, um zu einem
@@ -28,7 +29,8 @@ export const FELD_LABELS = {
   nutzung: "Nutzung",
 } as const
 
-export const AUSWAHL_KLASSE = "w-full rounded-lg border border-line-2 bg-surface px-3 py-2 text-sm text-ink disabled:opacity-60"
+// Gleiche Felder wie in allen Formularen (Rahmen >= 3:1, Fokusring); Name bleibt für bestehende Aufrufer.
+export const AUSWAHL_KLASSE = EINGABE_KLASSE
 
 // Nur Titel + Ort für die Objekt-Auswahl (Mail-Bild als Objektfoto), keine Adresse.
 export type ObjektOption = { id: string; label: string }

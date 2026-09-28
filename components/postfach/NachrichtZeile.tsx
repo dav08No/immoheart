@@ -1,20 +1,20 @@
-import { AlertTriangle, ArrowDownLeft, Check, Clock, Globe, Loader2 } from "lucide-react"
-import { Badge } from "@/components/shadcn/badge"
+import { AlertTriangle, ArrowDownLeft, Check, Clock, Globe, Loader2, Paperclip } from "lucide-react"
+import { ListenZeile } from "@/components/ui/ListenZeile"
+import { StatusChip } from "@/components/ui/StatusChip"
 import { anhangBadges, chipVon, istUngelesen, kiAnzeige, KATEGORIE_CHIPS } from "@/lib/postfach"
 import { formatUhrzeit, formatZeitpunkt } from "@/lib/format"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 
-const SYMBOL = "size-3.5 flex-none"
-const ZEILE =
-  "flex w-full gap-2.5 p-3 text-left hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+const SYMBOL = "size-3.5 flex-none self-center"
 const KACHEL = "grid size-[26px] flex-none place-items-center rounded-lg"
 
+// text-ink-2 statt ink-3 für "wartet": ein Statussymbol braucht >= 3:1.
 function KiSymbol({ status }: { status: string | null }) {
   const anzeige = kiAnzeige(status)
   if (anzeige === "laeuft") {
     return <Loader2 className={`${SYMBOL} animate-spin text-brand`} aria-label="wird eingeordnet" />
   }
-  if (anzeige === "wartet") return <Clock className={`${SYMBOL} text-ink-3`} aria-label="wartet auf Einordnung" />
+  if (anzeige === "wartet") return <Clock className={`${SYMBOL} text-ink-2`} aria-label="wartet auf Einordnung" />
   if (anzeige === "fehler") {
     return <AlertTriangle className={`${SYMBOL} text-crit`} aria-label="Einordnung fehlgeschlagen" />
   }
@@ -46,42 +46,36 @@ function kurzzeit(iso: string): string {
 type Props = { nachricht: PostfachNachricht; ausgewaehlt: boolean; onAuswahl: () => void }
 
 export function NachrichtZeile({ nachricht, ausgewaehlt, onAuswahl }: Props) {
-  const ungelesen = istUngelesen(nachricht)
   const chip = chipVon(nachricht.kategorie)
   const kategorie = KATEGORIE_CHIPS.find((k) => k.wert === chip)?.label
   const zeit = nachricht.empfangen_am ?? nachricht.gesendet_am ?? nachricht.created_at
   const person = nachricht.richtung === "gesendet" ? `An ${nachricht.an}` : nachricht.von
+  const anhaenge = anhangBadges(nachricht.anhangTypen)
+  // Leere Badge-Zeile vermeiden: ListenZeile rendert sonst einen leeren Abstand.
+  const hatBadges = kategorie !== undefined || anhaenge.length > 0 || kiAnzeige(nachricht.ki_status) !== null
 
   return (
-    <button
-      type="button"
+    <ListenZeile
+      titel={nachricht.betreff || "(ohne Betreff)"}
+      unterzeile={person}
+      zeit={kurzzeit(zeit)}
+      icon={<Richtungssymbol nachricht={nachricht} />}
+      ungelesen={istUngelesen(nachricht)}
+      ausgewaehlt={ausgewaehlt}
       onClick={onAuswahl}
-      aria-current={ausgewaehlt ? "true" : undefined}
-      className={`${ZEILE} ${ausgewaehlt ? "bg-brand-soft" : ""}`}
-    >
-      <Richtungssymbol nachricht={nachricht} />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex items-center gap-1.5">
-          {ungelesen && (
-            <span className="size-2 flex-none rounded-full bg-brand" aria-hidden />
-          )}
-          <span className={`truncate text-sm text-ink ${ungelesen ? "font-bold" : "font-medium"}`}>
-            {ungelesen && <span className="sr-only">Ungelesen: </span>}
-            {nachricht.betreff || "(ohne Betreff)"}
-          </span>
-          <span className="ml-auto flex-none text-[11px] tabular-nums text-ink-3">{kurzzeit(zeit)}</span>
-        </span>
-        <span className="truncate text-xs text-ink-3">{person}</span>
-        <span className="flex flex-wrap items-center gap-1">
-          <KiSymbol status={nachricht.ki_status} />
-          {kategorie && <span className="text-[11px] text-ink-3">{kategorie}</span>}
-          {anhangBadges(nachricht.anhangTypen).map((text) => (
-            <Badge key={text} variant="outline" className="px-1.5 py-0 text-[10px] text-ink-2">
-              {text}
-            </Badge>
-          ))}
-        </span>
-      </span>
-    </button>
+      badges={
+        hatBadges ? (
+          <>
+            <KiSymbol status={nachricht.ki_status} />
+            {kategorie && <StatusChip>{kategorie}</StatusChip>}
+            {anhaenge.map((text) => (
+              <StatusChip key={text} icon={<Paperclip aria-hidden />}>
+                {text}
+              </StatusChip>
+            ))}
+          </>
+        ) : undefined
+      }
+    />
   )
 }

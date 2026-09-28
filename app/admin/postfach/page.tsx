@@ -1,4 +1,5 @@
-import { Header } from "@/components/layout/Header"
+import { SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
+import { PostfachKopf } from "@/components/postfach/PostfachKopf"
 import { PostfachAnsicht } from "@/components/postfach/PostfachAnsicht"
 import type { AnfrageOption, ObjektOption } from "@/components/postfach/typen"
 import { holeEntwuerfe } from "@/lib/queries/nachrichten"
@@ -38,8 +39,9 @@ export default async function PostfachPage() {
 
   return (
     <>
-      <Header titel="Postfach" untertitel="Eingang und Gesendet" />
-      <main className="flex-1 overflow-y-auto p-5">
+      {/* Client-Komponente: der Abruf-Knopf im Seitenkopf hält Fortschritt und Sperre. */}
+      <PostfachKopf abrufStatus={abrufStatus} />
+      <main className={SEITEN_INHALT_KLASSE}>
         <PostfachAnsicht
           nachrichten={nachrichten}
           entwuerfe={entwurfVerweise}

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Feld } from "@/components/ui/Feld"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { buttonVariants } from "@/components/shadcn/button"
 import { objektDatenAus } from "@/lib/postfach"
 import { formatFlaeche, formatPreis } from "@/lib/format"
@@ -10,8 +11,8 @@ export function AktionenObjektangebot({ nachricht }: { nachricht: PostfachNachri
   const objekt = objektDatenAus(nachricht.erkannte_felder)
 
   return (
-    <section aria-label="Objektangebot" className="mt-4">
-      <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Angebotenes Objekt</div>
+    <section aria-label="Objektangebot">
+      <Abschnittstitel className="mb-2.5">Angebotenes Objekt</Abschnittstitel>
       {objekt ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <Feld label="Titel" wert={objekt.titel ?? null} />
@@ -23,7 +24,7 @@ export function AktionenObjektangebot({ nachricht }: { nachricht: PostfachNachri
           <Feld label="Verfügbar ab" wert={objekt.verfuegbar_ab ?? null} />
         </div>
       ) : (
-        <p className="text-xs text-ink-3">Keine Objektdaten erkannt.</p>
+        <p className="text-xs text-ink-2">Keine Objektdaten erkannt.</p>
       )}
       {objekt?.beschreibung && <p className="mt-2 whitespace-pre-wrap text-sm text-ink-2">{objekt.beschreibung}</p>}
       <div className="mt-3.5">
