@@ -43,6 +43,10 @@ export default function DatenschutzPage() {
           den Ortsnamen anzeigt.
         </li>
       </ul>
+      <p>
+        Diese Dienstleister können Daten auch ausserhalb der Schweiz bearbeiten (z. B. in der EU oder den
+        USA).
+      </p>
 
       <h2>Cookies</h2>
       <p>
@@ -54,8 +58,8 @@ export default function DatenschutzPage() {
       <h2>IP-Adressen und Formular-Schutz</h2>
       <p>
         Um Formulare vor Missbrauch zu schützen (Limit pro Stunde), speichern wir Ihre IP-Adresse nicht im
-        Klartext, sondern nur als gesalzenen Hashwert. Aus diesem Hash lässt sich Ihre IP-Adresse nicht
-        zurückrechnen.
+        Klartext, sondern nur als gesalzenen Hashwert. Aus diesem Hash lässt sich Ihre IP-Adresse praktisch
+        nicht zurückrechnen.
       </p>
 
       <h2>Speicherdauer</h2>
