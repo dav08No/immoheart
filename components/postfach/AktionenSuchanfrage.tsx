@@ -54,7 +54,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
           </div>
           {/* Nur Text, nie HTML: die Besucherin hat das frei eingetippt. */}
           {kontakt.nachricht && (
-            <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line p-3 text-sm text-ink-2">{kontakt.nachricht}</p>
+            <p className="mt-2 whitespace-pre-wrap wrap-break-word rounded-lg border border-line p-3 text-sm text-ink-2">{kontakt.nachricht}</p>
           )}
         </div>
       )}

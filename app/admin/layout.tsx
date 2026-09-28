@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { zaehleEntwuerfe, zaehleNachrichten } from "@/lib/queries/nachrichten"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { AdminNavAnbieter } from "@/components/layout/AdminNavKontext"
 import { MailAbrufer } from "@/components/layout/MailAbrufer"
 
 // KI-Aufrufe mit Retry/Ersatzmodell (siehe lib/ki/gemini.ts) können im
@@ -23,12 +24,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ])
 
   return (
-    <div className="grid h-screen grid-cols-[206px_minmax(0,1fr)]">
-      {/* Rendert nichts sichtbares -- hält nur den Hintergrund-Mailabruf am Laufen,
-          solange irgendeine /admin-Seite offen ist (Task 7). */}
-      <MailAbrufer />
-      <Sidebar profil={profil} postfachAnzahl={postfachAnzahl} entwurfAnzahl={entwurfAnzahl} />
-      <div className="flex min-h-0 flex-col">{children}</div>
-    </div>
+    <AdminNavAnbieter profil={profil} postfachAnzahl={postfachAnzahl} entwurfAnzahl={entwurfAnzahl}>
+      {/* Unter lg eine Spalte: die Seitenleiste ist ausgeblendet und steckt im
+          Menü des Seitenkopfs (MobilLeiste). h-dvh statt h-screen, damit die
+          mobile Adressleiste den unteren Rand nicht verdeckt. */}
+      <div className="grid h-dvh grid-cols-1 lg:grid-cols-[206px_minmax(0,1fr)]">
+        {/* Rendert nichts sichtbares -- hält nur den Hintergrund-Mailabruf am Laufen,
+            solange irgendeine /admin-Seite offen ist (Task 7). */}
+        <MailAbrufer />
+        <Sidebar />
+        <div className="flex min-h-0 flex-col">{children}</div>
+      </div>
+    </AdminNavAnbieter>
   )
 }

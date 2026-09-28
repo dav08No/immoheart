@@ -46,7 +46,7 @@ export function ProfilFormular({ name: startName, email }: { name: string; email
     <div className="flex max-w-md flex-col gap-4">
       <form onSubmit={nameSpeichern} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
         <h2 className="font-display text-base font-bold text-ink">Profil</h2>
-        <p className="text-sm text-ink-2">{email}</p>
+        <p className="break-all text-sm text-ink-2">{email}</p>
         <input required value={name} onChange={(e) => setName(e.target.value)} className={FELD} />
         <button type="submit" disabled={laedt !== null} className={KNOPF}>{laedt === "name" ? "…" : "Name speichern"}</button>
       </form>

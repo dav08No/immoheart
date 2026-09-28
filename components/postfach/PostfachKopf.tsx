@@ -62,7 +62,7 @@ export function PostfachKopf({ abrufStatus }: { abrufStatus: AbrufStatus }) {
           {erfolgAm ? `Zuletzt abgerufen ${zeitpunkt(erfolgAm)}` : "Noch nie abgerufen"}
         </span>
         {fehler && (
-          <span className="text-crit" role="status">
+          <span className="wrap-break-word text-crit" role="status">
             Abruf fehlgeschlagen {zeitpunkt(fehler.am)}: {fehler.text}
           </span>
         )}

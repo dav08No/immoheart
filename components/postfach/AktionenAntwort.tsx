@@ -70,7 +70,7 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
             const wert = feld === "nutzung" ? nutzungLabel(felder.nutzung) : String(felder[feld])
             return (
               <div key={feld} className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5">
-                <span className="w-28 flex-none text-xs text-ink-3">{FELD_LABELS[feld]}</span>
+                <span className="w-20 flex-none text-xs sm:w-28 text-ink-3">{FELD_LABELS[feld]}</span>
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{wert}</span>
                 <Button
                   disabled={!nachricht.anfrage_id || laufend !== null}

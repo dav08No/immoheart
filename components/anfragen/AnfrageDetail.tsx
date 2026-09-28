@@ -117,27 +117,27 @@ export function AnfrageDetail({
       <div>
         <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Daten</div>
         {bearbeiten ? (
-          <div className="grid grid-cols-[auto_1fr] items-center gap-2 text-sm">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm">
             <label className="text-xs text-ink-3">Fläche ab</label>
             <input
               value={flaecheMin}
               onChange={(e) => setFlaecheMin(e.target.value)}
               disabled={laufend}
-              className="rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
             />
             <label className="text-xs text-ink-3">Fläche bis</label>
             <input
               value={flaecheMax}
               onChange={(e) => setFlaecheMax(e.target.value)}
               disabled={laufend}
-              className="rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
             />
             <label className="text-xs text-ink-3">Ort</label>
             <input
               value={ort}
               onChange={(e) => setOrt(e.target.value)}
               disabled={laufend}
-              className="rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
               placeholder="fehlt"
             />
             <label className="text-xs text-ink-3">Budget</label>
@@ -145,7 +145,7 @@ export function AnfrageDetail({
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               disabled={laufend}
-              className="rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
               placeholder="fehlt"
             />
             <label className="text-xs text-ink-3">Bezug</label>
@@ -153,12 +153,12 @@ export function AnfrageDetail({
               value={bezug}
               onChange={(e) => setBezug(e.target.value)}
               disabled={laufend}
-              className="rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
+              className="min-w-0 rounded-lg border border-line-2 px-2 py-1 disabled:opacity-60"
               placeholder="fehlt"
             />
           </div>
         ) : (
-          <dl className="grid grid-cols-[auto_1fr] gap-1.5 text-sm">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-1.5 text-sm wrap-break-word">
             <dt className="text-xs text-ink-3">Sucht</dt>
             <dd>
               {anfrage.flaeche_min ?? "?"}–{anfrage.flaeche_max ?? "?"} m²
@@ -236,7 +236,7 @@ export function AnfrageDetail({
           {verlauf.map((eintrag, i) => (
             <li key={i} className="grid grid-cols-[74px_1fr] gap-2.5 border-b border-line py-1.5 text-xs text-ink-2 last:border-b-0">
               <time className="text-ink-3">{formatZeitpunkt(new Date(eintrag.zeitpunkt))}</time>
-              <span>{eintrag.text}</span>
+              <span className="min-w-0 wrap-break-word">{eintrag.text}</span>
             </li>
           ))}
         </ul>

@@ -40,7 +40,7 @@ export function KiBereich({ nachricht, laufend, ausfuehren }: Props) {
       {anzeige === "fehler" && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-crit" role="alert">
           <AlertTriangle className="size-3.5 flex-none" aria-hidden />
-          <span className="min-w-0 flex-1">{nachricht.ki_fehler ?? "Einordnung fehlgeschlagen."}</span>
+          <span className="min-w-0 flex-1 wrap-break-word">{nachricht.ki_fehler ?? "Einordnung fehlgeschlagen."}</span>
           <Button
             disabled={gesperrt}
             onClick={() => void ausfuehren("erneut", () => erneutVerarbeiten(nachricht.id), "Erneut verarbeitet.")}

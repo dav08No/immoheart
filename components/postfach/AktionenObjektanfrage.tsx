@@ -40,7 +40,7 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
             <Feld label="Telefon" wert={felder.telefon} optional />
           </div>
           {/* Nur Text, nie HTML: die Besucherin hat das frei eingetippt. */}
-          <p className="mt-2 whitespace-pre-wrap rounded-lg border border-line p-3 text-sm text-ink-2">{felder.nachricht}</p>
+          <p className="mt-2 whitespace-pre-wrap wrap-break-word rounded-lg border border-line p-3 text-sm text-ink-2">{felder.nachricht}</p>
         </>
       ) : (
         <p className="text-xs text-ink-3">Keine Formularangaben gefunden.</p>

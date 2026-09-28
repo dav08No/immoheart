@@ -18,7 +18,7 @@ export function TextFeld({
       value={wert}
       onChange={(e) => setWert(e.target.value)}
       disabled={disabled}
-      className={`${halb ? "w-1/2" : ""} rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60`}
+      className={`${halb ? "min-w-0 flex-1" : ""} rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60`}
     />
   )
 }

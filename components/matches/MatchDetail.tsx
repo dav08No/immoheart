@@ -46,7 +46,7 @@ export function MatchDetail({
       titel={`${letzterMatch.score}% Treffer`}
       untertitel={`${letzterMatch.objekt.titel} ↔ ${letzterMatch.firma?.name ?? "?"}`}
     >
-      <table className="w-full border-collapse text-xs">
+      <table className="w-full border-collapse text-xs wrap-break-word">
         <thead>
           <tr>
             <th></th>
@@ -67,7 +67,7 @@ export function MatchDetail({
         </tbody>
       </table>
       <p className="text-xs text-ink-2">{letzterMatch.hinweis}</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={onSenden}
           disabled={laufend}

@@ -8,6 +8,8 @@ import { PostfachFilter } from "./PostfachFilter"
 import { NachrichtenListe } from "./NachrichtenListe"
 import { EingangDetail } from "./EingangDetail"
 import { GesendetDetail } from "./GesendetDetail"
+import { useListeDetail } from "@/components/layout/useListeDetail"
+import { ZurueckZurListe } from "@/components/layout/ZurueckZurListe"
 import { alsGelesenMarkieren } from "@/app/actions/eingang-aktionen"
 import { filtereNachrichten, istUngelesen, zaehleChips, type KategorieChip, type PostfachFilter as Filter } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
@@ -30,6 +32,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen,
   // IDs, für die "gelesen" schon angestossen wurde -- verhindert Doppelaufrufe, solange
   // die Seite die aktualisierte Zeile noch nicht zurückgeliefert hat.
   const markiert = useRef(new Set<string>())
+  const { listeRef, detailRef, zumDetail, zurListe } = useListeDetail()
 
   const sichtbar = filtereNachrichten(nachrichten, filter, chip)
   const ausgewaehlt = nachrichten.find((n) => n.id === ausgewaehlteId) ?? null
@@ -81,8 +84,8 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen,
   return (
     <div className="flex flex-col gap-4">
       <PostfachKopf abrufStatus={abrufStatus} />
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-        <div className="rounded-card border border-line bg-surface">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div ref={listeRef} className="scroll-mt-3 rounded-card border border-line bg-surface">
           <PostfachFilter
             filter={filter}
             chip={chip}
@@ -90,9 +93,17 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen,
             onFilter={filterWechseln}
             onChip={setChip}
           />
-          <NachrichtenListe nachrichten={sichtbar} ausgewaehlteId={ausgewaehlteId} onAuswahl={auswaehlen} />
+          <NachrichtenListe
+            nachrichten={sichtbar}
+            ausgewaehlteId={ausgewaehlteId}
+            onAuswahl={(id) => {
+              auswaehlen(id)
+              zumDetail()
+            }}
+          />
         </div>
-        <div className="rounded-card border border-line bg-surface">
+        <div ref={detailRef} className="min-w-0 scroll-mt-3 rounded-card border border-line bg-surface">
+          <ZurueckZurListe onKlick={zurListe} />
           {!ausgewaehlt && <p className="p-10 text-center text-sm text-ink-3">Nachricht wählen.</p>}
           {ausgewaehlt?.richtung === "eingang" && (
             <EingangDetail

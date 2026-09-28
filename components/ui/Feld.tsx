@@ -20,9 +20,9 @@ export function Feld({ label, wert, optional = false }: Props) {
     )
   }
   return (
-    <div className={`rounded-lg border px-3 py-2 ${fehlt ? "border-warn bg-warn-bg" : "border-line"}`}>
+    <div className={`min-w-0 rounded-lg border px-3 py-2 ${fehlt ? "border-warn bg-warn-bg" : "border-line"}`}>
       <div className="text-xs text-ink-3">{label}</div>
-      <div className={`mt-0.5 text-sm font-medium ${fehlt ? "font-display text-lg text-warn" : "text-ink"}`}>
+      <div className={`mt-0.5 text-sm font-medium wrap-anywhere ${fehlt ? "font-display text-lg text-warn" : "text-ink"}`}>
         {fehlt ? "?" : wert}
       </div>
     </div>
