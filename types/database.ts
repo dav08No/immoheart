@@ -555,6 +555,13 @@ export type Database = {
         Returns: number
       }
       ist_aktives_konto: { Args: never; Returns: boolean }
+      speicher_belegt: {
+        Args: never
+        Returns: {
+          bucket: string
+          bytes: number
+        }[]
+      }
     }
     Enums: {
       anfrage_status_enum: "offen" | "vermittelt" | "ruhend"
