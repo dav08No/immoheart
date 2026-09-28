@@ -15,6 +15,10 @@ describe("puls", () => {
   it("hat eine Untergrenze von 4", () => {
     expect(puls(vorTagen(500))).toBe(4)
   })
+  it("rechnet mit explizit übergebenem jetzt statt Date.now() (testbar, keine Systemzeit-Abhängigkeit)", () => {
+    const letzterKontakt = new Date("2026-09-01T00:00:00Z")
+    expect(puls(letzterKontakt, new Date("2026-09-11T00:00:00Z"))).toBe(90)
+  })
 })
 
 describe("pulsFarbe", () => {
