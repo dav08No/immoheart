@@ -6,6 +6,7 @@ import { PulsHero } from "./PulsHero"
 import { MatchCard } from "./MatchCard"
 import { MatchDetail } from "./MatchDetail"
 import { Panel, PanelKopf } from "@/components/ui/Panel"
+import { Kennzahl } from "@/components/ui/Kennzahl"
 import { Leerzustand } from "@/components/ui/Leerzustand"
 import { ListenZeile } from "@/components/ui/ListenZeile"
 import { Button } from "@/components/ui/Button"
@@ -105,11 +106,18 @@ export function MatchesAnsicht({
 
   return (
     <>
+      {/* Controller-Ruling (Nachtrag zu Task 3): die vier Überblickszahlen bleiben eine
+          eigene Kachelreihe über Bestandspuls, nicht nur Text in dessen Beschreibung --
+          gleiche Werte/Labels wie zuvor, nur als Kennzahl-Baustein statt Ad-hoc-Divs. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kennzahl label="Neue Matches" wert={formatZahl(matches.length)} />
+        <Kennzahl label="Offene Anfragen" wert={formatZahl(offeneAnzahl)} />
+        <Kennzahl label="Objekte" wert={formatZahl(objektAnzahl)} />
+        <Kennzahl label="Lange still" wert={formatZahl(langeStillAnzahl)} />
+      </div>
+
       <Panel>
-        <PanelKopf
-          titel="Bestandspuls"
-          beschreibung={`${formatZahl(offeneAnzahl)} offene Anfragen · ${formatZahl(langeStillAnzahl)} lange still · ${formatZahl(objektAnzahl)} Objekte im Bestand`}
-        />
+        <PanelKopf titel="Bestandspuls" beschreibung="Wie frisch der letzte Kontakt zu offenen Anfragen ist." />
         <PulsHero letzteKontakte={letzteKontakte} />
       </Panel>
 
