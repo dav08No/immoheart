@@ -22,7 +22,8 @@ export default async function ZahlenPage() {
   const jetzt = new Date()
   const [z, speicher] = await Promise.all([holeZahlen(jetzt), holeSpeicher()])
   const { anfragen, erstangebot } = z
-  const groessen = z.groessen.map((g) => ({ label: g.bereich === "unbekannt" ? "unbekannt" : `${g.bereich} m²`, anzahl: g.anzahl }))
+  // Einheit steht in der Beschreibung: mit "m²" an jeder Klasse überlappten die Achsenbeschriftungen.
+  const groessen = z.groessen.map((g) => ({ label: g.bereich === "unbekannt" ? "?" : g.bereich, anzahl: g.anzahl }))
   const nutzung = z.nutzung.map((n) => ({ label: n.label, anzahl: n.anzahl }))
   const top = z.topObjekte.map((t) => ({ label: t.titel, anzahl: t.anzahl }))
 
@@ -84,9 +85,9 @@ export default async function ZahlenPage() {
           </ChartKarte>
           <ChartKarte
             titel="Gesuchte Grössen"
-            beschreibung="Offene Anfragen nach gesuchter Fläche (Mitte von min/max)."
+            beschreibung="Offene Anfragen nach gesuchter Fläche in m² (Mitte von min/max; ? = unbekannt)."
             leer={istLeer(groessen, ["anzahl"])}
-            tabelle={{ spalten: ["Fläche", "Anfragen"], zeilen: groessen.map((g) => [g.label, g.anzahl]) }}
+            tabelle={{ spalten: ["Fläche (m²)", "Anfragen"], zeilen: groessen.map((g) => [g.label, g.anzahl]) }}
           >
             <BalkenChart daten={groessen} />
           </ChartKarte>
