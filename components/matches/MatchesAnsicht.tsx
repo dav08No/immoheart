@@ -158,15 +158,16 @@ export function MatchesAnsicht({
           const wer = a.firma?.name ?? "diese Anfrage"
           const tage = Math.floor((Date.now() - new Date(a.letzter_kontakt).getTime()) / 86_400_000)
           return (
-            <div key={id} className="flex items-center gap-3 border-b border-line p-3 last:border-b-0">
-              <span className={`h-2 w-2 rounded-full ${tage > 60 ? "bg-crit" : "bg-warn"}`} />
-              <div>
-                <div className="text-sm font-medium text-ink">{a.firma?.name ?? "?"}</div>
+            <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line p-3 last:border-b-0">
+              <span className={`h-2 w-2 flex-none rounded-full ${tage > 60 ? "bg-crit" : "bg-warn"}`} />
+              {/* basis-40: auf dem Handy rutscht der Knopf in eine eigene Zeile statt den Text zu quetschen. */}
+              <div className="min-w-0 flex-1 basis-40">
+                <div className="wrap-break-word text-sm font-medium text-ink">{a.firma?.name ?? "?"}</div>
                 <div className="text-xs text-ink-3">
                   {a.flaeche_min ?? "?"}–{a.flaeche_max ?? "?"} m² · {a.ort ?? "?"}
                 </div>
               </div>
-              <span className="ml-auto text-xs text-ink-2">{tage} Tage</span>
+              <span className="text-xs text-ink-2">{tage} Tage</span>
               <button
                 onClick={() => void nachfragen(id, wer)}
                 disabled={laufendId === id}

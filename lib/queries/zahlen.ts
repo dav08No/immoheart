@@ -1,96 +1,101 @@
+// Kennzahlen der Admin-Seite /admin/zahlen: je Tabelle eine schlanke Abfrage (nur die
+// Spalten, die die Aggregationen in lib/zahlen/ brauchen), alles Rechnen passiert dort.
+import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
+import { erstelleAdminClient } from "@/lib/supabase/admin"
+import { anfragenProMonat, tageBisErstangebot, topObjekte, vermittlungsquote } from "@/lib/zahlen/anfragen"
+import { entwuerfeVerlauf, mailsProWoche } from "@/lib/zahlen/nachrichten"
+import { groessenVerteilung, nutzungVerteilung, pulsVerteilung } from "@/lib/zahlen/verteilungen"
+import { erstesAngebotJeAnfrage } from "@/lib/zahlen/anzeige"
 
-export type ZahlenKennzahlen = {
-  bisErstangebotTage: number | null
-  erfolgsquoteProzent: number
-  nacharbeitProTagMinuten: number
+// PostgREST liefert höchstens 1000 Zeilen je Anfrage -- darüber hinaus seitenweise.
+const SEITE = 1000
+
+async function alleSeiten<T>(
+  hole: (von: number, bis: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<T[]> {
+  const alle: T[] = []
+  for (let von = 0; ; von += SEITE) {
+    const { data, error } = await hole(von, von + SEITE - 1)
+    if (error) throw error
+    const seite = data ?? []
+    alle.push(...seite)
+    if (seite.length < SEITE) return alle
+  }
 }
 
-export async function holeZahlenKennzahlen(): Promise<ZahlenKennzahlen> {
+export type ZahlenDaten = {
+  anfragen: { gesamt: number; offen: number; quote: number | null; vermittelt: number }
+  erstangebot: { median: number | null; anzahl: number }
+  proMonat: ReturnType<typeof anfragenProMonat>
+  mails: ReturnType<typeof mailsProWoche>
+  entwuerfe: ReturnType<typeof entwuerfeVerlauf>
+  topObjekte: ReturnType<typeof topObjekte>
+  groessen: ReturnType<typeof groessenVerteilung>
+  nutzung: ReturnType<typeof nutzungVerteilung>
+  puls: ReturnType<typeof pulsVerteilung>
+}
+
+// `jetzt` kommt vom Aufrufer, damit alle Zeitfenster denselben Stichtag haben.
+export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   const supabase = await erstelleServerClient()
+  const [anfragen, nachrichten] = await Promise.all([
+    alleSeiten((von, bis) =>
+      supabase
+        .from("anfragen")
+        .select("id, created_at, quelle, status, flaeche_min, flaeche_max, nutzung, letzter_kontakt")
+        .order("id")
+        .range(von, bis)
+    ),
+    alleSeiten((von, bis) =>
+      supabase
+        .from("nachrichten")
+        .select("richtung, typ, kategorie, quelle, objekt_id, anfrage_id, created_at, empfangen_am, gesendet_am, geloescht_am")
+        .order("id")
+        .range(von, bis)
+    ),
+  ])
 
-  const { data: anfragenData, error: anfragenError } = await supabase.from("anfragen").select("status")
-  if (anfragenError) throw anfragenError
-  const gesamt = anfragenData.length
-  const vermittelt = anfragenData.filter((a) => a.status === "vermittelt").length
-  const erfolgsquoteProzent = gesamt > 0 ? Math.round((vermittelt / gesamt) * 100) : 0
-
-  // Embed über die Fremdschlüssel-Beziehung nachrichten.anfrage_id -> anfragen.id
-  // (nachrichten_anfrage_id_fkey). Da anfrage_id nullable ist und die Beziehung
-  // von nachrichten aus gesehen many-to-one ist, liefert der generierte Typ ein
-  // einzelnes nullable Objekt (n.anfragen: { created_at: string } | null), kein
-  // Array -- passend zum n.anfragen?.created_at-Zugriff unten.
-  // .eq("richtung", "gesendet") + gesendet_am statt created_at (N3-Review, Fund 4):
-  // ein Angebots-ENTWURF (richtung "entwurf") ist noch keine tatsächliche Reaktion auf
-  // die Anfrage, und created_at wäre der Zeitpunkt der Entwurfserstellung, nicht des
-  // tatsächlichen Versands -- beides hätte die Kennzahl "Tage bis Erstangebot" verzerrt.
-  const { data: angeboteData, error: angeboteError } = await supabase
-    .from("nachrichten")
-    .select("gesendet_am, anfragen(created_at)")
-    .eq("typ", "angebot")
-    .eq("richtung", "gesendet")
-  if (angeboteError) throw angeboteError
-  const tageBisAngebot = angeboteData
-    .map((n) => {
-      if (!n.anfragen || !n.gesendet_am) return null
-      const differenz = new Date(n.gesendet_am).getTime() - new Date(n.anfragen.created_at).getTime()
-      return differenz / 86_400_000
-    })
-    .filter((wert): wert is number => wert !== null && wert >= 0)
-  const bisErstangebotTage =
-    tageBisAngebot.length > 0
-      ? Math.round((tageBisAngebot.reduce((s, v) => s + v, 0) / tageBisAngebot.length) * 10) / 10
-      : null
+  const offene = anfragen.filter((a) => a.status === "offen")
+  // Gelöschte Nachrichten zählen nur bei den Entwürfen ("gelöscht" ist dort die Kennzahl)
+  // und beim Versand (ein gesendetes Angebot bleibt gesendet, auch wenn es später aus
+  // dem Postfach entfernt wird).
+  const sichtbar = nachrichten.filter((n) => n.geloescht_am === null)
+  const direkt = sichtbar.filter((n) => n.kategorie === "objektanfrage" && n.richtung === "eingang")
+  const angebote = nachrichten.filter((n) => n.typ === "angebot" && n.richtung === "gesendet")
+  const erstellt = Object.fromEntries(anfragen.map((a) => [a.id, a.created_at]))
+  const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(angebote, erstellt))
+  const { quote, vermittelt, gesamt } = vermittlungsquote(anfragen)
 
   return {
-    bisErstangebotTage,
-    erfolgsquoteProzent,
-    // Würde eine Zeiterfassung der manuellen Nacharbeit voraussetzen, die nirgends
-    // spezifiziert ist (Spec-Annahme A3) — aus dem Prototyp übernommener Beispielwert.
-    nacharbeitProTagMinuten: 11,
+    anfragen: { gesamt, offen: offene.length, quote, vermittelt },
+    erstangebot: { median: erstangebot.median, anzahl: erstangebot.anzahl },
+    proMonat: anfragenProMonat(anfragen, jetzt, 12),
+    mails: mailsProWoche(sichtbar, jetzt, 12),
+    entwuerfe: entwuerfeVerlauf(nachrichten, jetzt, 6),
+    topObjekte: await mitObjektTiteln(direkt),
+    // Grössen, Nutzungen und Puls beschreiben die aktuelle Nachfrage -> nur offene Anfragen.
+    groessen: groessenVerteilung(offene),
+    nutzung: nutzungVerteilung(offene),
+    puls: pulsVerteilung(offene, jetzt),
   }
 }
 
-export async function holeErfolgsquoteVerlauf(): Promise<{ monat: string; prozent: number }[]> {
+// Erst zählen (ohne Titel liefert topObjekte die ID als Titel), dann nur die Titel der
+// höchstens fünf Gewinner laden statt aller Objekte.
+async function mitObjektTiteln(direkt: { objekt_id: string | null }[]): Promise<ZahlenDaten["topObjekte"]> {
+  const ids = topObjekte(direkt, {}).map((t) => t.titel)
+  if (ids.length === 0) return []
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("anfragen").select("status, created_at")
+  const { data, error } = await supabase.from("objekte").select("id, titel").in("id", ids)
   if (error) throw error
-
-  const nachMonat = new Map<string, { gesamt: number; vermittelt: number }>()
-  for (const a of data) {
-    const monat = new Date(a.created_at).toISOString().slice(0, 7)
-    const eintrag = nachMonat.get(monat) ?? { gesamt: 0, vermittelt: 0 }
-    eintrag.gesamt += 1
-    if (a.status === "vermittelt") eintrag.vermittelt += 1
-    nachMonat.set(monat, eintrag)
-  }
-
-  return [...nachMonat.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([monat, { gesamt, vermittelt }]) => ({
-      monat,
-      prozent: gesamt > 0 ? Math.round((vermittelt / gesamt) * 100) : 0,
-    }))
+  return topObjekte(direkt, Object.fromEntries(data.map((o) => [o.id, o.titel])))
 }
 
-export async function holeFlaechenVerteilung(): Promise<{ bereich: string; anzahl: number }[]> {
-  const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("anfragen").select("flaeche_min, flaeche_max").eq("status", "offen")
+// speicher_belegt() ist nur für service_role freigegeben (liest storage.objects).
+// Aufrufer MUSS vorher holeEigenesProfil() geprüft haben.
+export async function holeSpeicher(): Promise<{ bucket: string; bytes: number }[]> {
+  const { data, error } = await erstelleAdminClient().rpc("speicher_belegt")
   if (error) throw error
-
-  const BEREICHE: [string, number, number][] = [
-    ["bis 300 m²", 0, 300],
-    ["300–800 m²", 300, 800],
-    ["800–1'500 m²", 800, 1500],
-    ["1'500–2'500 m²", 1500, 2500],
-    ["über 2'500 m²", 2500, Infinity],
-  ]
-
-  return BEREICHE.map(([bereich, min, max]) => ({
-    bereich,
-    anzahl: data.filter((a) => {
-      const referenz = a.flaeche_max ?? a.flaeche_min
-      return referenz !== null && referenz > min && referenz <= max
-    }).length,
-  }))
+  return data.map((z) => ({ bucket: z.bucket, bytes: Number(z.bytes) }))
 }

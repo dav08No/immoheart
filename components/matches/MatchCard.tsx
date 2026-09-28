@@ -22,15 +22,17 @@ export function MatchCard({
 }) {
   return (
     <article onClick={onOeffnen} className="cursor-pointer overflow-hidden rounded-card border border-line bg-surface hover:border-line-2">
-      <div className="grid grid-cols-[118px_minmax(0,1fr)_34px_minmax(0,1fr)_auto] items-center gap-3.5 p-3">
-        <div className="h-20 w-[118px] overflow-hidden rounded-lg bg-surface-3">
+      {/* Handy: Bild | Objekt | Score oben, die Firma als eigene Zeile darunter
+          (order-last); ab sm die fünfspaltige Zeile mit Pfeil. */}
+      <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 p-3 sm:grid-cols-[118px_minmax(0,1fr)_34px_minmax(0,1fr)_auto] sm:gap-3.5">
+        <div className="size-16 overflow-hidden rounded-lg bg-surface-3 sm:h-20 sm:w-[118px]">
           {match.objekt.titelbild && (
             // eslint-disable-next-line @next/next/no-img-element -- Storage- oder freie URL, kein next/image-Loader konfiguriert
             <img src={match.objekt.titelbild} alt={match.objekt.titel} className="h-full w-full object-cover" />
           )}
         </div>
-        <div>
-          <div className="text-sm font-semibold text-ink">{match.objekt.titel}</div>
+        <div className="min-w-0">
+          <div className="wrap-break-word text-sm font-semibold text-ink">{match.objekt.titel}</div>
           <div className="mt-0.5 text-xs text-ink-2">
             {match.objekt.flaeche} m² · {match.objekt.preis_pro_m2 !== null ? `CHF ${match.objekt.preis_pro_m2}/m²` : "auf Anfrage"}
           </div>
@@ -41,9 +43,9 @@ export function MatchCard({
             Karte ↗
           </a>
         </div>
-        <span className="grid h-[34px] w-[34px] place-items-center rounded-full bg-brand-soft text-brand">↔</span>
-        <div>
-          <div className="text-sm font-semibold text-ink">{match.firma?.name ?? "?"}</div>
+        <span className="hidden h-[34px] w-[34px] place-items-center rounded-full bg-brand-soft text-brand sm:grid">↔</span>
+        <div className="order-last col-span-3 min-w-0 border-t border-line pt-2.5 sm:order-none sm:col-span-1 sm:border-t-0 sm:pt-0">
+          <div className="wrap-break-word text-sm font-semibold text-ink">{match.firma?.name ?? "?"}</div>
           <div className="mt-0.5 text-xs text-ink-2">
             sucht {match.anfrage.flaeche_min ?? "?"}–{match.anfrage.flaeche_max ?? "?"} m²
           </div>

@@ -6,6 +6,7 @@ import type { Nutzung } from "@/types"
 import type { Database, Json } from "@/types/database"
 
 type AnfrageEinfuegen = Database["public"]["Tables"]["anfragen"]["Insert"]
+type AnfrageRow = Database["public"]["Tables"]["anfragen"]["Row"]
 
 export type AnfrageQuelle = "mail" | "website"
 
@@ -63,6 +64,10 @@ export function baueAnfrageEinfuegung(
 export const UEBERNEHMBARE_FELDER = ["flaeche_min", "flaeche_max", "ort", "budget_pro_m2", "bezug", "nutzung"] as const
 export type UebernehmbaresFeld = (typeof UEBERNEHMBARE_FELDER)[number]
 
+// Aktuelle Werte der zugeordneten Anfrage, gegen die AktionenAntwort (Postfach) neue
+// KI-Angaben vergleicht -- nur die übernehmbaren Spalten, nicht die ganze Zeile.
+export type AnfrageWerte = Pick<AnfrageRow, UebernehmbaresFeld>
+
 // null heisst: die KI hat für dieses Feld nichts erkannt -- nichts zu übernehmen.
 export function feldUebernehmenAenderung(
   feld: UebernehmbaresFeld,
@@ -74,4 +79,17 @@ export function feldUebernehmenAenderung(
   if (feld === "budget_pro_m2") return felder.budget_pro_m2 === null ? null : { budget_pro_m2: felder.budget_pro_m2 }
   if (feld === "bezug") return felder.bezug === null ? null : { bezug: felder.bezug }
   return felder.nutzung === null ? null : { nutzung: felder.nutzung }
+}
+
+// "Übernehmen" lohnt sich nur, wenn der erkannte Wert vom aktuellen Anfrage-Wert
+// abweicht (Task 6, N7-Politur) -- sonst bietet das Postfach ein Feld an, dessen Klick
+// nichts ändern würde. Gleiche if-Kette wie feldUebernehmenAenderung statt einem
+// generischen felder[feld]/anfrage[feld]-Zugriff, aus demselben Grund (Typen je Feld).
+export function feldUnterscheidetSich(feld: UebernehmbaresFeld, felder: ErkannteFelder, anfrage: AnfrageWerte): boolean {
+  if (feld === "flaeche_min") return felder.flaeche_min !== anfrage.flaeche_min
+  if (feld === "flaeche_max") return felder.flaeche_max !== anfrage.flaeche_max
+  if (feld === "ort") return felder.ort !== anfrage.ort
+  if (feld === "budget_pro_m2") return felder.budget_pro_m2 !== anfrage.budget_pro_m2
+  if (feld === "bezug") return felder.bezug !== anfrage.bezug
+  return felder.nutzung !== anfrage.nutzung
 }

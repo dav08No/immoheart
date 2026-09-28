@@ -51,18 +51,18 @@ export function Drawer({ offen, titel, untertitel, onSchliessen, children }: Pro
         aria-labelledby={titelId}
         aria-hidden={!offen}
         inert={!offen ? true : undefined}
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-[440px] flex-col border-l border-line bg-surface shadow-2xl transition-transform ${
+        className={`fixed right-0 top-0 z-50 flex h-full w-full flex-col sm:max-w-[440px] border-l border-line bg-surface shadow-2xl transition-transform ${
           offen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-start gap-2.5 border-b border-line p-4">
-          <div>
+          <div className="min-w-0 wrap-break-word">
             <div id={titelId} className="font-display text-base font-bold text-ink">
               {titel}
             </div>
             {untertitel && <div className="mt-0.5 text-xs text-ink-3">{untertitel}</div>}
           </div>
-          <button onClick={onSchliessen} aria-label="Schliessen" className="ml-auto px-1 text-lg text-ink-3">
+          <button onClick={onSchliessen} aria-label="Schliessen" className="ml-auto flex-none px-1 text-lg text-ink-3">
             ×
           </button>
         </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
-  anfrageQuelle, baueAnfrageEinfuegung, feldUebernehmenAenderung, firmenName, suchanfrageKontakt,
+  anfrageQuelle, baueAnfrageEinfuegung, feldUebernehmenAenderung, feldUnterscheidetSich, firmenName, suchanfrageKontakt,
+  type AnfrageWerte,
 } from "./anfrage-aus-eingang"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 
@@ -94,5 +95,42 @@ describe("feldUebernehmenAenderung", () => {
     expect(feldUebernehmenAenderung("budget_pro_m2", felder)).toEqual({ budget_pro_m2: 15 })
     expect(feldUebernehmenAenderung("bezug", felder)).toEqual({ bezug: "Q1 2027" })
     expect(feldUebernehmenAenderung("nutzung", felder)).toEqual({ nutzung: "lager" })
+  })
+})
+
+describe("feldUnterscheidetSich", () => {
+  const ANFRAGE_WERTE: AnfrageWerte = {
+    flaeche_min: 100,
+    flaeche_max: 200,
+    ort: "Solothurn",
+    budget_pro_m2: 15,
+    bezug: "sofort",
+    nutzung: "buero",
+  }
+
+  it("liefert false, wenn Zahl (flaeche_min/budget_pro_m2) unverändert ist", () => {
+    const felder = { ...LEERE_FELDER, flaeche_min: 100, budget_pro_m2: 15 }
+    expect(feldUnterscheidetSich("flaeche_min", felder, ANFRAGE_WERTE)).toBe(false)
+    expect(feldUnterscheidetSich("budget_pro_m2", felder, ANFRAGE_WERTE)).toBe(false)
+  })
+
+  it("liefert true, wenn eine Zahl abweicht", () => {
+    const felder = { ...LEERE_FELDER, flaeche_max: 250 }
+    expect(feldUnterscheidetSich("flaeche_max", felder, ANFRAGE_WERTE)).toBe(true)
+  })
+
+  it("liefert false, wenn ein Text (ort/bezug) unverändert ist, sonst true", () => {
+    expect(feldUnterscheidetSich("ort", { ...LEERE_FELDER, ort: "Solothurn" }, ANFRAGE_WERTE)).toBe(false)
+    expect(feldUnterscheidetSich("bezug", { ...LEERE_FELDER, bezug: "Q1 2027" }, ANFRAGE_WERTE)).toBe(true)
+  })
+
+  it("liefert true, wenn die Anfrage für das Feld null ist und die Mail einen Wert nennt", () => {
+    const ohneOrt: AnfrageWerte = { ...ANFRAGE_WERTE, ort: null }
+    expect(feldUnterscheidetSich("ort", { ...LEERE_FELDER, ort: "Solothurn" }, ohneOrt)).toBe(true)
+  })
+
+  it("vergleicht nutzung als eigenen Enum-Fall", () => {
+    expect(feldUnterscheidetSich("nutzung", { ...LEERE_FELDER, nutzung: "buero" }, ANFRAGE_WERTE)).toBe(false)
+    expect(feldUnterscheidetSich("nutzung", { ...LEERE_FELDER, nutzung: "lager" }, ANFRAGE_WERTE)).toBe(true)
   })
 })

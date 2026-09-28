@@ -90,14 +90,14 @@ export function AnfrageFormular({ onFertig }: { onFertig: () => void }) {
           value={flaecheMin}
           onChange={(e) => setFlaecheMin(e.target.value)}
           disabled={speichert}
-          className="w-1/2 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
         />
         <input
           placeholder="Fläche bis"
           value={flaecheMax}
           onChange={(e) => setFlaecheMax(e.target.value)}
           disabled={speichert}
-          className="w-1/2 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
+          className="min-w-0 flex-1 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
         />
       </div>
       <input

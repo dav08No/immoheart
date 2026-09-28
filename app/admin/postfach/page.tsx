@@ -19,11 +19,20 @@ export default async function PostfachPage() {
     holeObjekte(),
   ])
   const entwurfVerweise = entwuerfe.map(({ id, antwort_auf, an, typ }) => ({ id, antwort_auf, an, typ }))
-  // Nur Anzeige-Text an den Client, nicht die ganzen Anfrage-Zeilen.
+  // Anzeige-Text plus die übernehmbaren Feldwerte (für den "unterscheidet sich"-Vergleich
+  // in AktionenAntwort) an den Client, nicht die ganzen Anfrage-Zeilen.
   const anfrageOptionen: AnfrageOption[] = anfragen.map((a) => ({
     id: a.id,
     offen: a.status === "offen",
     label: [a.firma?.name, anfrageKurz(a)].filter(Boolean).join(" · ") || "Anfrage ohne Angaben",
+    werte: {
+      flaeche_min: a.flaeche_min,
+      flaeche_max: a.flaeche_max,
+      ort: a.ort,
+      budget_pro_m2: a.budget_pro_m2,
+      bezug: a.bezug,
+      nutzung: a.nutzung,
+    },
   }))
   const objektOptionen: ObjektOption[] = objekte.map((o) => ({ id: o.id, label: `${o.titel} · ${o.ort}` }))
 

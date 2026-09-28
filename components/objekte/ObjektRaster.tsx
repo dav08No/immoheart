@@ -56,7 +56,7 @@ export function ObjektRaster({
   onKarteWahl: (id: string) => void
 }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3.5">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(min(240px,100%),1fr))] gap-3.5">
       {objekte.map((o) => {
         // Ein Objekt bleibt nach Vermietung/Reservierung in dieser Liste (kein
         // eigener "nur verfügbar"-Filter hier -- das entscheidet der Aufrufer),
@@ -99,7 +99,7 @@ export function ObjektRaster({
                 {o.flaeche} m² · {o.preis_pro_m2 !== null ? `CHF ${o.preis_pro_m2}/m²` : "auf Anfrage"}
               </div>
               <div className="mt-0.5 text-xs text-ink-2">{o.eigentuemer}</div>
-              <div className="mt-1.5 flex items-center gap-2.5 text-xs">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                 <a
                   href={mapsLink(o.adresse)}
                   target="_blank"

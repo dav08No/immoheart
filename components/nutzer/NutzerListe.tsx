@@ -32,7 +32,7 @@ export function NutzerListe({ konten, eigeneUserId }: { konten: Konto[]; eigeneU
         return (
           <div key={k.userId} className="flex flex-wrap items-center gap-3 border-b border-line p-3.5 last:border-b-0">
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-ink">
+              <div className="wrap-break-word text-sm font-medium text-ink">
                 {k.name} {selbst && <span className="text-xs text-ink-3">(Sie)</span>}
               </div>
               <div className="truncate text-xs text-ink-3">{k.email}</div>

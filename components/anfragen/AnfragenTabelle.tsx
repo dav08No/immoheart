@@ -6,6 +6,10 @@ function mapsLink(ort: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ort}, Schweiz`)}`
 }
 
+const SPALTEN = ["Firma", "Status", "Sucht", "Ort", "Budget", "Bezug"]
+// Firma bleibt beim seitlichen Scrollen stehen, damit jede Zeile zuordenbar bleibt.
+const FIXIERT = "sticky left-0 z-[1] bg-surface"
+
 export function AnfragenTabelle({
   anfragen,
   onZeileWahl,
@@ -14,12 +18,19 @@ export function AnfragenTabelle({
   onZeileWahl: (id: string, bearbeitenSofort: boolean) => void
 }) {
   return (
+    // Eigener Scroll-Container: auf dem Handy scrollt nur die Tabelle seitlich, nie die
+    // Seite. Wichtigste Spalten zuerst (Firma fixiert, dann Status), der Rest folgt.
     <div className="overflow-x-auto rounded-card border border-line bg-surface">
-      <table className="w-full min-w-[720px] border-collapse">
+      <table className="w-full min-w-[640px] border-collapse">
         <thead>
           <tr>
-            {["Firma", "Sucht", "Ort", "Budget", "Bezug", "Status"].map((kopf) => (
-              <th key={kopf} className="border-b border-line px-4 py-2.5 text-left text-xs font-medium text-ink-3">
+            {SPALTEN.map((kopf, i) => (
+              <th
+                key={kopf}
+                className={`whitespace-nowrap border-b border-line px-4 py-2.5 text-left text-xs font-medium text-ink-3 ${
+                  i === 0 ? FIXIERT : ""
+                }`}
+              >
                 {kopf}
               </th>
             ))}
@@ -55,10 +66,15 @@ export function AnfragenTabelle({
               <tr
                 key={id}
                 onClick={() => onZeileWahl(id, false)}
-                className="cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
+                className="group cursor-pointer border-b border-line last:border-b-0 hover:bg-surface-2"
               >
-                <td className="px-4 py-2.5 text-sm font-medium text-ink">{a.firma?.name ?? luecke}</td>
-                <td className="px-4 py-2.5 text-sm text-ink-2">
+                <td className={`max-w-44 px-4 py-2.5 text-sm font-medium text-ink wrap-break-word group-hover:bg-surface-2 ${FIXIERT}`}>
+                  {a.firma?.name ?? luecke}
+                </td>
+                <td className="px-4 py-2.5 text-sm">
+                  <Chip kind={pulsFarbe(wert)}>{tage > 20 ? `${tage} Tage` : "aktuell"}</Chip>
+                </td>
+                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-ink-2">
                   {a.flaeche_min ?? "?"}–{a.flaeche_max ?? "?"} m²
                 </td>
                 <td className="px-4 py-2.5 text-sm text-ink-2">
@@ -76,13 +92,10 @@ export function AnfragenTabelle({
                     luecke
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-sm text-ink-2">
+                <td className="whitespace-nowrap px-4 py-2.5 text-sm text-ink-2">
                   {a.budget_pro_m2 !== null ? `CHF ${a.budget_pro_m2}/m²` : luecke}
                 </td>
                 <td className="px-4 py-2.5 text-sm text-ink-2">{a.bezug ?? luecke}</td>
-                <td className="px-4 py-2.5 text-sm">
-                  <Chip kind={pulsFarbe(wert)}>{tage > 20 ? `${tage} Tage` : "aktuell"}</Chip>
-                </td>
               </tr>
             )
           })}

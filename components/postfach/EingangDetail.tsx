@@ -49,12 +49,12 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueck
     <article aria-label={nachricht.betreff}>
       <header className="border-b border-line p-4">
         <div className="flex items-start gap-2">
-          <h2 className="min-w-0 flex-1 font-display text-base font-bold text-ink">{nachricht.betreff || "(ohne Betreff)"}</h2>
+          <h2 className="min-w-0 flex-1 wrap-break-word font-display text-base font-bold text-ink">{nachricht.betreff || "(ohne Betreff)"}</h2>
           {nachricht.quelle === "website" && <Badge variant="outline">Website</Badge>}
         </div>
         <div className="mt-0.5 text-xs text-ink-3">
           Von{" "}
-          <a href={`mailto:${nachricht.von}`} className="text-brand hover:underline">
+          <a href={`mailto:${nachricht.von}`} className="break-all text-brand hover:underline">
             {nachricht.von}
           </a>
           {` · empfangen am ${formatZeitpunkt(new Date(empfangen))} ${formatUhrzeit(new Date(empfangen))}`}
@@ -62,7 +62,7 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueck
       </header>
       <div className="p-4">
         {/* Nur Text, nie HTML: der Abruf speichert bereits reinen Text. */}
-        <div className="whitespace-pre-wrap rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
+        <div className="whitespace-pre-wrap wrap-break-word rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
           {nachricht.body}
         </div>
         <AnhangGalerie

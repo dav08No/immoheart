@@ -1,6 +1,7 @@
 // Anzeige-Helfer der öffentlichen Objektliste (Server- und Client-Komponenten).
 import type { ObjektFilter } from "@/lib/objektsuche"
 import { NUTZUNG_OPTIONEN, nutzungLabel } from "@/components/postfach/typen"
+import { formatZahl } from "@/lib/format"
 
 export { NUTZUNG_OPTIONEN, nutzungLabel }
 
@@ -11,11 +12,8 @@ export type FilterOptionen = {
   flaeche: { min: number; max: number } | null
 }
 
-// Eigene Tausendertrennung statt Intl: Server (Node-ICU) und Browser müssen für die
-// Hydration exakt denselben Text liefern.
-export function formatZahl(n: number): string {
-  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "’")
-}
+// formatZahl lebt in lib/format.ts (auch der Admin braucht es); hier nur durchgereicht.
+export { formatZahl }
 
 export function eigenschaftLabel(schluessel: string): string {
   const text = schluessel.replaceAll("_", " ")

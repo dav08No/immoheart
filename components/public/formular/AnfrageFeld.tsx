@@ -17,11 +17,14 @@ type Props = {
   // die Eingabe unverändert beim Server ankommt und dort die Meldung erzeugt.
   inputMode?: "numeric"
   hinweis?: string
+  // Spannt beide Spalten des Formular-Rasters -- vermeidet ein einzelnes Feld allein
+  // in der letzten Zeile (Task 6, N7-Politur, z.B. "Bezug ab" im Suchauftrag-Formular).
+  breit?: boolean
 }
 
 // Ein Feld mit Fehler direkt darunter: aria-invalid + aria-describedby, damit
 // Screenreader die Meldung beim Feld vorlesen.
-export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", mehrzeilig, pflicht = true, autoComplete, maxLength, inputMode, hinweis }: Props) {
+export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", mehrzeilig, pflicht = true, autoComplete, maxLength, inputMode, hinweis, breit }: Props) {
   const fehlerId = `${id}-fehler`
   const hinweisId = `${id}-hinweis`
   const beschreibung = [hinweis && hinweisId, fehler && fehlerId].filter(Boolean).join(" ")
@@ -38,7 +41,7 @@ export function AnfrageFeld({ id, label, wert, fehler, onWechsel, typ = "text", 
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onWechsel(e.target.value),
   }
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className={`flex flex-col gap-1.5${breit ? " sm:col-span-2" : ""}`}>
       <Label htmlFor={id} className="text-ink">
         {label}
         {!pflicht && <span className="font-normal text-ink-3">(optional)</span>}
