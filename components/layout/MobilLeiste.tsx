@@ -28,7 +28,14 @@ export function MobilLeiste() {
           className="relative -ml-1.5 flex-none lg:hidden"
         >
           <Menu className="size-5" aria-hidden />
-          {punkt && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand ring-2 ring-surface" aria-hidden />}
+          {/* key = herzschlagNr: bei neuen Mails neu einhängen, damit der Punkt auch auf dem Handy sichtbar schlägt. */}
+          {punkt && (
+            <span
+              key={nav.herzschlagNr}
+              className={`absolute right-1.5 top-1.5 size-2 rounded-full bg-brand ring-2 ring-surface ${nav.herzschlagNr > 0 ? "animate-herzschlag-stark" : ""}`}
+              aria-hidden
+            />
+          )}
         </Button>
       </SheetTrigger>
       <SheetContent side="left" aria-describedby={undefined} className="w-[260px] gap-0 bg-surface p-0 sm:max-w-[260px]">

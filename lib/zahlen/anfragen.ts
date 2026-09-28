@@ -63,5 +63,5 @@ export function topObjekte(anfragen: { objekt_id: string | null }[], titel: Reco
   return [...zaehler.entries()]
     .sort(([, a], [, b]) => b - a)
     .slice(0, Math.max(0, max))
-    .map(([objektId, anzahl]) => ({ titel: titel[objektId] ?? objektId, anzahl })) // fehlender Titel (z.B. gelöschtes Objekt) -> ID statt Leerfeld
+    .map(([objektId, anzahl]) => ({ titel: titel[objektId] ?? "Gelöschtes Objekt", anzahl })) // kein Titel -> Objekt existiert nicht mehr
 }

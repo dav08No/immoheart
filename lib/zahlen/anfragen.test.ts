@@ -107,6 +107,6 @@ describe("topObjekte", () => {
   })
 
   it("fällt bei fehlendem Titel auf die Objekt-ID zurück", () => {
-    expect(topObjekte([{ objekt_id: "geloescht-1" }], {}, 5)).toEqual([{ titel: "geloescht-1", anzahl: 1 }])
+    expect(topObjekte([{ objekt_id: "geloescht-1" }], {}, 5)).toEqual([{ titel: "Gelöschtes Objekt", anzahl: 1 }])
   })
 })
