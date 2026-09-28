@@ -3,11 +3,9 @@
 // und werden direkt als erkannte Felder abgelegt (ki_status "fertig").
 import { z } from "zod"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
-import { nutzungLabel } from "@/lib/nutzung"
+import { NUTZUNGEN, nutzungLabel } from "@/lib/nutzung"
 import { emailFeld, firmaFeld, nameFeld, telefonFeld, type NachrichtEinfuegen } from "@/lib/website-eintrag"
-import type { Nutzung } from "@/types"
 
-const NUTZUNGEN = ["buero", "gewerbe", "produktion", "lager", "verkauf", "bauland"] as const satisfies readonly Nutzung[]
 const GANZZAHL_MELDUNG = "Bitte eine ganze Zahl angeben."
 
 // Formularfelder kommen als String; "" heisst "keine Angabe". Text wird zu NaN und
@@ -43,6 +41,7 @@ export const suchauftragSchema = z
     name: nameFeld,
     email: emailFeld,
     telefon: telefonFeld,
+    branche: optionalerText(80),
     nutzung: z.enum(NUTZUNGEN, { error: "Bitte wählen Sie eine Nutzung." }),
     ort: z.string().trim().min(1, "Bitte geben Sie einen Ort an.").max(80, "Höchstens 80 Zeichen."),
     flaecheMin: optionaleGanzzahl(100000),
@@ -64,7 +63,7 @@ export type Suchauftrag = z.infer<typeof suchauftragSchema>
 export function suchauftragFelder(s: Suchauftrag): ErkannteFelder {
   return {
     firma: s.firma,
-    branche: null,
+    branche: s.branche ?? null,
     flaeche_min: s.flaecheMin ?? null,
     flaeche_max: s.flaecheMax ?? null,
     ort: s.ort,
@@ -97,6 +96,7 @@ function betreff(s: Suchauftrag): string {
 export function suchauftragNachricht(s: Suchauftrag, an: string): NachrichtEinfuegen {
   const zeilen = [
     `Firma: ${s.firma}`,
+    `Branche: ${s.branche ?? "-"}`,
     `Name: ${s.name}`,
     `E-Mail: ${s.email}`,
     `Telefon: ${s.telefon ?? "-"}`,
@@ -128,6 +128,7 @@ export function suchauftragNachricht(s: Suchauftrag, an: string): NachrichtEinfu
 export function suchauftragEntwurf(s: Suchauftrag): { betreff: string; body: string } {
   // Nur Angaben, die tatsächlich gemacht wurden -- keine "-"-Zeilen im Entwurf.
   const zusammenfassung = [
+    s.branche && `Branche: ${s.branche}`,
     `Nutzung: ${nutzungText(s)}`,
     `Ort: ${s.ort}`,
     flaecheText(s) && `Fläche: ${flaecheText(s)}`,

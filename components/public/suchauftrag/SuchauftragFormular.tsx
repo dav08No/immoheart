@@ -11,7 +11,7 @@ import { NUTZUNG_OPTIONEN } from "@/lib/nutzung"
 
 // Alle Felder als Text: Zahlen werden erst im Server-Schema geprüft ("" = keine Angabe).
 const LEER = {
-  firma: "", name: "", email: "", telefon: "", nutzung: "", ort: "",
+  firma: "", branche: "", name: "", email: "", telefon: "", nutzung: "", ort: "",
   flaecheMin: "", flaecheMax: "", budgetProM2: "", bezug: "", nachricht: "",
 }
 type Felder = typeof LEER
@@ -41,6 +41,7 @@ export function SuchauftragFormular({ zeitToken }: { zeitToken: string }) {
       {formular.fehler && <FormularFehler text={formular.fehler} fehlerRef={formular.fehlerRef} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <AnfrageFeld {...p("firma")} label="Firma" autoComplete="organization" maxLength={120} />
+        <AnfrageFeld {...p("branche")} label="Branche" pflicht={false} maxLength={80} hinweis="z.B. Maschinenbau, Treuhand" />
         <AnfrageFeld {...p("name")} label="Name" autoComplete="name" maxLength={120} />
         <AnfrageFeld {...p("email")} label="E-Mail" typ="email" autoComplete="email" maxLength={200} />
         <AnfrageFeld {...p("telefon")} label="Telefon" typ="tel" pflicht={false} autoComplete="tel" maxLength={40} />

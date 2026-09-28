@@ -5,7 +5,6 @@ import { useEffect, useState } from "react"
 export type StadtFarben = {
   brand: string
   brand2: string
-  navy: string
   herz: string
   hell: string
 }
@@ -14,7 +13,6 @@ export type StadtFarben = {
 const STANDARD: StadtFarben = {
   brand: "#065A82",
   brand2: "#1C7293",
-  navy: "#21295C",
   herz: "#E24B5B",
   hell: "#FFFFFF",
 }
@@ -25,7 +23,6 @@ function lesen(): StadtFarben {
   return {
     brand: wert("--brand", STANDARD.brand),
     brand2: wert("--brand-2", STANDARD.brand2),
-    navy: wert("--navy", STANDARD.navy),
     herz: wert("--heart", STANDARD.herz),
     hell: wert("--on-hero", STANDARD.hell),
   }

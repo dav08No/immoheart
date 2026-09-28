@@ -11,11 +11,12 @@ const TITEL = "immoheart · Gewerbeflächen mit Herzschlag"
 const BESCHREIBUNG =
   "Büro-, Gewerbe-, Produktions- und Lagerflächen in der Region Solothurn – persönlich vermittelt. Objekte ansehen, Suchauftrag erteilen oder Objekt inserieren."
 
-// absolute: sonst hängt das Root-Template ein zweites "· immoheart" an.
+// absolute: sonst hängt das Root-Template ein zweites "· immoheart" an. Kein eigenes
+// openGraph: es würde das des Root-Layouts samt Standard-OG-Bild ersetzen;
+// og:title/og:description übernimmt Next aus title/description.
 export const metadata: Metadata = {
   title: { absolute: TITEL },
   description: BESCHREIBUNG,
-  openGraph: { title: TITEL, description: BESCHREIBUNG, type: "website", locale: "de_CH", siteName: "immoheart" },
 }
 
 const MAX_HIGHLIGHTS = 3

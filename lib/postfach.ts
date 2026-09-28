@@ -90,6 +90,17 @@ export function aktionsBlock(
   return n.kategorie === "sonstiges" ? null : n.kategorie
 }
 
+export type SuchanfrageKopf = { ueberschrift: string; rueckfrage: boolean }
+
+// Website-Suchaufträge kommen strukturiert aus dem Formular: leere optionale Felder sind
+// keine "Lücke" der Erkennung, und der einzige Entwurf dazu ist der Danke-Entwurf
+// ("Entwurf öffnen") -- eine Rückfrage gibt es dort nicht.
+export function suchanfrageKopf(quelle: Nachricht["quelle"], felder: object): SuchanfrageKopf {
+  if (quelle === "website") return { ueberschrift: "Angaben aus dem Formular", rueckfrage: false }
+  const luecken = Object.values(felder).filter((wert) => wert === null).length
+  return { ueberschrift: `immoheart hat erkannt${luecken > 0 ? ` · ${luecken} fehlt` : ""}`, rueckfrage: luecken > 0 }
+}
+
 export type FotoUebernahme = "moeglich" | "heic" | "nein"
 
 // HEIC/HEIF bekommt einen eigenen Hinweis statt still zu fehlen: iPhones schicken das oft.

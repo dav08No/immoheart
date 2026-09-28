@@ -19,6 +19,11 @@ export default function StadtSzene({ onBereit, onFehler }: Props) {
   const farben = useStadtFarben()
   const [imBild, setImBild] = useState(true)
   const [tabSichtbar, setTabSichtbar] = useState(true)
+  // Entfernt den webglcontextlost-Listener; wird in onCreated gesetzt.
+  const listenerAbbau = useRef<(() => void) | null>(null)
+
+  // Explizit abmelden statt sich auf das verworfene Canvas zu verlassen.
+  useEffect(() => () => listenerAbbau.current?.(), [])
 
   // Nicht rendern, wenn niemand hinschaut: spart Akku und GPU.
   useEffect(() => {
@@ -44,7 +49,9 @@ export default function StadtSzene({ onBereit, onFehler }: Props) {
         camera={{ position: [13, 11, 13], fov: 36 }}
         onCreated={({ gl, camera }) => {
           camera.lookAt(0, 1.6, 0)
-          gl.domElement.addEventListener("webglcontextlost", onFehler, { once: true })
+          const canvas = gl.domElement
+          canvas.addEventListener("webglcontextlost", onFehler, { once: true })
+          listenerAbbau.current = () => canvas.removeEventListener("webglcontextlost", onFehler)
           requestAnimationFrame(() => onBereit())
         }}
       >

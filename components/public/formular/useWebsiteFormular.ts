@@ -4,8 +4,8 @@
 // Zeit-Token (inkl. Erneuerung), Honeypot-Wert, Hydrierungs-Sperre, Fehler, Danke-Zustand
 // und Fokusführung -- damit beide Formulare garantiert denselben Schutz haben.
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react"
-import { zeitTokenHolen } from "@/app/actions/objektanfrage"
-import type { ObjektAnfrageErgebnis } from "@/lib/objektanfrage-ergebnis"
+import { zeitTokenHolen } from "@/app/actions/formular"
+import type { FormularErgebnis } from "@/lib/formular-ergebnis"
 
 const ALLGEMEINER_FEHLER = "Ihre Anfrage konnte gerade nicht gesendet werden. Bitte versuchen Sie es später erneut."
 
@@ -51,7 +51,7 @@ export function useWebsiteFormular(startToken: string) {
     })
   }, [startToken])
 
-  function senden(e: FormEvent<HTMLFormElement>, aktion: (schutz: Schutzfelder) => Promise<ObjektAnfrageErgebnis>) {
+  function senden(e: FormEvent<HTMLFormElement>, aktion: (schutz: Schutzfelder) => Promise<FormularErgebnis>) {
     e.preventDefault()
     if (laeuft || gesendet) return
     setFehler(null)

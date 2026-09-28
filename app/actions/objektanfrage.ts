@@ -4,18 +4,12 @@
 // (Honeypot, Mindestzeit, IP-Limit, zod) liegt im gemeinsamen Ablauf
 // lib/website-speichern.ts; hier nur das Auflösen des Objekts ausschliesslich über
 // die öffentliche View (siehe Konstraint N5).
-import { erstelleZeitToken } from "@/lib/formular-schutz"
-import { formularGeheimnis } from "@/lib/formular-geheimnis"
 import { objektanfrageEntwurf, objektanfrageNachricht, objektanfrageSchema } from "@/lib/website-eintrag"
-import type { ObjektAnfrageErgebnis } from "@/lib/objektanfrage-ergebnis"
+import type { FormularErgebnis } from "@/lib/formular-ergebnis"
 import { holeOeffentlichesObjekt } from "@/lib/queries/oeffentlich"
 import { speichereWebsiteEintrag } from "@/lib/website-speichern"
 
-export async function zeitTokenHolen(): Promise<string> {
-  return erstelleZeitToken(Date.now(), formularGeheimnis())
-}
-
-export async function objektAnfragen(eingabe: unknown): Promise<ObjektAnfrageErgebnis> {
+export async function objektAnfragen(eingabe: unknown): Promise<FormularErgebnis> {
   return speichereWebsiteEintrag({
     eingabe,
     schema: objektanfrageSchema,

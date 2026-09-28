@@ -8,7 +8,7 @@ import { headers } from "next/headers"
 import { z } from "zod"
 import { clientIp, hashIp, pruefeZeitToken, stundenFenster, LIMIT_PRO_STUNDE } from "@/lib/formular-schutz"
 import { formularGeheimnis } from "@/lib/formular-geheimnis"
-import { limitErgebnis, zeitTokenErgebnis, zodFehlerErgebnis, type ObjektAnfrageErgebnis } from "@/lib/objektanfrage-ergebnis"
+import { limitErgebnis, zeitTokenErgebnis, zodFehlerErgebnis, type FormularErgebnis } from "@/lib/formular-ergebnis"
 import { zaehleEinsendung } from "@/lib/queries/formular-limits"
 import { erstelleAdminClient } from "@/lib/supabase/admin"
 import type { NachrichtEinfuegen } from "@/lib/website-eintrag"
@@ -23,7 +23,7 @@ const formularSchema = z.object({
 
 // Ergebnis von vorbereiten(): entweder Kontext für die Textbausteine (z.B. das
 // aufgelöste Objekt) oder eine fertige Antwort für das Formular (z.B. "nicht verfügbar").
-export type Vorbereitung<K> = { ok: true; kontext: K } | { ok: false; ergebnis: ObjektAnfrageErgebnis }
+export type Vorbereitung<K> = { ok: true; kontext: K } | { ok: false; ergebnis: FormularErgebnis }
 
 // Entwurf ohne antwort_auf/Richtung/Typ -- die setzt der Ablauf selbst einheitlich.
 export type EntwurfFelder = Omit<NachrichtEinfuegen, "richtung" | "typ" | "antwort_auf">
@@ -40,7 +40,7 @@ type WebsiteEintrag<T, K> = {
 
 const GENERISCHER_FEHLER = "Ihre Anfrage konnte gerade nicht gespeichert werden. Bitte versuchen Sie es später erneut."
 
-export async function speichereWebsiteEintrag<T, K>(auftrag: WebsiteEintrag<T, K>): Promise<ObjektAnfrageErgebnis> {
+export async function speichereWebsiteEintrag<T, K>(auftrag: WebsiteEintrag<T, K>): Promise<FormularErgebnis> {
   const kopf = formularSchema.safeParse(auftrag.eingabe)
   const webseite = kopf.success ? kopf.data.webseite : ""
   const zeitToken = kopf.success ? kopf.data.zeitToken : ""

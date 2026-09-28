@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import { suchanfrageKontakt } from "@/lib/eingang/anfrage-aus-eingang"
+import { suchanfrageKopf } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 import type { Nutzung } from "@/types"
 import { AUSWAHL_KLASSE, FELD_LABELS, NUTZUNG_OPTIONEN, nutzungLabel, type AktionAusfuehren } from "./typen"
@@ -28,7 +29,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   // Nur Website-Suchaufträge tragen Kontaktangaben; Mail-Eingänge haben dafür den Absender.
   const kontakt = suchanfrageKontakt(nachricht.erkannte_felder)
-  const luecken = felder ? Object.values(felder).filter((wert) => wert === null).length : 0
+  const kopf = felder ? suchanfrageKopf(nachricht.quelle, felder) : null
   // alsAnfrageSpeichern rät bei fehlender Nutzung bewusst nicht (hartes Matching-Kriterium);
   // die hier gewählte Nutzung wird nur mitgegeben, erkannte_felder bleibt die KI-Erkennung.
   const nutzungFehlt = felder !== null && felder.nutzung == null
@@ -57,11 +58,9 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
           )}
         </div>
       )}
-      {felder && (
+      {felder && kopf && (
         <>
-          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">
-            immoheart hat erkannt{luecken > 0 ? ` · ${luecken} fehlt` : ""}
-          </div>
+          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">{kopf.ueberschrift}</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(Object.keys(FELD_LABELS) as (keyof ErkannteFelder)[]).map((schluessel) => (
               <Feld key={schluessel} label={FELD_LABELS[schluessel]} wert={anzeigeWert(schluessel, felder)} />
@@ -104,7 +103,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
             {laufend === "speichern" ? "Wird gespeichert…" : "Als Anfrage speichern"}
           </Button>
         )}
-        {luecken > 0 && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
+        {kopf?.rueckfrage && <Button onClick={onRueckfrageOeffnen}>Rückfrage öffnen</Button>}
       </div>
     </section>
   )

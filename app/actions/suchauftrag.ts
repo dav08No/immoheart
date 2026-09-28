@@ -4,10 +4,10 @@
 // (Honeypot, Mindestzeit, IP-Limit, zod) liegt im gemeinsamen Ablauf
 // lib/website-speichern.ts. Es entsteht nur ein Eingang + Antwort-Entwurf, nie eine Mail.
 import { suchauftragEntwurf, suchauftragNachricht, suchauftragSchema } from "@/lib/suchauftrag"
-import type { ObjektAnfrageErgebnis } from "@/lib/objektanfrage-ergebnis"
+import type { FormularErgebnis } from "@/lib/formular-ergebnis"
 import { ohneVorbereitung, speichereWebsiteEintrag } from "@/lib/website-speichern"
 
-export async function suchauftragSenden(eingabe: unknown): Promise<ObjektAnfrageErgebnis> {
+export async function suchauftragSenden(eingabe: unknown): Promise<FormularErgebnis> {
   return speichereWebsiteEintrag({
     eingabe,
     schema: suchauftragSchema,

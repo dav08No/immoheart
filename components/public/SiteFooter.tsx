@@ -1,7 +1,6 @@
 import Link from "next/link"
+import { IMMOHEART_MAIL } from "@/lib/mailto"
 import { HerzLogo } from "./HerzLogo"
-
-const MAIL = "immoheart.business@gmail.com"
 
 const LINKS = [
   { href: "/impressum", label: "Impressum" },
@@ -29,8 +28,8 @@ export function SiteFooter() {
               {link.label}
             </Link>
           ))}
-          <a href={`mailto:${MAIL}`} className="hover:text-brand">
-            {MAIL}
+          <a href={`mailto:${IMMOHEART_MAIL}`} className="hover:text-brand">
+            {IMMOHEART_MAIL}
           </a>
         </nav>
         <span className="text-ink-3">© {jahr} immoheart</span>

@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import { LazyMotion, domAnimation, m, useReducedMotion, useScroll, useSpring } from "motion/react"
+import { useUnterhalbBeimLaden } from "./useUnterhalbBeimLaden"
 
 // Flache Linie mit zwei Herzschlag-Ausschlägen (je Spur einer).
 const PFAD =
@@ -16,17 +17,16 @@ const STRICH = {
   strokeLinejoin: "round",
 } as const
 
-// Vor dem Mount (Server-HTML, ohne JS) und bei reduzierter Bewegung steht die Linie
-// vollständig; erst danach zeichnet sie sich mit dem Scrollen.
+// Vor dem Mount (Server-HTML, ohne JS), bei reduzierter Bewegung und wenn sie beim Laden
+// schon im Bild war, steht die Linie vollständig (kein Flackern); sonst zeichnet sie
+// sich beim Hereinscrollen.
 export function EkgLinie() {
   const ref = useRef<HTMLDivElement>(null)
   const reduziert = useReducedMotion()
-  const [bereit, setBereit] = useState(false)
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 90%", "end 40%"] })
   const laenge = useSpring(scrollYProgress, { stiffness: 120, damping: 30, restDelta: 0.001 })
 
-  useEffect(() => setBereit(true), [])
-  const zeichnen = bereit && !reduziert
+  const zeichnen = useUnterhalbBeimLaden(ref) && !reduziert
 
   return (
     <div ref={ref} aria-hidden className="w-full">

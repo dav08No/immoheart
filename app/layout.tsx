@@ -3,6 +3,7 @@ import { Fraunces, Outfit } from "next/font/google"
 import { cookies } from "next/headers"
 import { Toaster } from "@/components/shadcn/sonner"
 import { oeffentlicheBasisUrl } from "@/lib/basis-url"
+import { OPEN_GRAPH_BASIS } from "@/lib/open-graph"
 import "./globals.css"
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" })
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(oeffentlicheBasisUrl(process.env)),
   title: { default: "immoheart", template: "%s · immoheart" },
   description: "Gewerbeflächen in der Region Solothurn, persönlich vermittelt.",
+  // Auf der Root-Ebene, weil Next das dateibasierte opengraph-image nur hier
+  // zusammenführt; Seiten ohne eigenes openGraph erben so Bild, siteName und locale.
+  openGraph: { ...OPEN_GRAPH_BASIS },
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +29,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="de" data-theme={theme}>
       <body className={`${outfit.variable} ${fraunces.variable} font-sans`}>
         {children}
-        <Toaster />
+        {/* Oben statt unten rechts: dort liegen die Knöpfe der Sheet-Fusszeilen. */}
+        <Toaster position="top-center" />
       </body>
     </html>
   )
