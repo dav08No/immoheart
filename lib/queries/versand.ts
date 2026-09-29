@@ -8,6 +8,54 @@ import { RESERVIERUNG_TIMEOUT_MS } from "@/lib/entwurf-status"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 
+// Dedup-Check vor jedem Angebots-/Nachfass-Entwurf (Ruling R2, "Lücke Empfänger/Nachfass"):
+// existiert bereits ein offener (nicht gelöschter) Entwurf, wird dessen id zurückgegeben,
+// statt einen zweiten teuren KI-Aufruf auszulösen und einen zweiten Entwurf anzulegen.
+export async function holeOffenenAngebotsEntwurf(matchId: string): Promise<NachrichtRow | null> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .select("*")
+    .eq("match_id", matchId)
+    .eq("richtung", "entwurf")
+    .eq("typ", "angebot")
+    .is("geloescht_am", null)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function holeOffenenNachfassEntwurf(anfrageId: string): Promise<NachrichtRow | null> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .select("*")
+    .eq("anfrage_id", anfrageId)
+    .eq("richtung", "entwurf")
+    .eq("typ", "nachfass")
+    .is("geloescht_am", null)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Eine Abfrage für alle gelisteten Matches statt N Einzelabfragen (holeNeueMatches):
+// liefert die match_id-Menge, für die bereits ein offener Angebots-Entwurf existiert,
+// damit die Übersicht "Entwurf öffnen" statt "Angebot entwerfen" zeigen kann.
+export async function holeMatchIdsMitOffenemEntwurf(matchIds: string[]): Promise<Set<string>> {
+  if (matchIds.length === 0) return new Set()
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase
+    .from("nachrichten")
+    .select("match_id")
+    .in("match_id", matchIds)
+    .eq("richtung", "entwurf")
+    .eq("typ", "angebot")
+    .is("geloescht_am", null)
+  if (error) throw error
+  return new Set(data.flatMap((n) => (n.match_id ? [n.match_id] : [])))
+}
+
 export async function holeGesendeteIdsFuerAnfrage(anfrageId: string): Promise<string[]> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase

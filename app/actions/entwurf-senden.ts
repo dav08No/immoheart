@@ -5,6 +5,7 @@ import { holeEigenesProfil } from "@/lib/queries/profile"
 import { aktualisiereNachricht, holeNachricht } from "@/lib/queries/nachrichten"
 import { gibReservierungFrei, holeGesendeteIdsFuerAnfrage, markiereGesendet, reserviereEntwurf } from "@/lib/queries/versand"
 import { aktualisiereAnfrage } from "@/lib/queries/anfragen"
+import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { entwurfSchema } from "@/lib/entwurf-schema"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import { verlaufsKoepfe } from "@/lib/mail/verlauf"
@@ -102,6 +103,16 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
         revalidatePath("/admin/anfragen")
       } catch (fehler) {
         console.error("aktualisiereAnfrage fehlgeschlagen nach erfolgreichem Versand", fehler)
+      }
+    }
+    // Ebenso best-effort und aus demselben Grund wie letzter_kontakt oben: ein Treffer
+    // gilt erst mit diesem tatsächlichen Versand (nicht schon mit dem Anlegen des
+    // Entwurfs, siehe matchSenden) als angeboten. Nur Angebots-Entwürfe tragen match_id.
+    if (entwurf.match_id) {
+      try {
+        await markiereMatchAngeboten(entwurf.match_id)
+      } catch (fehler) {
+        console.error("markiereMatchAngeboten fehlgeschlagen nach erfolgreichem Versand", fehler)
       }
     }
     pfadeNeuLaden()

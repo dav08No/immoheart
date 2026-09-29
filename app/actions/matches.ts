@@ -7,6 +7,7 @@ import { betreffFuerAnfrage } from "@/lib/abschluss/betreff"
 import { holeAnfrage, holeFirma, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
 import { holeEigenesProfil } from "@/lib/queries/profile"
+import { holeOffenenAngebotsEntwurf, holeOffenenNachfassEntwurf } from "@/lib/queries/versand"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Kriterium } from "@/types"
 
@@ -28,7 +29,7 @@ async function empfaengerFuerAnfrage(firmaId: string | null): Promise<string> {
 
 // Ein UPDATE ohne betroffene Zeile ist für PostgREST kein Fehler -- deshalb
 // die zurückgegebene id prüfen, statt einen stillen Fehlschlag als Erfolg zu melden.
-async function aktualisiereMatchStatus(matchId: string, status: "gesendet" | "verworfen"): Promise<void> {
+async function aktualisiereMatchStatus(matchId: string, status: "verworfen"): Promise<void> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("matches").update({ status }).eq("id", matchId).select("id").maybeSingle()
   if (error) throw error
@@ -37,21 +38,31 @@ async function aktualisiereMatchStatus(matchId: string, status: "gesendet" | "ve
 
 export async function matchSenden(matchId: string): Promise<{ entwurfId: string }> {
   await holeEigenesProfil()
+
+  // Ruling R2: der Dedup-Check läuft als Erstes, noch vor jedem DB-/KI-Zugriff für neue
+  // Inhalte -- ein Doppelklick oder ein zweiter Tab bekommt dieselbe id zurück statt
+  // eines zweiten, teuren KI-Aufrufs und eines zweiten Angebotsentwurfs.
+  const bestehenderEntwurf = await holeOffenenAngebotsEntwurf(matchId)
+  if (bestehenderEntwurf) return { entwurfId: bestehenderEntwurf.id }
+
   const supabase = await erstelleServerClient()
   const { data: matchRow, error } = await supabase.from("matches").select("*").eq("id", matchId).single()
   if (error) throw error
-  // Verhindert einen zweiten KI-Aufruf (teuer, siehe entwurfAngebot) und einen zweiten
-  // Angebotsentwurf für ein bereits bearbeitetes Match -- z.B. bei einem Doppelklick
-  // oder wenn dieselbe Karte in zwei Tabs offen ist. Läuft VOR jedem KI-/DB-Zugriff.
+  // Guard "bereits bearbeitet" erst NACH dem Dedup-Check oben: ein Match mit offenem
+  // Entwurf hat noch status='neu' (matchSenden setzt den Status seit Task 5 nicht mehr),
+  // ein Match ohne Entwurf, aber status != 'neu', wurde anderweitig abgeschlossen.
   if (matchRow.status !== "neu") throw new Error("Dieses Match wurde bereits bearbeitet.")
 
   const [anfrageRow, objektRow] = await Promise.all([holeAnfrage(matchRow.anfrage_id), holeObjekt(matchRow.objekt_id)])
   if (!anfrageRow || !objektRow) throw new Error("Anfrage oder Objekt nicht gefunden")
 
+  // Empfänger vor dem KI-Aufruf prüfen (Lücke Empfänger): nie ein teurer Gemini-Aufruf,
+  // wenn am Ende sowieso kein Postfach erreichbar wäre.
+  const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
+
   const anfrage = zuAnfrageDomain(anfrageRow)
   const objekt = zuObjektDomain(objektRow)
   const entwurf = await entwurfAngebot(anfrage, objekt, matchRow.kriterien as Kriterium[], matchRow.hinweis)
-  const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
   const betreff = await betreffFuerAnfrage(anfrage.id, entwurf.betreff)
 
   const neu = await legeNachrichtAn({
@@ -65,9 +76,8 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
     body: entwurf.body,
   })
 
-  // Match gilt als bearbeitet, sobald ein Angebotsentwurf existiert.
-  await aktualisiereMatchStatus(matchId, "gesendet")
-
+  // Status bleibt 'neu' -- ein Treffer gilt erst mit dem tatsächlichen Versand (siehe
+  // entwurf-senden.ts, markiereMatchAngeboten) als angeboten, nicht schon mit dem Entwurf.
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
   revalidatePath("/admin/entwuerfe")
@@ -83,13 +93,21 @@ export async function matchVerwerfen(matchId: string): Promise<void> {
 
 export async function anfrageNachfragen(anfrageId: string): Promise<{ entwurfId: string }> {
   await holeEigenesProfil()
+
+  // Lücke Nachfass: existiert bereits ein offener Nachfass-Entwurf zur Anfrage, wird
+  // dessen id zurückgegeben statt eines zweiten KI-Aufrufs/-Entwurfs.
+  const bestehenderEntwurf = await holeOffenenNachfassEntwurf(anfrageId)
+  if (bestehenderEntwurf) return { entwurfId: bestehenderEntwurf.id }
+
   const anfrageRow = await holeAnfrage(anfrageId)
   if (!anfrageRow) throw new Error("Anfrage nicht gefunden")
+
+  // Empfänger vor dem KI-Aufruf prüfen (Lücke Empfänger, wie in matchSenden).
+  const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
 
   const anfrage = zuAnfrageDomain(anfrageRow)
   const tage = Math.floor((Date.now() - anfrage.letzterKontakt.getTime()) / 86_400_000)
   const entwurf = await entwurfNachfass(anfrage, tage)
-  const empfaenger = await empfaengerFuerAnfrage(anfrageRow.firma_id)
   const betreff = await betreffFuerAnfrage(anfrage.id, entwurf.betreff)
 
   const neu = await legeNachrichtAn({

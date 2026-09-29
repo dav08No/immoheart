@@ -85,7 +85,9 @@ export function MatchCard({
           ))}
         </span>
         <Button variante="primaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onSenden() }} disabled={laufend}>
-          {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
+          {/* onSenden bleibt dieselbe Aktion: matchSenden liefert bei offenem Entwurf
+              dessen id zurück statt einen neuen anzulegen (Lücke Empfänger/Nachfass). */}
+          {laufend ? "Wird bearbeitet…" : match.hatEntwurf ? "Entwurf öffnen" : "Angebot entwerfen"}
         </Button>
         <Button variante="sekundaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onVerwerfen() }} disabled={laufend}>
           Verwerfen

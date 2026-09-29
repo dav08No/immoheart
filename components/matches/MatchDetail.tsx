@@ -54,7 +54,7 @@ export function MatchDetail({
             Verwerfen
           </Button>
           <Button variante="primaer" onClick={onSenden} disabled={laufend}>
-            {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
+            {laufend ? "Wird bearbeitet…" : letzterMatch.hatEntwurf ? "Entwurf öffnen" : "Angebot entwerfen"}
           </Button>
         </>
       }

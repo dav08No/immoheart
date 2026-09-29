@@ -3,6 +3,7 @@ import { berechneMatch } from "@/lib/matching"
 import { holeAnfrage, holeOffeneAnfragen, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, holeVerfuegbareObjekte, zuObjektDomain } from "@/lib/queries/objekte"
 import { holeTitelbilder } from "@/lib/queries/fotos"
+import { holeMatchIdsMitOffenemEntwurf } from "@/lib/queries/versand"
 import type { Kriterium } from "@/types"
 
 // Richtung Anfrage -> Objekte (aufgerufen nach jedem Anlegen/Ändern einer
@@ -107,17 +108,32 @@ export async function berechneUndSpeichereMatchesFuerObjekt(objektId: string): P
   }
 }
 
+// status IN (neu, gesendet): ein bereits angebotenes Match bleibt "der beste Treffer",
+// bis es reserviert/vermittelt/abgelehnt/erledigt und damit abgeschlossen ist.
 export async function holeBesterMatchFuerAnfrage(anfrageId: string) {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("matches")
     .select("*, objekte(titel)")
     .eq("anfrage_id", anfrageId)
+    .in("status", ["neu", "gesendet"])
     .order("score", { ascending: false })
     .limit(1)
     .maybeSingle()
   if (error) throw error
   return data
+}
+
+// Bedingtes Update wie aktualisiereAnfrage/letzter_kontakt: erst der tatsächliche Versand
+// markiert den Treffer als angeboten, nicht schon das Anlegen des Entwurfs.
+export async function markiereMatchAngeboten(matchId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("matches")
+    .update({ status: "gesendet", angeboten_am: new Date().toISOString() })
+    .eq("id", matchId)
+    .eq("status", "neu")
+  if (error) throw error
 }
 
 export type NeuerMatch = {
@@ -129,6 +145,8 @@ export type NeuerMatch = {
   objekt: { titel: string; adresse: string; flaeche: number; preis_pro_m2: number | null; titelbild: string | null }
   anfrage: { id: string; flaeche_min: number | null; flaeche_max: number | null; letzter_kontakt: string }
   firma: { name: string; website: string | null } | null
+  // Offener Angebots-Entwurf -> Übersicht zeigt "Entwurf öffnen" statt "Angebot entwerfen".
+  hatEntwurf: boolean
 }
 
 export async function holeNeueMatches(): Promise<NeuerMatch[]> {
@@ -153,6 +171,8 @@ export async function holeNeueMatches(): Promise<NeuerMatch[]> {
   const anfragenNachId = new Map(anfragenData.map((a) => [a.id, a]))
   const firmenNachId = new Map(firmenData.map((f) => [f.id, f]))
   const titelbilder = await holeTitelbilder(matchRows.map((m) => m.objekt_id))
+  // Eine Abfrage über alle gelisteten match_ids statt einer pro Karte.
+  const entwurfIds = await holeMatchIdsMitOffenemEntwurf(matchRows.map((m) => m.id))
 
   return matchRows.flatMap((m) => {
     const anfrage = anfragenNachId.get(m.anfrage_id)
@@ -172,6 +192,7 @@ export async function holeNeueMatches(): Promise<NeuerMatch[]> {
           letzter_kontakt: anfrage.letzter_kontakt,
         },
         firma: anfrage.firma_id ? (firmenNachId.get(anfrage.firma_id) ?? null) : null,
+        hatEntwurf: entwurfIds.has(m.id),
       },
     ]
   })
