@@ -3,8 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { entwurfAngebot, entwurfNachfass } from "@/lib/ki/entwuerfe"
 import { legeNachrichtAn } from "@/lib/queries/nachrichten"
-import { holeGesendeteIdsFuerAnfrage, holeLetztenGesendetenBetreff } from "@/lib/queries/versand"
-import { antwortBetreff } from "@/lib/mail/verlauf"
+import { betreffFuerAnfrage } from "@/lib/abschluss/betreff"
 import { holeAnfrage, holeFirma, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
 import { holeEigenesProfil } from "@/lib/queries/profile"
@@ -25,17 +24,6 @@ async function empfaengerFuerAnfrage(firmaId: string | null): Promise<string> {
     throw new Error("Firma hat keine hinterlegte Kontakt-E-Mail -- kein Empfänger für den Versand vorhanden")
   }
   return firma.kontakt_email
-}
-
-// Gibt es für die Anfrage bereits gesendete Mails, hängt der neue Entwurf mit
-// "Re:" an deren letzten Betreff an, statt den von der KI frei erfundenen
-// Betreff zu verwenden -- der Verlauf im Mailprogramm der Firma soll an ihre
-// eigene Konversation anschliessen.
-async function betreffFuerAnfrage(anfrageId: string, kiBetreff: string): Promise<string> {
-  const bisherige = await holeGesendeteIdsFuerAnfrage(anfrageId)
-  if (bisherige.length === 0) return kiBetreff
-  const letzterBetreff = await holeLetztenGesendetenBetreff(anfrageId)
-  return letzterBetreff ? antwortBetreff(letzterBetreff) : kiBetreff
 }
 
 // Ein UPDATE ohne betroffene Zeile ist für PostgREST kein Fehler -- deshalb
