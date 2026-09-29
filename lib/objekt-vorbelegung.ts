@@ -22,10 +22,17 @@ export type ObjektVorbelegungWerte = Partial<{
   eigentuemer: string
 }>
 
+// Nur ein (nicht gelöschtes) Objektangebot darf Werte ins Objekt geben -- auch die
+// Eigentümer-Adresse in objektAnlegen: sonst bekäme etwa eine suchende Firma
+// Eigentümer-Mails mit Reservierungs-/Vermietungsdetails.
+export function istUebernehmbarerEingang(
+  eingang: Pick<NachrichtRow, "richtung" | "kategorie" | "geloescht_am"> | null
+): boolean {
+  return !!eingang && eingang.richtung === "eingang" && !eingang.geloescht_am && eingang.kategorie === "objektangebot"
+}
+
 export function objektVorbelegung(eingang: EingangFuerVorbelegung | null): ObjektVorbelegungWerte | null {
-  if (!eingang || eingang.richtung !== "eingang" || eingang.geloescht_am || eingang.kategorie !== "objektangebot") {
-    return null
-  }
+  if (!eingang || !istUebernehmbarerEingang(eingang)) return null
   const objekt = objektDatenAus(eingang.erkannte_felder)
   return {
     titel: objekt?.titel ?? undefined,

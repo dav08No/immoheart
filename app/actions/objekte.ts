@@ -8,6 +8,7 @@ import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { MAX_BESCHREIBUNG } from "@/lib/objekt-fotos"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { istUebernehmbarerEingang } from "@/lib/objekt-vorbelegung"
 import { eigentuemerEmailMitHerkunft, eigentuemerEmailSchema } from "@/lib/objekt-eigentuemer"
 import type { Database } from "@/types/database"
 
@@ -42,8 +43,8 @@ export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId
   pruefeBeschreibung(objekt)
   const herkunftId = herkunftNachrichtId ? idSchema.safeParse(herkunftNachrichtId) : null
   const herkunft = herkunftId?.success ? await holeNachricht(herkunftId.data) : null
-  // Leeres Feld: Absender der Herkunftsmail als Eigentümer-Adresse übernehmen.
-  const herkunftVon = herkunft?.richtung === "eingang" ? herkunft.von : null
+  // Leeres Feld: Absender der Herkunftsmail übernehmen, aber nur aus einem Objektangebot.
+  const herkunftVon = herkunft && istUebernehmbarerEingang(herkunft) ? herkunft.von : null
   const eigentuemer_email = eigentuemerEmailMitHerkunft(pruefeEigentuemerEmail(objekt.eigentuemer_email), herkunftVon)
   const neues = await legeObjektAn({ ...objekt, eigentuemer_email })
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
