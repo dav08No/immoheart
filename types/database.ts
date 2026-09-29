@@ -567,11 +567,48 @@ export type Database = {
         Returns: number
       }
       ist_aktives_konto: { Args: never; Returns: boolean }
+      objekt_nicht_verfuegbar: {
+        Args: { p_objekt: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
+      objekt_wieder_verfuegbar: {
+        Args: { p_objekt: string }
+        Returns: undefined
+      }
+      reservierung_aufheben: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
       speicher_belegt: {
         Args: never
         Returns: {
           bucket: string
           bytes: number
+        }[]
+      }
+      treffer_ablehnen: { Args: { p_match: string }; Returns: undefined }
+      treffer_reservieren: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
+      treffer_vermitteln: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
         }[]
       }
     }
