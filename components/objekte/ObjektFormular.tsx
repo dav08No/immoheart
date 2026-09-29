@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
+import { DrawerLeiste } from "@/components/layout/DrawerLeiste"
 import { BeschreibungFeld, SelectFeld, SichtbarkeitFeld, TextFeld } from "./ObjektFelder"
 import { ObjektFotos } from "./ObjektFotos"
 import { objektAnlegen, objektAktualisieren } from "@/app/actions/objekte"
@@ -132,43 +134,59 @@ export function ObjektFormular({
   // Anfragen) -- die Pflichtfeld-Validierung bleibt daher bestehen.
   const gueltig = titel && adresse && ort && flaeche && verfuegbarAb && eigentuemer
 
+  // Abschnitte Eckdaten, Beschreibung, Sichtbarkeit, Fotos; Speichern in der
+  // sticky Leiste am Ende (Fotos speichern ohnehin sofort, siehe ObjektFotos).
   return (
-    <div className="flex flex-col gap-2.5 text-sm">
+    <div className="flex flex-1 flex-col gap-6">
       {!objekt && vorbelegung && (
-        <p className="rounded-lg bg-brand-soft px-2.5 py-1.5 text-xs text-ink-2">
+        <p className="rounded-lg bg-brand-soft px-3 py-2 text-xs text-ink-2 wrap-anywhere">
           Vorbelegt aus Mail von {vorbelegung.eigentuemer}.
         </p>
       )}
-      <TextFeld placeholder="Titel" wert={titel} setWert={setTitel} disabled={speichert} />
-      <TextFeld placeholder="Adresse" wert={adresse} setWert={setAdresse} disabled={speichert} />
-      <TextFeld placeholder="Ort" wert={ort} setWert={setOrt} disabled={speichert} />
-      <div className="flex gap-2">
-        <TextFeld placeholder="Fläche m²" wert={flaeche} setWert={setFlaeche} disabled={speichert} halb />
-        <TextFeld placeholder="Preis CHF/m² (optional)" wert={preis} setWert={setPreis} disabled={speichert} halb />
-      </div>
-      <SelectFeld wert={nutzung} setWert={setNutzung} optionen={NUTZUNGEN} disabled={speichert} />
-      <input
-        type="date"
-        value={verfuegbarAb}
-        onChange={(e) => setVerfuegbarAb(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <TextFeld placeholder="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
-      <BeschreibungFeld wert={beschreibung} setWert={setBeschreibung} disabled={speichert} />
-      <SichtbarkeitFeld wert={oeffentlich} setWert={setOeffentlich} disabled={speichert} />
-      {objekt && (
-        <SelectFeld wert={status} setWert={setStatus} optionen={STATUS_OPTIONEN} disabled={speichert} />
-      )}
-      {fehler && <div className="text-sm text-crit">{fehler}</div>}
-      <Button variante="primaer" onClick={absenden} disabled={speichert || !gueltig}>
-        {speichert ? "Wird gespeichert…" : objekt ? "Änderungen speichern" : "Objekt anlegen"}
-      </Button>
+      <section className="flex flex-col gap-3">
+        <Abschnittstitel>Eckdaten</Abschnittstitel>
+        <TextFeld label="Titel" wert={titel} setWert={setTitel} disabled={speichert} />
+        <TextFeld label="Adresse" wert={adresse} setWert={setAdresse} disabled={speichert} />
+        <TextFeld label="Ort" wert={ort} setWert={setOrt} disabled={speichert} />
+        <div className="grid grid-cols-2 gap-3">
+          <TextFeld label="Fläche m²" wert={flaeche} setWert={setFlaeche} disabled={speichert} />
+          <TextFeld label="Preis CHF/m² (optional)" wert={preis} setWert={setPreis} disabled={speichert} />
+        </div>
+        <SelectFeld label="Nutzung" wert={nutzung} setWert={setNutzung} optionen={NUTZUNGEN} disabled={speichert} />
+        <TextFeld label="Verfügbar ab" typ="date" wert={verfuegbarAb} setWert={setVerfuegbarAb} disabled={speichert} />
+        <TextFeld label="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
+      </section>
+      <section className="flex flex-col gap-3">
+        {/* "Text" statt "Beschreibung": das Feld darunter heisst schon so (keine Doppelung). */}
+        <Abschnittstitel>Text</Abschnittstitel>
+        <BeschreibungFeld wert={beschreibung} setWert={setBeschreibung} disabled={speichert} />
+      </section>
+      <section className="flex flex-col gap-3">
+        <Abschnittstitel>Sichtbarkeit</Abschnittstitel>
+        <SichtbarkeitFeld wert={oeffentlich} setWert={setOeffentlich} disabled={speichert} />
+        {objekt && (
+          <SelectFeld label="Status" wert={status} setWert={setStatus} optionen={STATUS_OPTIONEN} disabled={speichert} />
+        )}
+      </section>
       {objekt ? (
         <ObjektFotos objektId={objekt.id} />
       ) : (
-        <p className="border-t border-line pt-3 text-xs text-ink-3">Fotos nach dem Speichern hinzufügen.</p>
+        <section className="flex flex-col gap-2">
+          <Abschnittstitel>Fotos</Abschnittstitel>
+          <p className="text-xs text-ink-2">Fotos nach dem Speichern hinzufügen.</p>
+        </section>
       )}
+      <DrawerLeiste>
+        {/* Fehler in der Leiste, damit er neben dem Knopf sichtbar ist, egal wohin gescrollt wurde. */}
+        {fehler && (
+          <p role="alert" className="mr-auto min-w-0 basis-full text-sm text-crit wrap-break-word">
+            {fehler}
+          </p>
+        )}
+        <Button variante="primaer" onClick={absenden} disabled={speichert || !gueltig}>
+          {speichert ? "Wird gespeichert…" : objekt ? "Änderungen speichern" : "Objekt anlegen"}
+        </Button>
+      </DrawerLeiste>
     </div>
   )
 }

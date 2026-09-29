@@ -17,7 +17,8 @@ type Props = {
   onAblegen: (nach: number) => void
 }
 
-const KNOPF = "grid size-7 place-items-center rounded-md bg-surface/90 text-ink shadow-sm hover:bg-surface disabled:opacity-40"
+const KNOPF =
+  "grid size-7 place-items-center rounded-md bg-surface/90 text-ink shadow-sm outline-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
 
 export function FotoKachel({
   foto, index, anzahl, gesperrt, gezogen, onVerschieben, onLoeschen, onZiehStart, onZiehEnde, onAblegen,
@@ -89,7 +90,7 @@ export function FotoKachel({
             onClick={() => onVerschieben(index, index - 1)}
             className={KNOPF}
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-4" aria-hidden />
           </button>
           <button
             type="button"
@@ -98,7 +99,7 @@ export function FotoKachel({
             onClick={() => onVerschieben(index, index + 1)}
             className={KNOPF}
           >
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-4" aria-hidden />
           </button>
           <button
             type="button"
@@ -107,7 +108,7 @@ export function FotoKachel({
             onClick={() => setBestaetigen(true)}
             className={`${KNOPF} text-crit`}
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
       )}

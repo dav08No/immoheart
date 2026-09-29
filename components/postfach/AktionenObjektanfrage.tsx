@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FilePen } from "lucide-react"
 import { Feld } from "@/components/ui/Feld"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { Button } from "@/components/ui/Button"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import { objektanfrageFelder } from "@/lib/eingang/anfrage-aus-objektanfrage"
@@ -29,8 +30,8 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
   const gespeichert = nachricht.anfrage_id !== null
 
   return (
-    <section aria-label="Objektanfrage" className="mt-4">
-      <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Anfrage zu einem Objekt</div>
+    <section aria-label="Objektanfrage">
+      <Abschnittstitel className="mb-2.5">Anfrage zu einem Objekt</Abschnittstitel>
       {felder ? (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -43,7 +44,7 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
           <p className="mt-2 whitespace-pre-wrap wrap-break-word rounded-lg border border-line p-3 text-sm text-ink-2">{felder.nachricht}</p>
         </>
       ) : (
-        <p className="text-xs text-ink-3">Keine Formularangaben gefunden.</p>
+        <p className="text-xs text-ink-2">Keine Formularangaben gefunden.</p>
       )}
       <div className="mt-2.5">
         {objekt ? (

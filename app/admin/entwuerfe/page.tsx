@@ -1,4 +1,5 @@
-import { Header } from "@/components/layout/Header"
+import { SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
+import { EntwuerfeKopf } from "@/components/entwuerfe/EntwuerfeKopf"
 import { EntwuerfeAnsicht } from "@/components/entwuerfe/EntwuerfeAnsicht"
 import { holeEntwuerfe } from "@/lib/queries/nachrichten"
 
@@ -11,8 +12,8 @@ export default async function EntwuerfePage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <Header titel="Entwürfe" untertitel={`${entwuerfe.length} offen`} />
-      <main className="flex-1 overflow-y-auto p-5">
+      <EntwuerfeKopf offen={entwuerfe.length} />
+      <main className={SEITEN_INHALT_KLASSE}>
         <EntwuerfeAnsicht entwuerfe={entwuerfe} startId={startId} />
       </main>
     </>

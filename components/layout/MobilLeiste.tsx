@@ -38,7 +38,13 @@ export function MobilLeiste() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" aria-describedby={undefined} className="w-[260px] gap-0 bg-surface p-0 sm:max-w-[260px]">
+      {/* Gleiche Markenleiste wie am Desktop; der eingebaute Schliessen-Knopf
+          (letztes Kind) bekommt helle Farben, sonst verschwindet er im Verlauf. */}
+      <SheetContent
+        side="left"
+        aria-describedby={undefined}
+        className="w-[260px] gap-0 border-r-0 bg-nav-bis p-0 text-nav-text sm:max-w-[260px] [&>button:last-child]:bg-transparent [&>button:last-child]:text-nav-text [&>button:last-child]:opacity-90 [&>button:last-child]:ring-offset-nav-von [&>button:last-child]:focus:ring-nav-text"
+      >
         <SheetTitle className="sr-only">Admin-Navigation</SheetTitle>
         <SidebarInhalt onNavigation={() => setOffen(false)} />
       </SheetContent>

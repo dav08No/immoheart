@@ -1,9 +1,10 @@
+import { AnmeldeRahmen } from "@/components/auth/AnmeldeRahmen"
 import { PasswortVergessenFormular } from "@/components/auth/PasswortVergessenFormular"
 
 export default function PasswortVergessenSeite() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg">
+    <AnmeldeRahmen titel="Passwort vergessen">
       <PasswortVergessenFormular />
-    </main>
+    </AnmeldeRahmen>
   )
 }

@@ -2,10 +2,17 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ObjektRaster } from "./ObjektRaster"
+import { Plus } from "lucide-react"
+import { ObjektRaster, STATUS_LABEL } from "./ObjektRaster"
 import { ObjektFormular } from "./ObjektFormular"
 import { Drawer } from "@/components/layout/Drawer"
+import { Seitenkopf, SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
 import { Button } from "@/components/ui/Button"
+import { Panel } from "@/components/ui/Panel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
+import { StatusChip } from "@/components/ui/StatusChip"
+import { kontextObjekte } from "@/lib/admin/kontext"
+import { objektStatusTon } from "@/lib/ui/status-ton"
 import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
 import type { Database } from "@/types/database"
 
@@ -38,25 +45,49 @@ export function ObjekteAnsicht({
     if (vorbelegung || oeffnenId) router.replace("/admin/objekte")
   }
 
+  // "öffentlich" wie die View objekte_oeffentlich: Schalter an UND verfügbar/reserviert.
+  const oeffentlich = objekte.filter((o) => o.oeffentlich && o.status !== "vermietet").length
+  const symbol = <Plus className="size-4" aria-hidden />
+
   return (
     <>
-      <div className="mb-3 flex justify-end">
-        <Button variante="primaer" onClick={() => setModus("neu")}>
-          Objekt anlegen
-        </Button>
-      </div>
-      <ObjektRaster
-        objekte={objekte}
-        treffer={treffer}
-        titelbilder={titelbilder}
-        direktanfragen={direktanfragen}
-        onKarteWahl={setModus}
+      <Seitenkopf
+        titel="Objekte"
+        kontext={kontextObjekte(objekte.length, oeffentlich)}
+        aktion={
+          <Button variante="primaer" icon={symbol} onClick={() => setModus("neu")}>
+            Objekt anlegen
+          </Button>
+        }
+        aktionMobil={
+          <Button variante="primaer" className="size-10 px-0" aria-label="Objekt anlegen" icon={symbol} onClick={() => setModus("neu")} />
+        }
       />
+      <main className={SEITEN_INHALT_KLASSE}>
+        {objekte.length === 0 ? (
+          <Panel>
+            <Leerzustand text="Noch keine Objekte im Bestand." />
+          </Panel>
+        ) : (
+          <ObjektRaster
+            objekte={objekte}
+            treffer={treffer}
+            titelbilder={titelbilder}
+            direktanfragen={direktanfragen}
+            onKarteWahl={setModus}
+          />
+        )}
+      </main>
 
       <Drawer
         offen={modus !== null}
         titel={bearbeitetesObjekt ? bearbeitetesObjekt.titel : "Neues Objekt"}
         untertitel=""
+        chip={
+          bearbeitetesObjekt && (
+            <StatusChip ton={objektStatusTon(bearbeitetesObjekt.status)}>{STATUS_LABEL[bearbeitetesObjekt.status]}</StatusChip>
+          )
+        }
         onSchliessen={schliessen}
       >
         {/*

@@ -1,5 +1,5 @@
 import { formatBytes, speicherAnteil } from "@/lib/zahlen/speicher"
-import { Kachel } from "./Kachel"
+import { Kennzahl } from "@/components/ui/Kennzahl"
 
 // Füllung trägt den Zustand (Marke -> Warnung -> kritisch), die Spur ist ein hellerer
 // Schritt derselben Rampe, damit der Balken auch leer als Messgerät lesbar bleibt.
@@ -13,7 +13,7 @@ export function SpeicherKachel({ buckets }: { buckets: { bucket: string; bytes: 
   const { belegt, anteil } = speicherAnteil(buckets)
   const prozent = Math.min(100, Math.round(anteil * 100))
   return (
-    <Kachel label="Speicher belegt" wert={formatBytes(belegt)} zusatz={`${prozent} % von 1 GB`}>
+    <Kennzahl label="Speicher belegt" wert={formatBytes(belegt)} zusatz={`${prozent} % von 1 GB`}>
       <div
         role="progressbar"
         aria-label="Speicher belegt"
@@ -24,6 +24,6 @@ export function SpeicherKachel({ buckets }: { buckets: { bucket: string; bytes: 
       >
         <div className="h-full rounded-full" style={{ width: `${Math.max(prozent, belegt > 0 ? 1 : 0)}%`, background: fuellFarbe(anteil) }} />
       </div>
-    </Kachel>
+    </Kennzahl>
   )
 }

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation"
 import { linkTyp } from "@/lib/routen"
+import { AnmeldeRahmen } from "@/components/auth/AnmeldeRahmen"
+import { Button } from "@/components/ui/Button"
 
 type Props = {
   searchParams: Promise<{ token_hash?: string; typ?: string }>
@@ -18,23 +20,15 @@ export default async function BestaetigenSeite({ searchParams }: Props) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg">
-      <form
-        method="post"
-        action="/auth/bestaetigen/einloesen"
-        className="flex w-full max-w-sm flex-col gap-3 rounded-card border border-line bg-surface p-6"
-      >
-        <h1 className="font-display text-xl font-bold text-ink">immoheart</h1>
+    <AnmeldeRahmen titel="Link bestätigen">
+      <form method="post" action="/auth/bestaetigen/einloesen" className="flex flex-col gap-4">
         <p className="text-sm text-ink-2">Klicken Sie auf „Weiter“, um fortzufahren.</p>
         <input type="hidden" name="token_hash" value={tokenHash} />
         <input type="hidden" name="typ" value={typ} />
-        <button
-          type="submit"
-          className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-on-brand"
-        >
+        <Button type="submit" variante="primaer" groesse="md">
           Weiter
-        </button>
+        </Button>
       </form>
-    </main>
+    </AnmeldeRahmen>
   )
 }

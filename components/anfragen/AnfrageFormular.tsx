@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { Button } from "@/components/ui/Button"
+import { FormFeld, EINGABE_KLASSE } from "@/components/ui/FormFeld"
+import { DrawerLeiste } from "@/components/layout/DrawerLeiste"
 import { anfrageAnlegen } from "@/app/actions/anfragen"
 import { NUTZUNGEN } from "@/lib/nutzung"
 import type { Nutzung } from "@/types"
@@ -26,6 +28,8 @@ export function AnfrageFormular({ onFertig }: { onFertig: () => void }) {
   const [bezug, setBezug] = useState(LEER.bezug)
   const [speichert, setSpeichert] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
+  // Sichtbare Labels statt reiner Platzhalter; useId hält die Label-ids eindeutig.
+  const idBasis = useId()
 
   // anfrageAnlegen (Task 48) wirft bewusst statt Fehler stillschweigend zu
   // verschlucken (Milestone-Konvention, siehe MailEinfuegen/AnfrageDetail).
@@ -63,61 +67,65 @@ export function AnfrageFormular({ onFertig }: { onFertig: () => void }) {
     }
   }
 
+  const feld = (name: string) => `${idBasis}-${name}`
+
   return (
-    <div className="flex flex-col gap-2.5 text-sm">
-      <input
-        placeholder="Ort"
-        value={ort}
-        onChange={(e) => setOrt(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <select
-        value={nutzung}
-        onChange={(e) => setNutzung(e.target.value as Nutzung)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      >
-        {NUTZUNGEN.map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
-      <div className="flex gap-2">
-        <input
-          placeholder="Fläche ab"
-          value={flaecheMin}
-          onChange={(e) => setFlaecheMin(e.target.value)}
+    <div className="flex flex-1 flex-col gap-4">
+      <FormFeld label="Ort" htmlFor={feld("ort")}>
+        <input id={feld("ort")} value={ort} onChange={(e) => setOrt(e.target.value)} disabled={speichert} className={EINGABE_KLASSE} />
+      </FormFeld>
+      <FormFeld label="Nutzung" htmlFor={feld("nutzung")}>
+        <select
+          id={feld("nutzung")}
+          value={nutzung}
+          onChange={(e) => setNutzung(e.target.value as Nutzung)}
           disabled={speichert}
-          className="min-w-0 flex-1 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-        />
-        <input
-          placeholder="Fläche bis"
-          value={flaecheMax}
-          onChange={(e) => setFlaecheMax(e.target.value)}
-          disabled={speichert}
-          className="min-w-0 flex-1 rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-        />
+          className={EINGABE_KLASSE}
+        >
+          {NUTZUNGEN.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </FormFeld>
+      <div className="grid grid-cols-2 gap-3">
+        <FormFeld label="Fläche ab" htmlFor={feld("flaeche-min")}>
+          <input
+            id={feld("flaeche-min")}
+            value={flaecheMin}
+            onChange={(e) => setFlaecheMin(e.target.value)}
+            disabled={speichert}
+            className={EINGABE_KLASSE}
+          />
+        </FormFeld>
+        <FormFeld label="Fläche bis" htmlFor={feld("flaeche-max")}>
+          <input
+            id={feld("flaeche-max")}
+            value={flaecheMax}
+            onChange={(e) => setFlaecheMax(e.target.value)}
+            disabled={speichert}
+            className={EINGABE_KLASSE}
+          />
+        </FormFeld>
       </div>
-      <input
-        placeholder="Budget CHF/m² (optional)"
-        value={budget}
-        onChange={(e) => setBudget(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      <input
-        placeholder="Bezug (optional)"
-        value={bezug}
-        onChange={(e) => setBezug(e.target.value)}
-        disabled={speichert}
-        className="rounded-lg border border-line-2 px-2.5 py-1.5 disabled:opacity-60"
-      />
-      {fehler && <div className="text-sm text-crit">{fehler}</div>}
-      <Button variante="primaer" onClick={absenden} disabled={speichert}>
-        {speichert ? "Wird gespeichert…" : "Anfrage anlegen"}
-      </Button>
+      <FormFeld label="Budget CHF/m² (optional)" htmlFor={feld("budget")}>
+        <input id={feld("budget")} value={budget} onChange={(e) => setBudget(e.target.value)} disabled={speichert} className={EINGABE_KLASSE} />
+      </FormFeld>
+      <FormFeld label="Bezug (optional)" htmlFor={feld("bezug")}>
+        <input id={feld("bezug")} value={bezug} onChange={(e) => setBezug(e.target.value)} disabled={speichert} className={EINGABE_KLASSE} />
+      </FormFeld>
+      <DrawerLeiste>
+        {/* Fehler in der Leiste, damit er neben dem Knopf sichtbar ist, egal wohin gescrollt wurde. */}
+        {fehler && (
+          <p role="alert" className="mr-auto min-w-0 basis-full text-sm text-crit wrap-break-word">
+            {fehler}
+          </p>
+        )}
+        <Button variante="primaer" onClick={absenden} disabled={speichert}>
+          {speichert ? "Wird gespeichert…" : "Anfrage anlegen"}
+        </Button>
+      </DrawerLeiste>
     </div>
   )
 }

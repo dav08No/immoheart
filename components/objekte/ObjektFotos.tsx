@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { ImagePlus } from "lucide-react"
 import { FotoKachel } from "./FotoKachel"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
 import { useFotoUpload } from "./useFotoUpload"
 import { fotoLoeschen, fotosLaden, fotosSortieren } from "@/app/actions/fotos"
 import { FOTO_MIME_TYPEN, verschiebe } from "@/lib/objekt-fotos"
@@ -83,13 +85,13 @@ export function ObjektFotos({ objektId }: { objektId: string }) {
   }
 
   return (
-    <section className="flex flex-col gap-2 border-t border-line pt-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">Fotos</h3>
+    <section className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Abschnittstitel>Fotos</Abschnittstitel>
         <label
-          className={`inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink ${gesperrt ? "pointer-events-none opacity-60" : "cursor-pointer hover:bg-surface-2"} focus-within:ring-2 focus-within:ring-brand`}
+          className={`inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-eingabe-rand bg-surface px-3 py-1 text-sm font-medium text-ink transition-colors motion-reduce:transition-none ${gesperrt ? "pointer-events-none opacity-60" : "cursor-pointer hover:bg-surface-2"} focus-within:ring-2 focus-within:ring-ring`}
         >
-          <ImagePlus className="size-4" />
+          <ImagePlus className="size-4" aria-hidden />
           Fotos hinzufügen
           <input
             ref={dateiEingabe}
@@ -102,7 +104,7 @@ export function ObjektFotos({ objektId }: { objektId: string }) {
           />
         </label>
       </div>
-      <p className="text-xs text-ink-3">
+      <p className="text-xs text-ink-2">
         JPG, PNG oder WebP, höchstens 5 MB. Das erste Foto ist das Titelbild; ziehen oder mit den Pfeilen umordnen.
         Änderungen an Fotos werden sofort gespeichert.
       </p>
@@ -112,17 +114,17 @@ export function ObjektFotos({ objektId }: { objektId: string }) {
         </p>
       )}
       {ladefehler && (
-        <p className="flex items-center gap-2 text-xs text-crit" role="alert">
+        <p className="flex flex-wrap items-center gap-2 text-xs text-crit" role="alert">
           {ladefehler}
-          <button type="button" onClick={() => void neuLaden()} className="text-brand underline">
+          <button type="button" onClick={() => void neuLaden()} className="rounded text-brand underline outline-none focus-visible:ring-2 focus-visible:ring-ring">
             Erneut laden
           </button>
         </p>
       )}
       {fotos === null ? (
-        !ladefehler && <p className="text-xs text-ink-3">Fotos werden geladen…</p>
+        !ladefehler && <p className="text-xs text-ink-2">Fotos werden geladen…</p>
       ) : fotos.length === 0 ? (
-        <p className="text-xs text-ink-3">Noch keine Fotos.</p>
+        <Leerzustand klein text="Noch keine Fotos." />
       ) : (
         <ul className="grid grid-cols-2 gap-2">
           {fotos.map((foto, index) => (

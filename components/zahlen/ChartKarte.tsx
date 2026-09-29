@@ -1,4 +1,6 @@
 import type { ReactNode } from "react"
+import { Panel, PanelKopf } from "@/components/ui/Panel"
+import { Tabelle as TabelleBaustein } from "@/components/ui/Tabelle"
 
 export type Tabelle = { spalten: string[]; zeilen: (string | number)[][] }
 
@@ -18,22 +20,21 @@ export function ChartKarte({
   children: ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col rounded-card border border-line bg-surface p-4">
-      <h2 className="font-display text-sm font-bold text-ink">{titel}</h2>
-      <p className="mt-0.5 text-xs text-ink-3">{beschreibung}</p>
+    <Panel as="section" className="flex min-w-0 flex-col">
+      <PanelKopf titel={titel} beschreibung={beschreibung} ebene={3} />
       {leer ? (
-        <p className="flex h-40 items-center justify-center text-sm text-ink-3">Noch keine Daten</p>
+        <p className="flex h-40 items-center justify-center text-sm text-ink-2">Noch keine Daten</p>
       ) : (
         <>
-          <div className="mt-3">{children}</div>
-          <details className="mt-2 text-xs text-ink-2">
-            <summary className="cursor-pointer select-none text-ink-3 hover:text-ink-2">Als Tabelle</summary>
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full border-collapse tabular-nums">
+          <div>{children}</div>
+          <details className="mt-3 text-xs text-ink-2">
+            <summary className="cursor-pointer select-none text-ink-2 hover:text-ink">Als Tabelle</summary>
+            <div className="mt-2">
+              <TabelleBaustein ariaLabel={`${titel} als Tabelle`}>
                 <thead>
                   <tr>
                     {tabelle.spalten.map((s) => (
-                      <th key={s} scope="col" className="border-b border-line px-2 py-1 text-left font-medium text-ink-2">{s}</th>
+                      <th key={s} scope="col">{s}</th>
                     ))}
                   </tr>
                 </thead>
@@ -41,16 +42,16 @@ export function ChartKarte({
                   {tabelle.zeilen.map((zeile, i) => (
                     <tr key={i}>
                       {zeile.map((zelle, j) => (
-                        <td key={j} className="border-b border-line px-2 py-1 text-ink">{zelle}</td>
+                        <td key={j}>{zelle}</td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </TabelleBaustein>
             </div>
           </details>
         </>
       )}
-    </section>
+    </Panel>
   )
 }

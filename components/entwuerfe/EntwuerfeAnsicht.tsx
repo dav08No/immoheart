@@ -1,18 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { PenLine } from "lucide-react"
-import { Button } from "@/components/ui/Button"
 import { EntwurfListe } from "./EntwurfListe"
 import { EntwurfEditor } from "./EntwurfEditor"
-import { NeueMailDialog } from "./NeueMailDialog"
 import { useListeDetail } from "@/components/layout/useListeDetail"
 import { ZurueckZurListe } from "@/components/layout/ZurueckZurListe"
+import { Panel } from "@/components/ui/Panel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
+// "Neue Mail" lebt jetzt in EntwuerfeKopf (Seitenkopf-Hauptaktion) statt hier --
+// diese Komponente zeigt nur noch Liste und Editor, wie PostfachAnsicht.
 export function EntwuerfeAnsicht({ entwuerfe, startId }: { entwuerfe: EntwurfMitBezug[]; startId: string | null }) {
   const [ausgewaehlteId, setAusgewaehlteId] = useState(startId ?? entwuerfe[0]?.id ?? null)
-  const [neueMailOffen, setNeueMailOffen] = useState(false)
   const { listeRef, detailRef, zumDetail, zurListe } = useListeDetail()
 
   // NeueMailDialog navigiert nach dem Anlegen per router.push auf
@@ -42,31 +42,30 @@ export function EntwuerfeAnsicht({ entwuerfe, startId }: { entwuerfe: EntwurfMit
 
   return (
     <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-      <div ref={listeRef} className="flex scroll-mt-3 flex-col gap-3">
-        <Button variante="primaer" onClick={() => setNeueMailOffen(true)} className="w-full">
-          <PenLine className="size-4" aria-hidden />
-          Neue Mail
-        </Button>
-        <EntwurfListe
-          entwuerfe={entwuerfe}
-          ausgewaehlteId={ausgewaehlteId}
-          onAuswahl={(id) => {
-            setAusgewaehlteId(id)
-            zumDetail()
-          }}
-        />
+      <div ref={listeRef} className="min-w-0 scroll-mt-3">
+        <Panel as="section" polster={false}>
+          <h2 className="sr-only">Entwürfe</h2>
+          <EntwurfListe
+            entwuerfe={entwuerfe}
+            ausgewaehlteId={ausgewaehlteId}
+            onAuswahl={(id) => {
+              setAusgewaehlteId(id)
+              zumDetail()
+            }}
+          />
+        </Panel>
       </div>
-      <div ref={detailRef} className="min-w-0 scroll-mt-3 rounded-card border border-line bg-surface">
-        <ZurueckZurListe onKlick={zurListe} />
-        {ausgewaehlt ? (
-          <EntwurfEditor key={ausgewaehlt.id} entwurf={ausgewaehlt} />
-        ) : (
-          <p className="p-10 text-center text-sm text-ink-3">
-            {entwuerfe.length === 0 ? "Keine offenen Entwürfe." : "Kein Entwurf ausgewählt."}
-          </p>
-        )}
+      <div ref={detailRef} className="min-w-0 scroll-mt-3">
+        {/* Kein overflow-hidden: es würde die sticky Aktionsleiste des Editors an diese
+            (nie scrollende) Fläche binden statt an den scrollenden Seiteninhalt. */}
+        <Panel polster={false} className="flex flex-col">
+          <ZurueckZurListe onKlick={zurListe} />
+          {!ausgewaehlt && (
+            <Leerzustand text={entwuerfe.length === 0 ? "Keine offenen Entwürfe." : "Kein Entwurf ausgewählt."} />
+          )}
+          {ausgewaehlt && <EntwurfEditor key={ausgewaehlt.id} entwurf={ausgewaehlt} />}
+        </Panel>
       </div>
-      <NeueMailDialog offen={neueMailOffen} onOpenChange={setNeueMailOffen} />
     </div>
   )
 }

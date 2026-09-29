@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { alsGesendetMarkieren, reservierungFreigeben } from "@/app/actions/entwuerfe"
 import { istReservierungAbgelaufen } from "@/lib/entwurf-status"
@@ -63,12 +64,13 @@ export function VersandBanner({ entwurf }: { entwurf: EntwurfMitBezug }) {
   }
 
   if (!abgelaufen) {
-    return <div className="mb-3.5 rounded-lg border border-line-2 bg-surface-2 p-3 text-sm text-ink-2">Wird gesendet…</div>
+    return <div className="rounded-panel border border-line-2 bg-surface-2 p-3 text-sm text-ink-2">Wird gesendet…</div>
   }
 
   return (
-    <div className="mb-3.5 rounded-lg border border-warn bg-warn-bg p-3 text-sm text-warn">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="rounded-panel border border-warn bg-warn-bg p-3 text-sm text-warn">
+      <div className="flex flex-wrap items-start gap-2">
+        <TriangleAlert className="mt-0.5 size-4 flex-none" aria-hidden />
         <span className="flex-1">Versand unklar – bitte im Gmail-Ordner „Gesendet” prüfen, bevor Sie erneut senden.</span>
       </div>
       {entwurf.versand_fehler && <p className="mt-2 text-xs text-warn">{entwurf.versand_fehler}</p>}

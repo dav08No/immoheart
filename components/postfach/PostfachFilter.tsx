@@ -1,4 +1,5 @@
 import { KATEGORIE_CHIPS, type KategorieChip, type PostfachFilter as Filter } from "@/lib/postfach"
+import { cn } from "@/lib/utils"
 
 const FILTER: { wert: Filter; label: string }[] = [
   { wert: "alle", label: "Alle" },
@@ -7,7 +8,7 @@ const FILTER: { wert: Filter; label: string }[] = [
   { wert: "gesendet", label: "Gesendet" },
 ]
 
-const BASIS = "rounded-full border px-2.5 py-1 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+const FOKUS = "outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 type Props = {
   filter: Filter
@@ -19,19 +20,28 @@ type Props = {
 
 export function PostfachFilter({ filter, chip, zaehler, onFilter, onChip }: Props) {
   return (
-    <div className="flex flex-col gap-2 border-b border-line p-2.5">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Ordner">
-        {FILTER.map(({ wert, label }) => (
-          <button
-            key={wert}
-            type="button"
-            onClick={() => onFilter(wert)}
-            aria-pressed={filter === wert}
-            className={`${BASIS} ${filter === wert ? "border-navy bg-navy text-white" : "border-line text-ink-2 hover:bg-surface-2"}`}
-          >
-            {label}
-          </button>
-        ))}
+    <div className="flex flex-col gap-2.5 border-b border-line p-3">
+      {/* Segment-Leiste: vier gleich breite Felder passen auch auf 360 px in eine Zeile;
+          der aktive Ordner gefüllt (Petrol), damit er nicht nur über einen Grauton erkennbar ist. */}
+      <div className="grid grid-cols-4 gap-0.5 rounded-lg bg-surface-3 p-0.5" role="group" aria-label="Ordner">
+        {FILTER.map(({ wert, label }) => {
+          const aktiv = filter === wert
+          return (
+            <button
+              key={wert}
+              type="button"
+              onClick={() => onFilter(wert)}
+              aria-pressed={aktiv}
+              className={cn(
+                FOKUS,
+                "min-w-0 truncate rounded-md px-1.5 py-1.5 text-xs transition-colors",
+                aktiv ? "bg-brand font-semibold text-on-brand" : "text-ink-2 hover:bg-surface hover:text-ink"
+              )}
+            >
+              {label}
+            </button>
+          )
+        })}
       </div>
       {filter !== "gesendet" && (
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kategorie">
@@ -44,7 +54,11 @@ export function PostfachFilter({ filter, chip, zaehler, onFilter, onChip }: Prop
                 // Erneuter Klick auf den aktiven Chip hebt die Einschränkung wieder auf.
                 onClick={() => onChip(aktiv ? null : wert)}
                 aria-pressed={aktiv}
-                className={`${BASIS} ${aktiv ? "border-brand bg-brand-soft text-brand" : "border-line text-ink-3 hover:bg-surface-2"}`}
+                className={cn(
+                  FOKUS,
+                  "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                  aktiv ? "border-brand bg-brand-soft font-medium text-brand" : "border-line text-ink-2 hover:bg-surface-2"
+                )}
               >
                 {label} <span className="tabular-nums">{zaehler[wert]}</span>
               </button>

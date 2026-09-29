@@ -1,6 +1,7 @@
-import { Header } from "@/components/layout/Header"
+import { Seitenkopf, SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
+import { Kennzahl } from "@/components/ui/Kennzahl"
 import { ChartKarte } from "@/components/zahlen/ChartKarte"
-import { Kachel } from "@/components/zahlen/Kachel"
 import { SpeicherKachel } from "@/components/zahlen/SpeicherKachel"
 import { AnfragenMonatChart } from "@/components/zahlen/AnfragenMonatChart"
 import { MailsWocheChart } from "@/components/zahlen/MailsWocheChart"
@@ -29,20 +30,20 @@ export default async function ZahlenPage() {
 
   return (
     <>
-      <Header titel="Zahlen" untertitel="Kacheln: gesamter Bestand · Diagramme: Zeitraum jeweils in der Beschreibung" />
-      <main className="flex-1 overflow-y-auto p-4 sm:p-5">
+      <Seitenkopf titel="Zahlen" kontext="Kacheln: gesamter Bestand · Diagramme: Zeitraum jeweils in der Beschreibung" />
+      <main className={SEITEN_INHALT_KLASSE}>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Kachel
+          <Kennzahl
             label="Anfragen gesamt"
             wert={anfragen.gesamt > 0 ? formatZahl(anfragen.gesamt) : null}
             zusatz={`${formatZahl(anfragen.offen)} offen`}
           />
-          <Kachel
+          <Kennzahl
             label="Vermittlungsquote"
             wert={anfragen.quote !== null ? formatProzent(anfragen.quote) : null}
             zusatz={`${formatZahl(anfragen.vermittelt)} von ${formatZahl(anfragen.gesamt)} vermittelt`}
           />
-          <Kachel
+          <Kennzahl
             label="Tage bis Erstangebot (Median)"
             wert={erstangebot.median !== null ? `${formatTage(erstangebot.median)} Tage` : null}
             zusatz={`aus ${formatZahl(erstangebot.anzahl)} ${erstangebot.anzahl === 1 ? "Anfrage" : "Anfragen"}`}
@@ -50,63 +51,79 @@ export default async function ZahlenPage() {
           <SpeicherKachel buckets={speicher} />
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-          <ChartKarte
-            titel="Anfragen pro Monat"
-            beschreibung="Neue Anfragen der letzten 12 Monate, nach Quelle gestapelt."
-            leer={istLeer(z.proMonat, ["mail", "website", "manuell"])}
-            tabelle={{ spalten: ["Monat", "Mail", "Website", "Manuell"], zeilen: z.proMonat.map((m) => [m.label, m.mail, m.website, m.manuell]) }}
-          >
-            <AnfragenMonatChart daten={z.proMonat} />
-          </ChartKarte>
-          <ChartKarte
-            titel="Mails pro Woche"
-            beschreibung="Eingegangene und gesendete Mails der letzten 12 Kalenderwochen."
-            leer={istLeer(z.mails, ["ein", "aus"])}
-            tabelle={{ spalten: ["Woche", "Eingang", "Ausgang"], zeilen: z.mails.map((w) => [w.label, w.ein, w.aus]) }}
-          >
-            <MailsWocheChart daten={z.mails} />
-          </ChartKarte>
-          <ChartKarte
-            titel="Entwürfe"
-            beschreibung="Gesendete und verworfene Entwürfe der letzten 6 Monate, nach Versand- bzw. Löschdatum."
-            leer={istLeer(z.entwuerfe, ["gesendet", "geloescht"])}
-            tabelle={{ spalten: ["Monat", "Gesendet", "Gelöscht"], zeilen: z.entwuerfe.map((m) => [m.label, m.gesendet, m.geloescht]) }}
-          >
-            <EntwuerfeChart daten={z.entwuerfe} />
-          </ChartKarte>
-          <ChartKarte
-            titel="Gefragteste Objekte"
-            beschreibung="Die fünf Objekte mit den meisten Objektanfragen im Postfach."
-            leer={istLeer(top, ["anzahl"])}
-            tabelle={{ spalten: ["Objekt", "Direktanfragen"], zeilen: top.map((t) => [t.label, t.anzahl]) }}
-          >
-            <BalkenChart daten={top} liegend />
-          </ChartKarte>
-          <ChartKarte
-            titel="Gesuchte Grössen"
-            beschreibung="Offene Anfragen nach gesuchter Fläche in m² (Mitte von min/max; ? = unbekannt)."
-            leer={istLeer(groessen, ["anzahl"])}
-            tabelle={{ spalten: ["Fläche (m²)", "Anfragen"], zeilen: groessen.map((g) => [g.label, g.anzahl]) }}
-          >
-            <BalkenChart daten={groessen} />
-          </ChartKarte>
-          <ChartKarte
-            titel="Gesuchte Nutzungen"
-            beschreibung="Offene Anfragen nach gewünschter Nutzungsart."
-            leer={istLeer(nutzung, ["anzahl"])}
-            tabelle={{ spalten: ["Nutzung", "Anfragen"], zeilen: nutzung.map((n) => [n.label, n.anzahl]) }}
-          >
-            <BalkenChart daten={nutzung} liegend />
-          </ChartKarte>
-          <ChartKarte
-            titel="Puls der offenen Anfragen"
-            beschreibung="Wie frisch der letzte Kontakt ist: gut, nachfassen oder kritisch."
-            leer={istLeer([z.puls], ["gut", "warn", "kritisch"])}
-            tabelle={{ spalten: ["Stufe", "Anfragen"], zeilen: [["Gut", z.puls.gut], ["Nachfassen", z.puls.warn], ["Kritisch", z.puls.kritisch]] }}
-          >
-            <PulsBalken puls={z.puls} />
-          </ChartKarte>
+        {/* Reihenfolge und Gruppierung laut Spec §3: Nachfrage, Kommunikation, Objekte. */}
+        <div className="flex flex-col gap-2">
+          <Abschnittstitel ebene={2}>Nachfrage</Abschnittstitel>
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+            <ChartKarte
+              titel="Anfragen pro Monat"
+              beschreibung="Neue Anfragen der letzten 12 Monate, nach Quelle gestapelt."
+              leer={istLeer(z.proMonat, ["mail", "website", "manuell"])}
+              tabelle={{ spalten: ["Monat", "Mail", "Website", "Manuell"], zeilen: z.proMonat.map((m) => [m.label, m.mail, m.website, m.manuell]) }}
+            >
+              <AnfragenMonatChart daten={z.proMonat} />
+            </ChartKarte>
+            <ChartKarte
+              titel="Gesuchte Grössen"
+              beschreibung="Offene Anfragen nach gesuchter Fläche in m² (Mitte von min/max; ? = unbekannt)."
+              leer={istLeer(groessen, ["anzahl"])}
+              tabelle={{ spalten: ["Fläche (m²)", "Anfragen"], zeilen: groessen.map((g) => [g.label, g.anzahl]) }}
+            >
+              <BalkenChart daten={groessen} />
+            </ChartKarte>
+            <ChartKarte
+              titel="Gesuchte Nutzungen"
+              beschreibung="Offene Anfragen nach gewünschter Nutzungsart."
+              leer={istLeer(nutzung, ["anzahl"])}
+              tabelle={{ spalten: ["Nutzung", "Anfragen"], zeilen: nutzung.map((n) => [n.label, n.anzahl]) }}
+            >
+              <BalkenChart daten={nutzung} liegend />
+            </ChartKarte>
+            <ChartKarte
+              titel="Puls der offenen Anfragen"
+              beschreibung="Wie frisch der letzte Kontakt ist: gut, nachfassen oder kritisch."
+              leer={istLeer([z.puls], ["gut", "warn", "kritisch"])}
+              tabelle={{ spalten: ["Stufe", "Anfragen"], zeilen: [["Gut", z.puls.gut], ["Nachfassen", z.puls.warn], ["Kritisch", z.puls.kritisch]] }}
+            >
+              <PulsBalken puls={z.puls} />
+            </ChartKarte>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Abschnittstitel ebene={2}>Kommunikation</Abschnittstitel>
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+            <ChartKarte
+              titel="Mails pro Woche"
+              beschreibung="Eingegangene und gesendete Mails der letzten 12 Kalenderwochen."
+              leer={istLeer(z.mails, ["ein", "aus"])}
+              tabelle={{ spalten: ["Woche", "Eingang", "Ausgang"], zeilen: z.mails.map((w) => [w.label, w.ein, w.aus]) }}
+            >
+              <MailsWocheChart daten={z.mails} />
+            </ChartKarte>
+            <ChartKarte
+              titel="Entwürfe"
+              beschreibung="Gesendete und verworfene Entwürfe der letzten 6 Monate, nach Versand- bzw. Löschdatum."
+              leer={istLeer(z.entwuerfe, ["gesendet", "geloescht"])}
+              tabelle={{ spalten: ["Monat", "Gesendet", "Gelöscht"], zeilen: z.entwuerfe.map((m) => [m.label, m.gesendet, m.geloescht]) }}
+            >
+              <EntwuerfeChart daten={z.entwuerfe} />
+            </ChartKarte>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Abschnittstitel ebene={2}>Objekte</Abschnittstitel>
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+            <ChartKarte
+              titel="Gefragteste Objekte"
+              beschreibung="Die fünf Objekte mit den meisten Objektanfragen im Postfach."
+              leer={istLeer(top, ["anzahl"])}
+              tabelle={{ spalten: ["Objekt", "Direktanfragen"], zeilen: top.map((t) => [t.label, t.anzahl]) }}
+            >
+              <BalkenChart daten={top} liegend />
+            </ChartKarte>
+          </div>
         </div>
       </main>
     </>

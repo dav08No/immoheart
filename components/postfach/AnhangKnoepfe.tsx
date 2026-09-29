@@ -24,7 +24,7 @@ export function AnhangKnoepfe({ anhang, onFoto, onLoeschen }: Props) {
           Als Objektfoto
         </button>
       )}
-      {foto === "heic" && <span className="text-[11px] text-ink-3">HEIC bitte als JPG speichern</span>}
+      {foto === "heic" && <span className="text-[11px] text-ink-2">HEIC bitte als JPG speichern</span>}
       <button
         type="button"
         onClick={onLoeschen}

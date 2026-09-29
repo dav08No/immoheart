@@ -5,10 +5,11 @@ import { toast } from "sonner"
 import { nameAendern } from "@/app/actions/profil"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 import { passwortFehlerText } from "@/lib/passwort-fehler"
+import { Button } from "@/components/ui/Button"
+import { EINGABE_KLASSE, FormFeld } from "@/components/ui/FormFeld"
+import { Panel, PanelKopf } from "@/components/ui/Panel"
 
 const MINDESTLAENGE = 8
-const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
-const KNOPF = "rounded-lg bg-brand px-3 py-2 text-sm font-medium text-on-brand disabled:opacity-60"
 
 export function ProfilFormular({ name: startName, email }: { name: string; email: string }) {
   const [name, setName] = useState(startName)
@@ -43,19 +44,56 @@ export function ProfilFormular({ name: startName, email }: { name: string; email
   }
 
   return (
-    <div className="flex max-w-md flex-col gap-4">
-      <form onSubmit={nameSpeichern} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-        <h2 className="font-display text-base font-bold text-ink">Profil</h2>
-        <p className="break-all text-sm text-ink-2">{email}</p>
-        <input required value={name} onChange={(e) => setName(e.target.value)} className={FELD} />
-        <button type="submit" disabled={laedt !== null} className={KNOPF}>{laedt === "name" ? "…" : "Name speichern"}</button>
-      </form>
-      <form onSubmit={passwortSpeichern} className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4">
-        <h2 className="font-display text-base font-bold text-ink">Passwort ändern</h2>
-        <input type="password" autoComplete="new-password" placeholder="Neues Passwort" value={passwort} onChange={(e) => setPasswort(e.target.value)} className={FELD} />
-        <input type="password" autoComplete="new-password" placeholder="Wiederholen" value={wiederholung} onChange={(e) => setWiederholung(e.target.value)} className={FELD} />
-        <button type="submit" disabled={laedt !== null} className={KNOPF}>{laedt === "passwort" ? "…" : "Passwort ändern"}</button>
-      </form>
+    <div className="flex w-full max-w-3xl flex-col gap-4">
+      <Panel as="section">
+        {/* E-Mail als Beschreibung: PanelKopf bricht lange Adressen um statt zu überlaufen. */}
+        {/* "Anzeigename" statt "Name": das Feld darunter heisst schon "Name" (keine Doppelung). */}
+        <PanelKopf titel="Anzeigename" beschreibung={email} />
+        <form onSubmit={nameSpeichern} className="flex flex-col gap-4">
+          <FormFeld label="Name" htmlFor="profil-name">
+            <input id="profil-name" required value={name} onChange={(e) => setName(e.target.value)} className={EINGABE_KLASSE} />
+          </FormFeld>
+          <div className="flex justify-end">
+            <Button type="submit" variante="primaer" disabled={laedt !== null}>
+              {laedt === "name" ? "…" : "Name speichern"}
+            </Button>
+          </div>
+        </form>
+      </Panel>
+      <Panel as="section">
+        <PanelKopf titel="Passwort ändern" />
+        <form onSubmit={passwortSpeichern} className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormFeld label="Neues Passwort" htmlFor="profil-passwort">
+              <input
+                id="profil-passwort"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Neues Passwort"
+                value={passwort}
+                onChange={(e) => setPasswort(e.target.value)}
+                className={EINGABE_KLASSE}
+              />
+            </FormFeld>
+            <FormFeld label="Wiederholen" htmlFor="profil-wiederholung">
+              <input
+                id="profil-wiederholung"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Wiederholen"
+                value={wiederholung}
+                onChange={(e) => setWiederholung(e.target.value)}
+                className={EINGABE_KLASSE}
+              />
+            </FormFeld>
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" variante="primaer" disabled={laedt !== null}>
+              {laedt === "passwort" ? "…" : "Passwort ändern"}
+            </Button>
+          </div>
+        </form>
+      </Panel>
     </div>
   )
 }

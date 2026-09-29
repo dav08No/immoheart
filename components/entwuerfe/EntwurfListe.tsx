@@ -1,3 +1,7 @@
+import { ListenZeile } from "@/components/ui/ListenZeile"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
+import { StatusChip } from "@/components/ui/StatusChip"
+import { Leerzustand } from "@/components/ui/Leerzustand"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 import type { Database } from "@/types/database"
 
@@ -22,54 +26,47 @@ export function EntwurfListe({
   ausgewaehlteId: string | null
   onAuswahl: (id: string) => void
 }) {
+  if (entwuerfe.length === 0) return <Leerzustand text="Keine offenen Entwürfe." klein />
   return (
-    <div className="rounded-card border border-line bg-surface">
-      {entwuerfe.length === 0 && <p className="p-6 text-center text-sm text-ink-3">Keine offenen Entwürfe.</p>}
+    <div className="flex flex-col gap-2 p-1.5">
       {GRUPPEN.map(({ titel, typen }) => {
         const eintraege = entwuerfe.filter((entwurf) => typen.includes(entwurf.typ))
         if (eintraege.length === 0) return null
         return (
-          <div key={titel}>
-            <div className="border-b border-line bg-surface-2 px-3 py-1.5 text-xs font-semibold text-ink-3">{titel}</div>
-            {eintraege.map((entwurf) => {
-              // gesendet_am gesetzt, aber richtung noch "entwurf": der Versand ist
-              // entweder gerade im Gange oder nach einem Absturz stecken geblieben
-              // (siehe reservierungFreigeben) -- in beiden Fällen unklar, ob die
-              // Mail bereits raus ist, deshalb eigene Markierung statt versand_fehler.
-              const unklar = entwurf.gesendet_am !== null
-              return (
-                <button
-                  key={entwurf.id}
-                  onClick={() => onAuswahl(entwurf.id)}
-                  aria-current={entwurf.id === ausgewaehlteId ? "true" : undefined}
-                  className={`flex w-full flex-col gap-0.5 border-b border-line p-3 text-left last:border-b-0 hover:bg-surface-2 ${
-                    entwurf.id === ausgewaehlteId ? "bg-brand-soft" : ""
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-ink">{entwurf.betreff}</span>
-                    {unklar ? (
-                      <span className="inline-flex flex-none items-center gap-1 text-[11px] text-warn">
-                        <span className="size-1.5 rounded-full bg-warn" aria-hidden />
-                        Versand unklar
-                      </span>
-                    ) : (
-                      entwurf.versand_fehler && (
-                        <span
-                          className="size-1.5 flex-none rounded-full bg-crit"
-                          aria-hidden
-                          title="Fehler beim letzten Versand"
-                        />
-                      )
-                    )}
-                  </span>
-                  <span className="truncate text-xs text-ink-3">
-                    {entwurf.an}
-                    {entwurf.bezug && ` · ${entwurf.bezug}`}
-                  </span>
-                </button>
-              )
-            })}
+          <div key={titel} className="flex flex-col gap-0.5">
+            <Abschnittstitel className="px-2.5 pt-1.5">{titel}</Abschnittstitel>
+            <ul aria-label={titel} className="flex flex-col gap-0.5">
+              {eintraege.map((entwurf) => {
+                // gesendet_am gesetzt, aber richtung noch "entwurf": der Versand ist
+                // entweder gerade im Gange oder nach einem Absturz stecken geblieben
+                // (siehe reservierungFreigeben) -- in beiden Fällen unklar, ob die
+                // Mail bereits raus ist, deshalb eigene Markierung statt versand_fehler.
+                const unklar = entwurf.gesendet_am !== null
+                return (
+                  <li key={entwurf.id}>
+                    <ListenZeile
+                      titel={entwurf.betreff}
+                      unterzeile={entwurf.bezug ? `${entwurf.an} · ${entwurf.bezug}` : entwurf.an}
+                      ausgewaehlt={entwurf.id === ausgewaehlteId}
+                      onClick={() => onAuswahl(entwurf.id)}
+                      badges={
+                        unklar ? (
+                          <StatusChip ton="warn">Versand unklar</StatusChip>
+                        ) : (
+                          entwurf.versand_fehler && (
+                            <span
+                              aria-hidden
+                              title="Fehler beim letzten Versand"
+                              className="size-1.5 rounded-full bg-crit"
+                            />
+                          )
+                        )
+                      }
+                    />
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         )
       })}

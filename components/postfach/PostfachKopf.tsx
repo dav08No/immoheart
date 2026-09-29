@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { Seitenkopf } from "@/components/layout/Seitenkopf"
 import { fuehreAbrufRundeAus } from "@/lib/postfach-abruf"
 import { abrufAnzeige } from "@/lib/postfach"
 import { formatUhrzeit, formatZeitpunkt } from "@/lib/format"
@@ -20,6 +21,8 @@ function zeitpunkt(iso: string): string {
   return heute ? formatUhrzeit(datum) : `${formatZeitpunkt(datum)} ${formatUhrzeit(datum)}`
 }
 
+// Seitenkopf des Postfachs: "Jetzt abrufen" als Hauptaktion, der Abruf-Status (bzw.
+// während einer Runde der Fortschritt) als Kontextzeile.
 export function PostfachKopf({ abrufStatus }: { abrufStatus: AbrufStatus }) {
   const router = useRouter()
   const [fortschritt, setFortschritt] = useState<string | null>(null)
@@ -55,31 +58,51 @@ export function PostfachKopf({ abrufStatus }: { abrufStatus: AbrufStatus }) {
     }
   }
 
+  const status = erfolgAm ? `Zuletzt abgerufen ${zeitpunkt(erfolgAm)}` : "Noch nie abgerufen"
+  // Die Kontextzeile kürzt; der volle Fehlertext steht im Hinweis über der Liste (AbrufFehler).
+  const kontext = fortschritt ?? (fehler ? `${status} · Abruf fehlgeschlagen ${zeitpunkt(fehler.am)}` : status)
+  const symbol = fortschritt ? (
+    <Loader2 className="size-4 animate-spin" aria-hidden />
+  ) : (
+    <RefreshCw className="size-4" aria-hidden />
+  )
+
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-card border border-line bg-surface px-4 py-2.5">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-xs">
-        <span className="text-ink-2">
-          {erfolgAm ? `Zuletzt abgerufen ${zeitpunkt(erfolgAm)}` : "Noch nie abgerufen"}
-        </span>
-        {fehler && (
-          <span className="wrap-break-word text-crit" role="status">
-            Abruf fehlgeschlagen {zeitpunkt(fehler.am)}: {fehler.text}
-          </span>
-        )}
-      </div>
-      {fortschritt && (
-        <span className="text-xs text-ink-3" aria-live="polite">
-          {fortschritt}
-        </span>
-      )}
-      <Button variante="primaer" onClick={() => void jetztAbrufen()} disabled={fortschritt !== null}>
-        {fortschritt ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-        ) : (
-          <RefreshCw className="size-4" aria-hidden />
-        )}
-        Jetzt abrufen
-      </Button>
-    </div>
+    <>
+      <Seitenkopf
+        titel="Postfach"
+        kontext={kontext}
+        aktion={
+          <Button variante="primaer" icon={symbol} onClick={() => void jetztAbrufen()} disabled={fortschritt !== null}>
+            Jetzt abrufen
+          </Button>
+        }
+        aktionMobil={
+          <Button
+            variante="primaer"
+            className="size-10 px-0"
+            aria-label="Jetzt abrufen"
+            icon={symbol}
+            onClick={() => void jetztAbrufen()}
+            disabled={fortschritt !== null}
+          />
+        }
+      />
+      {/* Die Kontextzeile ist keine Live-Region; der Fortschritt wird hier zusätzlich angesagt. */}
+      <p className="sr-only" aria-live="polite">
+        {fortschritt}
+      </p>
+    </>
+  )
+}
+
+// Voller Fehlertext des letzten Abrufs -- im Seitenkopf wäre er auf dem Handy abgeschnitten.
+export function AbrufFehler({ abrufStatus }: { abrufStatus: AbrufStatus }) {
+  const { fehler } = abrufAnzeige(abrufStatus)
+  if (!fehler) return null
+  return (
+    <p className="rounded-panel border border-crit/40 bg-crit-bg px-4 py-2.5 text-sm text-crit wrap-break-word" role="status">
+      Abruf fehlgeschlagen {zeitpunkt(fehler.am)}: {fehler.text}
+    </p>
   )
 }

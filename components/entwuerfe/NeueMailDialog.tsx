@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
 import { Button } from "@/components/ui/Button"
+import { FormFeld, EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import { neueMail } from "@/app/actions/entwuerfe"
-
-const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink disabled:opacity-60"
 
 // Grundsatz des Milestones: gesendet wird ausschliesslich aus dem
 // EntwurfEditor (dort mit eigener Bestätigung). Dieser Dialog legt bewusst
@@ -49,41 +48,41 @@ export function NeueMailDialog({ offen, onOpenChange }: { offen: boolean; onOpen
             <DialogTitle>Neue Mail</DialogTitle>
             <DialogDescription>Legt einen Entwurf an, der erst nach Prüfung im Editor gesendet wird.</DialogDescription>
           </DialogHeader>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-ink-2">An</span>
+          <FormFeld label="An" htmlFor="neue-mail-an">
             <input
+              id="neue-mail-an"
               type="email"
               required
               value={an}
               placeholder="empfaenger@beispiel.ch"
               onChange={(e) => setAn(e.target.value)}
               disabled={laedt}
-              className={FELD}
+              className={EINGABE_KLASSE}
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-ink-2">Betreff</span>
+          </FormFeld>
+          <FormFeld label="Betreff" htmlFor="neue-mail-betreff">
             <input
+              id="neue-mail-betreff"
               required
               value={betreff}
               placeholder="Betreff"
               onChange={(e) => setBetreff(e.target.value)}
               disabled={laedt}
-              className={FELD}
+              className={EINGABE_KLASSE}
             />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-ink-2">Text</span>
+          </FormFeld>
+          <FormFeld label="Text" htmlFor="neue-mail-text">
             <textarea
+              id="neue-mail-text"
               required
               value={body}
               placeholder="Mailtext"
               onChange={(e) => setBody(e.target.value)}
               rows={8}
               disabled={laedt}
-              className={FELD}
+              className={EINGABE_KLASSE}
             />
-          </label>
+          </FormFeld>
           <DialogFooter>
             <Button type="submit" variante="primaer" disabled={laedt}>
               {laedt ? "Wird angelegt…" : "Als Entwurf anlegen"}

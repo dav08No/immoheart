@@ -1,4 +1,5 @@
-import { Header } from "@/components/layout/Header"
+import { SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
+import { AnfragenKopf } from "@/components/anfragen/AnfragenKopf"
 import { AnfragenAnsicht } from "@/components/anfragen/AnfragenAnsicht"
 import { holeAnfragen } from "@/lib/queries/anfragen"
 
@@ -6,11 +7,13 @@ export default async function AnfragenPage({ searchParams }: { searchParams: Pro
   const [anfragen, { id }] = await Promise.all([holeAnfragen(), searchParams])
   // ?id= kommt aus dem Postfach-Link "zugeordnete Anfrage"; unbekannte IDs still ignorieren.
   const startId = id && anfragen.some((a) => a.id === id) ? id : null
+  const offen = anfragen.filter((a) => a.status === "offen").length
+  const vermittelt = anfragen.filter((a) => a.status === "vermittelt").length
 
   return (
     <>
-      <Header titel="Anfragen" untertitel={`${anfragen.length} offen`} />
-      <main className="flex-1 overflow-y-auto p-5">
+      <AnfragenKopf offen={offen} vermittelt={vermittelt} />
+      <main className={SEITEN_INHALT_KLASSE}>
         <AnfragenAnsicht anfragen={anfragen} startId={startId} />
       </main>
     </>

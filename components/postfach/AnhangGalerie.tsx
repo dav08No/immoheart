@@ -3,6 +3,7 @@
 import { useRef, useState, type MouseEvent } from "react"
 import { Download, FileText, ImageOff, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import type { AnhangLink } from "@/lib/queries/postfach"
 import { useAnhangLinks } from "./useAnhangLinks"
 import { AnhangKnoepfe } from "./AnhangKnoepfe"
@@ -85,10 +86,10 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, 
   }
 
   return (
-    <section aria-label="Anhänge" className="mt-4 flex flex-col gap-2.5">
-      <div className="border-b border-line pb-1.5 text-xs text-ink-3">Anhänge</div>
+    <section aria-label="Anhänge" className="flex flex-col gap-2.5">
+      <Abschnittstitel>Anhänge</Abschnittstitel>
       {anzahl > 0 && laden.status === "laedt" && (
-        <p className="flex items-center gap-1.5 text-xs text-ink-3">
+        <p className="flex items-center gap-1.5 text-xs text-ink-2">
           <Loader2 className="size-3.5 animate-spin" aria-hidden /> Anhänge werden geladen…
         </p>
       )}
@@ -104,7 +105,7 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, 
                 className="aspect-square overflow-hidden rounded-lg border border-line bg-surface-2 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {ohneVorschau.has(bild.id) ? (
-                  <span className="grid size-full place-items-center text-ink-3">
+                  <span className="grid size-full place-items-center text-ink-2">
                     <ImageOff className="size-5" aria-hidden />
                   </span>
                 ) : (
@@ -114,7 +115,7 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, 
                   <img src={bild.url} alt={bild.dateiname} className="size-full object-cover" onError={() => bildFehler(bild.id)} />
                 )}
               </button>
-              <span className="truncate text-[11px] text-ink-3" title={bild.dateiname}>
+              <span className="truncate text-[11px] text-ink-2" title={bild.dateiname}>
                 {bild.dateiname}
               </span>
               {downloadLink(bild)}
@@ -125,7 +126,7 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, 
       )}
       {pdfs.map((pdf) => (
         <div key={pdf.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line px-3 py-2">
-          <FileText className="size-4 flex-none text-ink-3" aria-hidden />
+          <FileText className="size-4 flex-none text-ink-2" aria-hidden />
           <a
             href={pdf.url}
             target="_blank"
@@ -135,13 +136,13 @@ export function AnhangGalerie({ nachrichtId, anzahl, nichtGespeichert, objekte, 
           >
             {pdf.dateiname}
           </a>
-          <span className="flex-none text-[11px] text-ink-3">{groesseText(pdf.groesse)}</span>
+          <span className="flex-none text-[11px] text-ink-2">{groesseText(pdf.groesse)}</span>
           {downloadLink(pdf)}
           <AnhangKnoepfe anhang={pdf} onFoto={() => setFotoFuer(pdf)} onLoeschen={() => setLoeschenFuer(pdf)} />
         </div>
       ))}
       {nichtGespeichert.length > 0 && (
-        <p className="text-xs text-ink-3">Nicht übernommen (nur Name): {nichtGespeichert.join(", ")}</p>
+        <p className="text-xs text-ink-2">Nicht übernommen (nur Name): {nichtGespeichert.join(", ")}</p>
       )}
       <ObjektfotoDialog anhang={fotoFuer} objekte={objekte} vorauswahl={objektId} onSchliessen={() => setFotoFuer(null)} />
       {/* Explizit neu laden: bei null verbleibenden Anhängen lädt useAnhangLinks nicht von selbst. */}

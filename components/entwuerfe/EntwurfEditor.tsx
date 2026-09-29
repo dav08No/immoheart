@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/Button"
+import { FormFeld, EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import { entwurfLoeschen, entwurfSpeichern } from "@/app/actions/entwuerfe"
 import { entwurfSenden } from "@/app/actions/entwurf-senden"
 import { VersandBanner } from "./VersandBanner"
@@ -11,7 +12,6 @@ import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 type Laufend = "speichern" | "senden" | "loeschen" | null
 type Bestaetigung = "senden" | "loeschen" | null
-const FELD = "rounded-lg border border-line-2 px-3 py-2 text-sm text-ink disabled:opacity-60"
 
 // Wird von EntwuerfeAnsicht immer mit key={entwurf.id} gerendert -- ein
 // Wechsel der Auswahl mountet diese Komponente also komplett neu, statt das
@@ -88,81 +88,86 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   }
 
   return (
-    <div className="p-4">
-      {reserviert && <VersandBanner entwurf={entwurf} />}
-
-      {!reserviert && entwurf.versand_fehler && <p className="mb-3 text-sm text-crit">{entwurf.versand_fehler}</p>}
-
-      <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-ink-2">An</span>
+    <div className="flex min-w-0 flex-col">
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        {reserviert && <VersandBanner entwurf={entwurf} />}
+        {!reserviert && entwurf.versand_fehler && <p className="text-sm text-crit">{entwurf.versand_fehler}</p>}
+        <FormFeld label="An" htmlFor="entwurf-an">
           <input
+            id="entwurf-an"
             type="email"
             value={an}
             placeholder="empfaenger@beispiel.ch"
             onChange={(e) => setAn(e.target.value)}
             disabled={gesperrt}
-            className={FELD}
+            className={EINGABE_KLASSE}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-ink-2">Betreff</span>
+        </FormFeld>
+        <FormFeld label="Betreff" htmlFor="entwurf-betreff">
           <input
+            id="entwurf-betreff"
             value={betreff}
             placeholder="Betreff"
             onChange={(e) => setBetreff(e.target.value)}
             disabled={gesperrt}
-            className={FELD}
+            className={EINGABE_KLASSE}
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-ink-2">Text</span>
+        </FormFeld>
+        <FormFeld label="Text" htmlFor="entwurf-text">
           <textarea
+            id="entwurf-text"
             value={body}
             placeholder="Mailtext"
             onChange={(e) => setBody(e.target.value)}
             rows={12}
             disabled={gesperrt}
-            className={FELD}
+            className={EINGABE_KLASSE}
           />
-        </label>
+        </FormFeld>
       </div>
 
+      {/* Feste Leiste am Fuss des Editors (Ruling R3): Primäraktion (Senden) rechts,
+          Sekundär/gefährlich (Speichern/Löschen) links -- bleibt beim Scrollen langer
+          Mailtexte sichtbar, wie der Drawer-Fuss in Matches/Anfragen. */}
       {!reserviert && (
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          <Button onClick={speichern} disabled={gesperrt || !geaendert}>
-            {laufend === "speichern" ? "Wird gespeichert…" : "Speichern"}
-          </Button>
-          <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt}>
-            Senden
-          </Button>
-          <Button onClick={() => setBestaetigung("loeschen")} disabled={gesperrt}>
-            Löschen
-          </Button>
-        </div>
-      )}
+        <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-b-panel border-t border-line bg-surface px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variante="gefaehrlich" onClick={() => setBestaetigung("loeschen")} disabled={gesperrt}>
+                Löschen
+              </Button>
+              <Button variante="sekundaer" onClick={speichern} disabled={gesperrt || !geaendert}>
+                {laufend === "speichern" ? "Wird gespeichert…" : "Speichern"}
+              </Button>
+            </div>
+            <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt}>
+              Senden
+            </Button>
+          </div>
 
-      {!reserviert && bestaetigung === "senden" && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
-          An {an || "?"} senden?
-          <Button variante="primaer" onClick={senden} disabled={laufend !== null}>
-            {laufend === "senden" ? "Wird gesendet…" : "Jetzt senden"}
-          </Button>
-          <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
-            Abbrechen
-          </Button>
-        </div>
-      )}
+          {bestaetigung === "senden" && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
+              An {an || "?"} senden?
+              <Button variante="primaer" onClick={senden} disabled={laufend !== null}>
+                {laufend === "senden" ? "Wird gesendet…" : "Jetzt senden"}
+              </Button>
+              <Button variante="sekundaer" onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
+                Abbrechen
+              </Button>
+            </div>
+          )}
 
-      {!reserviert && bestaetigung === "loeschen" && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
-          Entwurf wirklich löschen?
-          <Button onClick={loeschen} disabled={laufend !== null}>
-            {laufend === "loeschen" ? "Wird gelöscht…" : "Ja, löschen"}
-          </Button>
-          <Button onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
-            Abbrechen
-          </Button>
+          {bestaetigung === "loeschen" && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-line-2 pt-3 text-sm text-ink-2">
+              Entwurf wirklich löschen?
+              <Button variante="gefaehrlich" onClick={loeschen} disabled={laufend !== null}>
+                {laufend === "loeschen" ? "Wird gelöscht…" : "Ja, löschen"}
+              </Button>
+              <Button variante="sekundaer" onClick={() => setBestaetigung(null)} disabled={laufend !== null}>
+                Abbrechen
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

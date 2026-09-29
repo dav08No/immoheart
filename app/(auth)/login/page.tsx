@@ -5,6 +5,9 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 import { loginHinweis } from "@/lib/routen"
+import { AnmeldeRahmen, AUTH_LINK_KLASSE } from "@/components/auth/AnmeldeRahmen"
+import { Button } from "@/components/ui/Button"
+import { EINGABE_KLASSE, FormFeld } from "@/components/ui/FormFeld"
 
 // useSearchParams verlangt einen Suspense-Grenzwert, sonst schlägt der Build fehl.
 // Der eigentliche Hinweistext ist deshalb in eine kleine innere Komponente
@@ -45,48 +48,52 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg">
-      <form
-        onSubmit={anmelden}
-        className="flex w-full max-w-sm flex-col gap-3 rounded-card border border-line bg-surface p-6"
-      >
-        <h1 className="font-display text-xl font-bold text-ink">immoheart</h1>
+    <AnmeldeRahmen titel="Anmelden">
+      <form onSubmit={anmelden} className="flex flex-col gap-4">
         <Suspense fallback={null}>
           <LoginHinweis />
         </Suspense>
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          placeholder="E-Mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
-        />
-        <input
-          type="password"
-          required
-          autoComplete="current-password"
-          placeholder="Passwort"
-          value={passwort}
-          onChange={(e) => setPasswort(e.target.value)}
-          className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
-        />
-        {fehler && <p className="text-sm text-crit">{fehler}</p>}
-        <button
-          type="submit"
-          disabled={laedt}
-          className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-on-brand disabled:opacity-60"
-        >
+        <FormFeld label="E-Mail" htmlFor="login-email">
+          <input
+            id="login-email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="E-Mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={EINGABE_KLASSE}
+          />
+        </FormFeld>
+        <FormFeld label="Passwort" htmlFor="login-passwort">
+          <input
+            id="login-passwort"
+            type="password"
+            required
+            autoComplete="current-password"
+            placeholder="Passwort"
+            value={passwort}
+            onChange={(e) => setPasswort(e.target.value)}
+            className={EINGABE_KLASSE}
+          />
+        </FormFeld>
+        {fehler && (
+          <p role="alert" className="text-sm text-crit">
+            {fehler}
+          </p>
+        )}
+        <Button type="submit" variante="primaer" groesse="md" disabled={laedt}>
           {laedt ? "…" : "Anmelden"}
-        </button>
-        <Link href="/passwort-vergessen" className="text-center text-sm text-ink-2 hover:text-brand">
-          Passwort vergessen?
-        </Link>
-        <Link href="/" className="text-center text-sm text-ink-2 hover:text-brand">
-          ← Zur Website
-        </Link>
+        </Button>
+        <div className="flex flex-col items-center gap-2">
+          <Link href="/passwort-vergessen" className={AUTH_LINK_KLASSE}>
+            Passwort vergessen?
+          </Link>
+          <Link href="/" className={AUTH_LINK_KLASSE}>
+            ← Zur Website
+          </Link>
+        </div>
       </form>
-    </main>
+    </AnmeldeRahmen>
   )
 }

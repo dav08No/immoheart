@@ -1,4 +1,4 @@
-import { Header } from "@/components/layout/Header"
+import { Seitenkopf, SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
 import { ProfilFormular } from "@/components/profil/ProfilFormular"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { erstelleServerClient } from "@/lib/supabase/server"
@@ -12,8 +12,8 @@ export default async function ProfilSeite() {
 
   return (
     <>
-      <Header titel="Profil" />
-      <main className="flex-1 overflow-y-auto p-5">
+      <Seitenkopf titel="Profil" />
+      <main className={SEITEN_INHALT_KLASSE}>
         <ProfilFormular name={profil.name} email={user?.email ?? ""} />
       </main>
     </>

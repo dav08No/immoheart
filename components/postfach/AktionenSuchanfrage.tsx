@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Feld } from "@/components/ui/Feld"
+import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { Button } from "@/components/ui/Button"
 import { alsAnfrageSpeichern } from "@/app/actions/nachrichten"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
@@ -10,6 +11,7 @@ import { suchanfrageKontakt } from "@/lib/eingang/anfrage-aus-eingang"
 import { suchanfrageKopf } from "@/lib/postfach"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
 import type { Nutzung } from "@/types"
+import { cn } from "@/lib/utils"
 import { AUSWAHL_KLASSE, FELD_LABELS, NUTZUNG_OPTIONEN, nutzungLabel, type AktionAusfuehren } from "./typen"
 
 type Props = {
@@ -43,10 +45,10 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
   }
 
   return (
-    <section aria-label="Suchanfrage" className="mt-4">
+    <section aria-label="Suchanfrage">
       {kontakt && (
         <div className="mb-4">
-          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">Kontakt aus dem Formular</div>
+          <Abschnittstitel className="mb-2.5">Kontakt aus dem Formular</Abschnittstitel>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Feld label="Name" wert={kontakt.name} />
             <Feld label="E-Mail" wert={kontakt.email} />
@@ -60,7 +62,7 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
       )}
       {felder && kopf && (
         <>
-          <div className="mb-2.5 border-b border-line pb-1.5 text-xs text-ink-3">{kopf.ueberschrift}</div>
+          <Abschnittstitel className="mb-2.5">{kopf.ueberschrift}</Abschnittstitel>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(Object.keys(FELD_LABELS) as (keyof ErkannteFelder)[]).map((schluessel) => (
               <Feld key={schluessel} label={FELD_LABELS[schluessel]} wert={anzeigeWert(schluessel, felder)} />
@@ -70,14 +72,14 @@ export function AktionenSuchanfrage({ nachricht, laufend, ausfuehren, onRueckfra
       )}
       {nutzungFehlt && !gespeichert && (
         <div className="mt-2.5">
-          <label htmlFor={`nutzung-${nachricht.id}`} className="mb-1 block text-xs text-ink-3">
+          <label htmlFor={`nutzung-${nachricht.id}`} className="mb-1 block text-xs text-ink-2">
             Nutzung nicht erkannt · bitte auswählen, um speichern zu können
           </label>
           <select
             id={`nutzung-${nachricht.id}`}
             value={nutzungAuswahl}
             onChange={(e) => setNutzungAuswahl(e.target.value as Nutzung)}
-            className={`${AUSWAHL_KLASSE} border-warn bg-warn-bg`}
+            className={cn(AUSWAHL_KLASSE, "border-warn bg-warn-bg")}
           >
             <option value="" disabled>
               Nutzung wählen …

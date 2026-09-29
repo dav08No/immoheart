@@ -1,3 +1,6 @@
+import { Kennzahl } from "@/components/ui/Kennzahl"
+import { formatZahl } from "@/lib/format"
+import { pulsTon } from "@/lib/ui/status-ton"
 import { puls, pulsDauerMs, pulsFarbe } from "@/lib/puls"
 
 function ekgPfad(w: number, h: number, wert: number, beats: number): string {
@@ -38,34 +41,26 @@ export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
   // Tailwind-Klasse, weil der Wert pro Render/Instanz unterschiedlich ist.
   const ekgDauerMs = pulsDauerMs(durchschnitt)
 
+  // Kein eigener Rahmen mehr: der Aufrufer (MatchesAnsicht) steckt PulsHero in ein
+  // Panel mit PanelKopf "Bestandspuls" -- die Überschrift ist damit nicht mehr doppelt.
   return (
-    <div className="overflow-hidden rounded-card border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-end gap-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="font-display text-4xl font-bold" style={{ color: farbe }}>
-              {hatDaten ? durchschnitt : "–"}
-            </div>
-            {hatDaten && (
-              // Live-Punkt: reine CSS-Animation (pulsring, bereits reduced-motion-fest),
-              // eingefärbt über currentColor.
-              <span className="relative inline-flex size-2.5 shrink-0" style={{ color: farbe }} aria-hidden>
-                <span className="absolute inset-0 animate-pulsring rounded-full" />
-                <span className="size-2.5 rounded-full" style={{ background: "currentColor" }} />
-              </span>
-            )}
-          </div>
-          <div className="mt-0.5 text-xs text-ink-3">
-            {hatDaten ? "Bestandspuls" : "Bestandspuls · keine Daten"}
-          </div>
+    <div>
+      <div className="flex items-center gap-2">
+        <div className="font-display text-4xl font-bold" style={{ color: farbe }}>
+          {hatDaten ? durchschnitt : "–"}
         </div>
-        <div className="ml-auto flex gap-4">
-          <div><b className="block font-display text-lg text-good">{frisch}</b><span className="text-xs text-ink-3">frisch</span></div>
-          <div><b className="block font-display text-lg text-warn">{altert}</b><span className="text-xs text-ink-3">altert</span></div>
-          <div><b className="block font-display text-lg text-crit">{kritisch}</b><span className="text-xs text-ink-3">kritisch</span></div>
-        </div>
+        {hatDaten ? (
+          // Live-Punkt: reine CSS-Animation (pulsring, bereits reduced-motion-fest),
+          // eingefärbt über currentColor.
+          <span className="relative inline-flex size-2.5 shrink-0" style={{ color: farbe }} aria-hidden>
+            <span className="absolute inset-0 animate-pulsring rounded-full" />
+            <span className="size-2.5 rounded-full" style={{ background: "currentColor" }} />
+          </span>
+        ) : (
+          <span className="text-xs text-ink-2">Keine Daten</span>
+        )}
       </div>
-      <div className="-mx-4 mt-2.5 h-[72px]">
+      <div className="-mx-4 mt-3 h-[72px] sm:-mx-5">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-[72px] w-full" aria-hidden="true">
           <path d={`M0 ${H / 2} L${W} ${H / 2}`} stroke="var(--line)" strokeWidth="1" fill="none" />
           {hatDaten && (
@@ -82,6 +77,12 @@ export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
             </>
           )}
         </svg>
+      </div>
+      {/* Unter 400 px untereinander: drei Kacheln nebeneinander wären bei 360 px zu schmal. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 min-[400px]:grid-cols-3">
+        <Kennzahl label="Gut" wert={formatZahl(frisch)} ton={pulsTon("gut")} />
+        <Kennzahl label="Nachfassen" wert={formatZahl(altert)} ton={pulsTon("warn")} />
+        <Kennzahl label="Kritisch" wert={formatZahl(kritisch)} ton={pulsTon("kritisch")} />
       </div>
     </div>
   )
