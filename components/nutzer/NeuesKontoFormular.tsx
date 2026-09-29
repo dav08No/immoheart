@@ -3,6 +3,11 @@
 import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
 import { kontoAnlegen } from "@/app/actions/nutzer"
+import { Button } from "@/components/ui/Button"
+import { EINGABE_KLASSE, FormFeld } from "@/components/ui/FormFeld"
+
+// Exportiert, damit NutzerAnsicht nach dem Öffnen des Panels hierhin fokussieren kann.
+export const NAME_FELD_ID = "konto-name"
 
 export function NeuesKontoFormular() {
   const [name, setName] = useState("")
@@ -31,18 +36,29 @@ export function NeuesKontoFormular() {
   }
 
   return (
-    <form onSubmit={absenden} className="flex w-full flex-col gap-3 rounded-card border border-line bg-surface p-4 lg:w-80">
-      <h2 className="font-display text-base font-bold text-ink">Neues Konto</h2>
-      <input required placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink" />
-      <input required type="email" placeholder="E-Mail" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink" />
+    <form onSubmit={absenden} className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormFeld label="Name" htmlFor={NAME_FELD_ID}>
+          <input id={NAME_FELD_ID} required placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className={EINGABE_KLASSE} />
+        </FormFeld>
+        <FormFeld label="E-Mail" htmlFor="konto-email">
+          <input id="konto-email" required type="email" placeholder="E-Mail" value={email} onChange={(e) => setEmail(e.target.value)} className={EINGABE_KLASSE} />
+        </FormFeld>
+      </div>
       <label className="flex items-center gap-2 text-sm text-ink-2">
-        <input type="checkbox" checked={darfNutzerAnlegen} onChange={(e) => setDarfNutzerAnlegen(e.target.checked)} />
+        <input type="checkbox" checked={darfNutzerAnlegen} onChange={(e) => setDarfNutzerAnlegen(e.target.checked)} className="size-4 accent-brand" />
         darf ebenfalls Nutzer anlegen
       </label>
-      {fehler && <p className="text-sm text-crit">{fehler}</p>}
-      <button type="submit" disabled={laedt} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-on-brand disabled:opacity-60">
-        {laedt ? "…" : "Einladen"}
-      </button>
+      {fehler && (
+        <p role="alert" className="text-sm text-crit wrap-anywhere">
+          {fehler}
+        </p>
+      )}
+      <div className="flex justify-end">
+        <Button type="submit" variante="primaer" disabled={laedt}>
+          {laedt ? "…" : "Einladen"}
+        </Button>
+      </div>
     </form>
   )
 }

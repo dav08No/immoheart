@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { anfrageStatusTon, kiStatusTon, objektStatusTon, pulsTon } from "./status-ton"
+import { anfrageStatusTon, kiStatusTon, kontoStatusTon, objektStatusTon, pulsTon } from "./status-ton"
 
 describe("objektStatusTon", () => {
   it("ordnet jeden Objektstatus einem Ton zu", () => {
@@ -39,5 +39,13 @@ describe("kiStatusTon", () => {
     expect(kiStatusTon("irgendwas")).toBe("neutral")
     expect(kiStatusTon("")).toBe("neutral")
     expect(kiStatusTon("toString")).toBe("neutral")
+  })
+})
+
+describe("kontoStatusTon", () => {
+  it("ordnet jeden Kontostatus einem Ton zu", () => {
+    expect(kontoStatusTon("eingeladen")).toBe("info")
+    expect(kontoStatusTon("aktiv")).toBe("gut")
+    expect(kontoStatusTon("deaktiviert")).toBe("neutral")
   })
 })

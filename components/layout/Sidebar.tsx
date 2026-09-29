@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { BarChart3, Building2, ExternalLink, Heart, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { initialen } from "@/lib/ui/initialen"
 import { useAdminNav } from "./AdminNavKontext"
 
 const EINTRAEGE = [
@@ -32,15 +33,7 @@ export function SidebarInhalt({ onNavigation }: { onNavigation?: () => void }) {
   if (!nav) return null
   const { profil, postfachAnzahl, entwurfAnzahl, herzschlagNr } = nav
 
-  // filter(Boolean) fängt doppelte Leerzeichen und leere Namen ab.
-  const initialen =
-    profil.name
-      .split(" ")
-      .map((teil) => teil[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "?"
+  const kuerzel = initialen(profil.name)
 
   const eintraege = profil.darf_nutzer_anlegen ? [...EINTRAEGE, { pfad: "/admin/nutzer", label: "Nutzer", Icon: Users }] : EINTRAEGE
   const badges: Record<string, number> = { "/admin/postfach": postfachAnzahl, "/admin/entwuerfe": entwurfAnzahl }
@@ -105,7 +98,7 @@ export function SidebarInhalt({ onNavigation }: { onNavigation?: () => void }) {
           className={cn(EINTRAG, "mb-1", pfad === "/admin/profil" ? AKTIV : INAKTIV)}
         >
           <span className="grid size-8 flex-none place-items-center rounded-full bg-nav-badge-bg text-xs font-semibold text-nav-badge-fg">
-            {initialen}
+            {kuerzel}
           </span>
           <span className="min-w-0">
             <span className="block truncate font-medium text-nav-text">{profil.name}</span>

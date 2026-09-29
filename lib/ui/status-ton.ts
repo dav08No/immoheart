@@ -40,3 +40,13 @@ export function kiStatusTon(s: string | null): StatusTon {
   if (s === null || !Object.hasOwn(KI, s)) return "neutral"
   return KI[s] ?? "neutral"
 }
+
+const KONTO: Record<"eingeladen" | "aktiv" | "deaktiviert", StatusTon> = {
+  eingeladen: "info",
+  aktiv: "gut",
+  deaktiviert: "neutral",
+}
+
+export function kontoStatusTon(s: keyof typeof KONTO): StatusTon {
+  return KONTO[s]
+}

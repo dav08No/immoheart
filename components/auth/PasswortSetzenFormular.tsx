@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { erstelleBrowserClient } from "@/lib/supabase/client"
 import { passwortFehlerText } from "@/lib/passwort-fehler"
+import { Button } from "@/components/ui/Button"
+import { EINGABE_KLASSE, FormFeld } from "@/components/ui/FormFeld"
 
 const MINDESTLAENGE = 8
 
@@ -30,31 +32,40 @@ export function PasswortSetzenFormular({ email }: { email: string }) {
   }
 
   return (
-    <form onSubmit={speichern} className="flex w-full max-w-sm flex-col gap-3 rounded-card border border-line bg-surface p-6">
-      <h1 className="font-display text-xl font-bold text-ink">Passwort festlegen</h1>
-      <p className="text-sm text-ink-2">{email}</p>
-      <input
-        type="password"
-        required
-        autoComplete="new-password"
-        placeholder="Neues Passwort"
-        value={passwort}
-        onChange={(e) => setPasswort(e.target.value)}
-        className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
-      />
-      <input
-        type="password"
-        required
-        autoComplete="new-password"
-        placeholder="Passwort wiederholen"
-        value={wiederholung}
-        onChange={(e) => setWiederholung(e.target.value)}
-        className="rounded-lg border border-line-2 px-3 py-2 text-sm text-ink"
-      />
-      {fehler && <p className="text-sm text-crit">{fehler}</p>}
-      <button type="submit" disabled={laedt} className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-on-brand disabled:opacity-60">
+    <form onSubmit={speichern} className="flex flex-col gap-4">
+      <p className="text-sm text-ink-2 wrap-anywhere">{email}</p>
+      <FormFeld label="Neues Passwort" htmlFor="neues-passwort">
+        <input
+          id="neues-passwort"
+          type="password"
+          required
+          autoComplete="new-password"
+          placeholder="Neues Passwort"
+          value={passwort}
+          onChange={(e) => setPasswort(e.target.value)}
+          className={EINGABE_KLASSE}
+        />
+      </FormFeld>
+      <FormFeld label="Passwort wiederholen" htmlFor="passwort-wiederholen">
+        <input
+          id="passwort-wiederholen"
+          type="password"
+          required
+          autoComplete="new-password"
+          placeholder="Passwort wiederholen"
+          value={wiederholung}
+          onChange={(e) => setWiederholung(e.target.value)}
+          className={EINGABE_KLASSE}
+        />
+      </FormFeld>
+      {fehler && (
+        <p role="alert" className="text-sm text-crit">
+          {fehler}
+        </p>
+      )}
+      <Button type="submit" variante="primaer" groesse="md" disabled={laedt}>
         {laedt ? "…" : "Passwort speichern"}
-      </button>
+      </Button>
     </form>
   )
 }
