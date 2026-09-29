@@ -53,7 +53,7 @@ export default async function ZahlenPage() {
 
         {/* Reihenfolge und Gruppierung laut Spec §3: Nachfrage, Kommunikation, Objekte. */}
         <div className="flex flex-col gap-2">
-          <Abschnittstitel>Nachfrage</Abschnittstitel>
+          <Abschnittstitel ebene={2}>Nachfrage</Abschnittstitel>
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
             <ChartKarte
               titel="Anfragen pro Monat"
@@ -91,7 +91,7 @@ export default async function ZahlenPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Abschnittstitel>Kommunikation</Abschnittstitel>
+          <Abschnittstitel ebene={2}>Kommunikation</Abschnittstitel>
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
             <ChartKarte
               titel="Mails pro Woche"
@@ -113,7 +113,7 @@ export default async function ZahlenPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Abschnittstitel>Objekte</Abschnittstitel>
+          <Abschnittstitel ebene={2}>Objekte</Abschnittstitel>
           <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
             <ChartKarte
               titel="Gefragteste Objekte"

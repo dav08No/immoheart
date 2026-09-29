@@ -52,11 +52,12 @@ export function ListenZeile({ titel, unterzeile, zeit, badges, icon, ungelesen, 
         {badges && <span className="mt-1.5 flex flex-wrap gap-1">{badges}</span>}
       </span>
       {zeit && <span className="shrink-0 whitespace-nowrap text-xs text-ink-2">{zeit}</span>}
-      {aktion && <span className="shrink-0">{aktion}</span>}
+      {/* Unter sm eigene Zeile (basis-full), damit der Titel bei 360 px seine Breite behält. */}
+      {aktion && <span className="flex basis-full sm:basis-auto sm:shrink-0">{aktion}</span>}
     </>
   )
 
-  const klasse = cn(BASIS, ausgewaehlt && "bg-brand-soft hover:bg-brand-soft")
+  const klasse = cn(BASIS, aktion && "flex-wrap sm:flex-nowrap", ausgewaehlt && "bg-brand-soft hover:bg-brand-soft")
   const aktuell = ausgewaehlt ? "true" : undefined
 
   if (href) {

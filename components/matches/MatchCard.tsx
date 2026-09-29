@@ -23,7 +23,10 @@ export function MatchCard({
   onVerwerfen: () => void
 }) {
   return (
-    <article onClick={onOeffnen} className="cursor-pointer overflow-hidden rounded-card border border-line bg-surface hover:border-line-2">
+    <article
+      onClick={onOeffnen}
+      className="relative cursor-pointer overflow-hidden rounded-panel border border-line bg-surface shadow-panel transition-colors hover:border-line-2 focus-within:ring-2 focus-within:ring-ring motion-reduce:transition-none"
+    >
       {/* Handy: Bild | Objekt | Score oben, die Firma als eigene Zeile darunter
           (order-last); ab sm die fünfspaltige Zeile mit Pfeil. */}
       <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 p-3 sm:grid-cols-[118px_minmax(0,1fr)_34px_minmax(0,1fr)_auto] sm:gap-3.5">
@@ -34,13 +37,21 @@ export function MatchCard({
           )}
         </div>
         <div className="min-w-0">
-          <div className="wrap-break-word text-sm font-semibold text-ink">{match.objekt.titel}</div>
+          {/* Echter Knopf für Tastatur/Screenreader (wie ObjektRaster); after: macht die ganze
+              Karte klickbar, Links und Knöpfe liegen mit z-[1] darüber. */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOeffnen() }}
+            className="block min-w-0 text-left text-sm font-semibold text-ink wrap-break-word outline-none after:absolute after:inset-0"
+          >
+            {match.objekt.titel}
+          </button>
           <div className="mt-0.5 text-xs text-ink-2">
             {match.objekt.flaeche} m² · {match.objekt.preis_pro_m2 !== null ? `CHF ${match.objekt.preis_pro_m2}/m²` : "auf Anfrage"}
           </div>
           <a
             href={mapsLink(match.objekt.adresse)} target="_blank" rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()} className="mt-0.5 block text-xs text-brand hover:underline"
+            onClick={(e) => e.stopPropagation()} className="relative z-[1] mt-0.5 block w-fit rounded text-xs text-brand outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           >
             Karte ↗
           </a>
@@ -54,7 +65,7 @@ export function MatchCard({
           {match.firma && (
             <a
               href={webLink(match.firma.name)} target="_blank" rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()} className="mt-0.5 block text-xs text-brand hover:underline"
+              onClick={(e) => e.stopPropagation()} className="relative z-[1] mt-0.5 block w-fit rounded text-xs text-brand outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
             >
               Website ↗
             </a>
@@ -73,10 +84,10 @@ export function MatchCard({
             </StatusChip>
           ))}
         </span>
-        <Button variante="primaer" onClick={(e) => { e.stopPropagation(); onSenden() }} disabled={laufend}>
+        <Button variante="primaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onSenden() }} disabled={laufend}>
           {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
         </Button>
-        <Button variante="sekundaer" onClick={(e) => { e.stopPropagation(); onVerwerfen() }} disabled={laufend}>
+        <Button variante="sekundaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onVerwerfen() }} disabled={laufend}>
           Verwerfen
         </Button>
       </div>

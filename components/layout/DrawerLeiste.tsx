@@ -7,7 +7,8 @@ import type { ReactNode } from "react"
 // Primäraktion als letztes Kind übergeben -- sie steht dann rechts (Ruling R3).
 export function DrawerLeiste({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-4 py-3 sm:-mx-5 sm:px-5">
+    // data-drawer-leiste: Drawer erkennt die Leiste daran und spart den unteren Innenabstand.
+    <div data-drawer-leiste className="sticky bottom-0 z-10 -mx-4 mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-4 py-3 sm:-mx-5 sm:px-5">
       {children}
     </div>
   )

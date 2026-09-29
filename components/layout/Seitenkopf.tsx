@@ -8,9 +8,11 @@ type Props = { titel: string; kontext?: string; aktion?: ReactNode; aktionMobil?
 // dem Menü-Knopf (MobilLeiste); die Hauptaktion wechselt unter sm auf die
 // kompakte Icon-Variante, damit 360 px ohne Querscrollen reichen. Kontextzeile
 // in ink-2 statt ink-3: ink-3 erreicht auf surface keine 4.5:1.
+// Deckender Hintergrund ohne Blur: gescrollt wird im <main> darunter, nie unter dem
+// Kopf durch -- Transparenz/Blur hätte nichts zu zeigen. sticky schadet nicht (flex-none).
 export function Seitenkopf({ titel, kontext, aktion, aktionMobil }: Props) {
   return (
-    <header className="sticky top-0 z-30 flex min-h-16 flex-none items-center gap-2 border-b border-line bg-surface/80 px-3 py-2.5 backdrop-blur sm:gap-3 sm:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 flex min-h-16 flex-none items-center gap-2 border-b border-line bg-surface px-3 py-2.5 sm:gap-3 sm:px-5 lg:px-6">
       <MobilLeiste />
       <div className="min-w-0 flex-1">
         <h1 className="truncate font-display text-xl font-bold text-ink lg:text-2xl">{titel}</h1>

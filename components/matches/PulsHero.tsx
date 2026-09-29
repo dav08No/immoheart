@@ -78,7 +78,8 @@ export function PulsHero({ letzteKontakte }: { letzteKontakte: Date[] }) {
           )}
         </svg>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      {/* Unter 400 px untereinander: drei Kacheln nebeneinander wären bei 360 px zu schmal. */}
+      <div className="mt-4 grid grid-cols-1 gap-3 min-[400px]:grid-cols-3">
         <Kennzahl label="Gut" wert={formatZahl(frisch)} ton={pulsTon("gut")} />
         <Kennzahl label="Nachfassen" wert={formatZahl(altert)} ton={pulsTon("warn")} />
         <Kennzahl label="Kritisch" wert={formatZahl(kritisch)} ton={pulsTon("kritisch")} />

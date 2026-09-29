@@ -79,7 +79,11 @@ export function Drawer({ offen, titel, untertitel, onSchliessen, children, chip,
             <X className="size-4" aria-hidden />
           </button>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pb-10 sm:p-5">{children}</div>
+        {/* Mit DrawerLeiste als Abschluss kein Innenabstand unten: sonst bliebe unter der
+            Leiste eine leere Lücke (Handy ~40 px), wenn ganz nach unten gescrollt ist. */}
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pb-10 sm:p-5 has-data-drawer-leiste:pb-0 sm:has-data-drawer-leiste:pb-0">
+          {children}
+        </div>
         {fuss && (
           <div className="flex flex-none flex-wrap items-center justify-end gap-2 border-t border-line bg-surface px-4 py-3 sm:px-5">
             {fuss}

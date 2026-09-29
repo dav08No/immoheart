@@ -157,7 +157,8 @@ export function ObjektFormular({
         <TextFeld label="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
       </section>
       <section className="flex flex-col gap-3">
-        <Abschnittstitel>Beschreibung</Abschnittstitel>
+        {/* "Text" statt "Beschreibung": das Feld darunter heisst schon so (keine Doppelung). */}
+        <Abschnittstitel>Text</Abschnittstitel>
         <BeschreibungFeld wert={beschreibung} setWert={setBeschreibung} disabled={speichert} />
       </section>
       <section className="flex flex-col gap-3">

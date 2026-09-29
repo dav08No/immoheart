@@ -1,12 +1,12 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-type PanelProps = { children: ReactNode; className?: string; as?: "section" | "div" | "article"; polster?: boolean }
+type PanelProps = { children: ReactNode; className?: string; as?: "section" | "div" | "article"; polster?: boolean; id?: string }
 
 // Grundfläche aller Admin-Inhalte: eine Form statt vieler leicht abweichender Karten.
-export function Panel({ children, className, as: Tag = "div", polster = true }: PanelProps) {
+export function Panel({ children, className, as: Tag = "div", polster = true, id }: PanelProps) {
   return (
-    <Tag className={cn("min-w-0 rounded-panel border border-line bg-surface shadow-panel", polster && "p-4 sm:p-5", className)}>
+    <Tag id={id} className={cn("min-w-0 rounded-panel border border-line bg-surface shadow-panel", polster && "p-4 sm:p-5", className)}>
       {children}
     </Tag>
   )

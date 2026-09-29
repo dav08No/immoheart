@@ -21,7 +21,7 @@ export function ChartKarte({
 }) {
   return (
     <Panel as="section" className="flex min-w-0 flex-col">
-      <PanelKopf titel={titel} beschreibung={beschreibung} />
+      <PanelKopf titel={titel} beschreibung={beschreibung} ebene={3} />
       {leer ? (
         <p className="flex h-40 items-center justify-center text-sm text-ink-2">Noch keine Daten</p>
       ) : (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { UserPlus, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Leerzustand } from "@/components/ui/Leerzustand"
@@ -16,6 +16,16 @@ export function NutzerAnsicht({ konten, eigeneUserId }: { konten: Konto[]; eigen
   const aktiv = konten.filter((k) => k.status === "aktiv").length
   const eingeladen = konten.filter((k) => k.status === "eingeladen").length
   const symbol = <UserPlus className="size-4" aria-hidden />
+  const formularId = useId()
+
+  // Beim Schliessen per X zurück auf den Auslöser, sonst landet der Fokus im Leeren
+  // (der X-Knopf verschwindet). Sichtbar ist je nach Breite nur einer der beiden
+  // Knöpfe (Text oder Icon) -- genau der bekommt den Fokus.
+  function schliessen() {
+    setFormularOffen(false)
+    const ausloeser = document.querySelectorAll<HTMLElement>(`[aria-controls="${formularId}"]`)
+    Array.from(ausloeser).find((el) => el.offsetParent !== null)?.focus()
+  }
 
   // Nach dem Öffnen direkt ins erste Feld, damit Tastatur-Nutzer nicht suchen müssen.
   useEffect(() => {
@@ -28,7 +38,7 @@ export function NutzerAnsicht({ konten, eigeneUserId }: { konten: Konto[]; eigen
         titel="Nutzer"
         kontext={kontextNutzer(aktiv, eingeladen)}
         aktion={
-          <Button variante="primaer" icon={symbol} onClick={() => setFormularOffen(true)} aria-expanded={formularOffen}>
+          <Button variante="primaer" icon={symbol} onClick={() => setFormularOffen(true)} aria-expanded={formularOffen} aria-controls={formularId}>
             Neues Konto
           </Button>
         }
@@ -38,6 +48,7 @@ export function NutzerAnsicht({ konten, eigeneUserId }: { konten: Konto[]; eigen
             className="size-10 px-0"
             aria-label="Neues Konto"
             aria-expanded={formularOffen}
+            aria-controls={formularId}
             icon={symbol}
             onClick={() => setFormularOffen(true)}
           />
@@ -45,7 +56,7 @@ export function NutzerAnsicht({ konten, eigeneUserId }: { konten: Konto[]; eigen
       />
       <main className={SEITEN_INHALT_KLASSE}>
         {formularOffen && (
-          <Panel as="section" className="w-full max-w-3xl">
+          <Panel as="section" id={formularId} className="w-full max-w-3xl">
             <PanelKopf
               titel="Neues Konto"
               aktionen={
@@ -54,7 +65,7 @@ export function NutzerAnsicht({ konten, eigeneUserId }: { konten: Konto[]; eigen
                   className="size-9 px-0"
                   aria-label="Formular schliessen"
                   icon={<X className="size-4" aria-hidden />}
-                  onClick={() => setFormularOffen(false)}
+                  onClick={schliessen}
                 />
               }
             />

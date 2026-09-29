@@ -122,7 +122,8 @@ export function MatchesAnsicht({
       </Panel>
 
       {fehler && (
-        <div className="rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
+        // Gleicher Fehlerbanner wie Anfragen/Postfach; role="alert" liest ihn sofort vor.
+        <div role="alert" className="rounded-panel border border-crit/40 bg-crit-bg px-4 py-2.5 text-sm text-crit wrap-break-word">
           {fehler}
         </div>
       )}

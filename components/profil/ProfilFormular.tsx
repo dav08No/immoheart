@@ -47,7 +47,8 @@ export function ProfilFormular({ name: startName, email }: { name: string; email
     <div className="flex w-full max-w-3xl flex-col gap-4">
       <Panel as="section">
         {/* E-Mail als Beschreibung: PanelKopf bricht lange Adressen um statt zu überlaufen. */}
-        <PanelKopf titel="Name" beschreibung={email} />
+        {/* "Anzeigename" statt "Name": das Feld darunter heisst schon "Name" (keine Doppelung). */}
+        <PanelKopf titel="Anzeigename" beschreibung={email} />
         <form onSubmit={nameSpeichern} className="flex flex-col gap-4">
           <FormFeld label="Name" htmlFor="profil-name">
             <input id="profil-name" required value={name} onChange={(e) => setName(e.target.value)} className={EINGABE_KLASSE} />
