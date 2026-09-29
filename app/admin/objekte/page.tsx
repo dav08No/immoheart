@@ -1,4 +1,3 @@
-import { Header } from "@/components/layout/Header"
 import { ObjekteAnsicht, type ObjektVorbelegung } from "@/components/objekte/ObjekteAnsicht"
 import { holeObjekte, zaehleDirektanfragen, zaehleNeueMatchesFuerObjekt } from "@/lib/queries/objekte"
 import { holeTitelbilder } from "@/lib/queries/fotos"
@@ -38,19 +37,16 @@ export default async function ObjektePage({ searchParams }: { searchParams: Para
     zaehleDirektanfragen(),
   ])
 
+  // Seitenkopf und <main> rendert ObjekteAnsicht selbst: die Hauptaktion "Objekt
+  // anlegen" steuert denselben Drawer-State wie ein Klick auf eine Karte.
   return (
-    <>
-      <Header titel="Objekte" untertitel={`${objekte.length} im Bestand`} />
-      <main className="flex-1 overflow-y-auto p-5">
-        <ObjekteAnsicht
-          objekte={objekte}
-          treffer={treffer}
-          titelbilder={titelbilder}
-          direktanfragen={direktanfragen}
-          vorbelegung={vorbelegung}
-          oeffnenId={oeffnenId}
-        />
-      </main>
-    </>
+    <ObjekteAnsicht
+      objekte={objekte}
+      treffer={treffer}
+      titelbilder={titelbilder}
+      direktanfragen={direktanfragen}
+      vorbelegung={vorbelegung}
+      oeffnenId={oeffnenId}
+    />
   )
 }

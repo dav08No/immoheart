@@ -3,13 +3,11 @@
 import { useEffect, useRef, useState } from "react"
 import { AnfragenTabelle } from "./AnfragenTabelle"
 import { AnfrageDetail } from "./AnfrageDetail"
-import { AnfrageFormular } from "./AnfrageFormular"
-import { Drawer } from "@/components/layout/Drawer"
-import { Button } from "@/components/ui/Button"
+import { Panel } from "@/components/ui/Panel"
+import { Leerzustand } from "@/components/ui/Leerzustand"
 import type { AnfrageMitFirma, VerlaufEintrag } from "@/lib/queries/anfragen"
-import type { Kriterium } from "@/types"
+import type { BesterMatch } from "./typen"
 
-type BesterMatch = { score: number; kriterien: Kriterium[]; objekte: { titel: string } | null } | null
 type DetailDaten = { besterMatch: BesterMatch; verlauf: VerlaufEintrag[] }
 
 const DETAIL_LEER: DetailDaten = { besterMatch: null, verlauf: [] }
@@ -17,7 +15,6 @@ const DETAIL_LEER: DetailDaten = { besterMatch: null, verlauf: [] }
 export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: AnfrageMitFirma[]; startId?: string | null }) {
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(startId)
   const [sofortBearbeiten, setSofortBearbeiten] = useState(false)
-  const [neuOffen, setNeuOffen] = useState(false)
   const [detailDaten, setDetailDaten] = useState<DetailDaten>(DETAIL_LEER)
   // Sichtbarer, aber bewusst zurückhaltender Hinweis: die GET /api/anfragen/[id]/detail-
   // Route ist ein reiner Lesezugriff, kein Speichervorgang -- ein Fehlschlag hier
@@ -33,7 +30,7 @@ export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: Anfrag
   // Drawer (components/layout/Drawer.tsx) ist so gebaut, dass es unabhängig von
   // `offen` immer gemountet bleibt und den Übergang rein über CSS-Transitions auf
   // `translate-x`/`opacity` abbildet (siehe dort) -- genau wie der "Neue Anfrage"-
-  // Drawer unten, der immer gerendert wird und nur `offen`/`neuOffen` umschaltet.
+  // Drawer in AnfragenKopf, der immer gerendert wird und nur `offen` umschaltet.
   // AnfrageDetail rendert seinerseits selbst ein <Drawer>; würde AnfrageDetail hier
   // nur `{ausgewaehlt && <AnfrageDetail .../>}` konditional gerendert (so der
   // Startcode aus dem Plan), verschwände beim Schliessen (setAusgewaehlteId(null))
@@ -97,34 +94,37 @@ export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: Anfrag
 
   return (
     <>
-      <div className="mb-3 flex justify-end">
-        <Button variante="primaer" onClick={() => setNeuOffen(true)}>Neue Anfrage</Button>
-      </div>
+      {/* "Anfrage anlegen" lebt jetzt als Hauptaktion in AnfragenKopf. */}
       {detailFehler && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-crit/30 bg-crit/5 px-3 py-2 text-xs text-crit">
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-panel border border-crit/40 bg-crit-bg px-4 py-2.5 text-sm text-crit"
+        >
           <span>Bester Treffer und Verlauf konnten nicht geladen werden.</span>
           <button
             type="button"
             onClick={() => {
-              // Erneutes Klicken auf dieselbe bereits ausgewählte Zeile würde
-              // setAusgewaehlteId mit demselben Wert aufrufen -- React bricht das
-              // dank Object.is-Bailout ohne Re-Render/Effekt ab, der Auswahl-Effekt
-              // liefe also NICHT erneut. Deshalb hier ein eigener Button, der
-              // ladeDetailDaten direkt aufruft, statt fälschlich auf einen erneuten
-              // Zeilenklick zu verweisen. ausgewaehlteId ist nicht null, solange
-              // dieser Banner sichtbar ist (siehe Auswahl-Effekt: setzt detailFehler
-              // beim Abwählen sofort zurück auf false) -- die Prüfung ist trotzdem
-              // defensiv statt mit `!` weggecastet.
+              // Erneutes Klicken auf dieselbe Zeile löste den Auswahl-Effekt nicht aus
+              // (Object.is-Bailout von setState) -- deshalb ein eigener Knopf, der direkt
+              // nachlädt. ausgewaehlteId ist hier nie null, die Prüfung bleibt defensiv.
               if (ausgewaehlteId) void ladeDetailDaten(ausgewaehlteId)
             }}
-            className="font-medium underline hover:no-underline"
+            className="rounded font-medium underline outline-none hover:no-underline focus-visible:ring-2 focus-visible:ring-ring"
           >
             Erneut versuchen
           </button>
         </div>
       )}
-      <AnfragenTabelle anfragen={anfragen} onZeileWahl={zeileWaehlen} />
-      <p className="mt-2 text-xs text-ink-3">? = Angabe fehlt noch</p>
+      {anfragen.length === 0 ? (
+        <Panel>
+          <Leerzustand text="Noch keine Anfragen." />
+        </Panel>
+      ) : (
+        <Panel polster={false} className="p-1.5 sm:p-2">
+          <AnfragenTabelle anfragen={anfragen} onZeileWahl={zeileWaehlen} />
+          <p className="px-3 pb-2 pt-3 text-xs text-ink-2">? = Angabe fehlt noch</p>
+        </Panel>
+      )}
 
       {letzteAnfrage && (
         <AnfrageDetail
@@ -139,10 +139,6 @@ export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: Anfrag
           }}
         />
       )}
-
-      <Drawer offen={neuOffen} titel="Neue Anfrage" untertitel="" onSchliessen={() => setNeuOffen(false)}>
-        <AnfrageFormular onFertig={() => setNeuOffen(false)} />
-      </Drawer>
     </>
   )
 }
