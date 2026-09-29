@@ -3,7 +3,12 @@ import { alsNutzung, alsString, alsZahl, entferneCodeZaeune, parseErkennungsAntw
 import type { ErkannteFelder } from "./erkennung"
 import type { Nutzung } from "@/types"
 
-export type Kategorie = "suchanfrage" | "antwort" | "objektangebot" | "sonstiges"
+export type Kategorie = "suchanfrage" | "antwort" | "objektangebot" | "objektmeldung" | "sonstiges"
+
+export type Aenderung = "nicht_verfuegbar" | "wieder_verfuegbar" | "sonstige_aenderung"
+const AENDERUNGEN: Aenderung[] = ["nicht_verfuegbar", "wieder_verfuegbar", "sonstige_aenderung"]
+
+export type Meldung = { aenderung: Aenderung; zusammenfassung: string } | null
 
 export type ObjektDaten = {
   titel: string | null
@@ -20,12 +25,26 @@ export type Einordnung = {
   kategorie: Kategorie
   felder: ErkannteFelder
   objekt: ObjektDaten
+  meldung: Meldung
+  kein_interesse: boolean
 }
 
-const KATEGORIEN: Kategorie[] = ["suchanfrage", "antwort", "objektangebot", "sonstiges"]
+const KATEGORIEN: Kategorie[] = ["suchanfrage", "antwort", "objektangebot", "objektmeldung", "sonstiges"]
 
 function alsKategorie(wert: unknown): Kategorie {
   return typeof wert === "string" && (KATEGORIEN as string[]).includes(wert) ? (wert as Kategorie) : "sonstiges"
+}
+
+function alsAenderung(wert: unknown): Aenderung {
+  return typeof wert === "string" && (AENDERUNGEN as string[]).includes(wert) ? (wert as Aenderung) : "sonstige_aenderung"
+}
+
+// Fehlt "meldung" ganz (kein Objekt), gibt es keine Änderung zu berichten -- null statt
+// eine erfundene Zusammenfassung.
+function alsMeldung(wert: unknown): Meldung {
+  if (typeof wert !== "object" || wert === null) return null
+  const daten = wert as Record<string, unknown>
+  return { aenderung: alsAenderung(daten.aenderung), zusammenfassung: alsString(daten.zusammenfassung) ?? "" }
 }
 
 // Nur ISO-Datum (YYYY-MM-DD) wird übernommen -- alles andere (Freitext wie
@@ -57,6 +76,7 @@ export function baueEinordnungsPrompt(betreff: string, text: string): string {
 - "suchanfrage": jemand sucht eine Gewerbefläche.
 - "antwort": Antwort auf eine frühere Mail von immoheart.
 - "objektangebot": ein Eigentümer bietet eine Fläche zur Vermittlung an.
+- "objektmeldung": ein Eigentümer meldet eine Änderung an einer bereits angebotenen/vermittelten Fläche (vermietet, nicht mehr verfügbar, wieder frei, Preis/Fläche geändert).
 - "sonstiges": Werbung, Newsletter, Spam, Unklares.
 
 Betreff:
@@ -70,9 +90,9 @@ ${text}
 """
 
 Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung:
-{"kategorie": "suchanfrage"|"antwort"|"objektangebot"|"sonstiges", "felder": {"firma": string|null, "flaeche_min": number|null, "flaeche_max": number|null, "ort": string|null, "budget_pro_m2": number|null, "bezug": string|null, "branche": string|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null}, "objekt": {"titel": string|null, "adresse": string|null, "ort": string|null, "flaeche": number|null, "preis_pro_m2": number|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null, "verfuegbar_ab": string|null, "beschreibung": string|null}}
+{"kategorie": "suchanfrage"|"antwort"|"objektangebot"|"objektmeldung"|"sonstiges", "felder": {"firma": string|null, "flaeche_min": number|null, "flaeche_max": number|null, "ort": string|null, "budget_pro_m2": number|null, "bezug": string|null, "branche": string|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null}, "objekt": {"titel": string|null, "adresse": string|null, "ort": string|null, "flaeche": number|null, "preis_pro_m2": number|null, "nutzung": "buero"|"gewerbe"|"produktion"|"lager"|"verkauf"|"bauland"|null, "verfuegbar_ab": string|null, "beschreibung": string|null}, "meldung": {"aenderung": "nicht_verfuegbar"|"wieder_verfuegbar"|"sonstige_aenderung", "zusammenfassung": string}|null, "kein_interesse": boolean}
 
-Nicht zutreffende Teile (z.B. "felder" bei einem Objektangebot oder "objekt" bei einer Suchanfrage) erhalten überall null-Werte. "verfuegbar_ab" nur im Format YYYY-MM-DD, sonst null.`
+Nicht zutreffende Teile (z.B. "felder" bei einem Objektangebot oder "objekt" bei einer Suchanfrage) erhalten überall null-Werte. "verfuegbar_ab" nur im Format YYYY-MM-DD, sonst null. "meldung" nur bei "objektmeldung" befüllen, sonst null. "kein_interesse": true nur wenn eine Antwort klar ablehnt.`
 }
 
 export function parseEinordnung(antwort: string): Einordnung {
@@ -83,6 +103,10 @@ export function parseEinordnung(antwort: string): Einordnung {
     // ErkannteFelder -- hier nur erneut über JSON gereicht statt dupliziert.
     felder: parseErkennungsAntwort(JSON.stringify(alsObjekt(daten.felder))),
     objekt: parseObjektDaten(daten.objekt),
+    meldung: alsMeldung(daten.meldung),
+    // Nur ein echtes boolean true zählt -- ein String "true" o.ä. wäre ein
+    // Format-Fehler der KI und soll nicht versehentlich als Ablehnung gelten.
+    kein_interesse: daten.kein_interesse === true,
   }
 }
 

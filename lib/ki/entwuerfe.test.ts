@@ -75,6 +75,24 @@ describe("baueAntwortPrompt", () => {
     expect(prompt).toContain("Frage")
     expect(prompt).not.toContain("null")
   })
+  it("ist ohne angebot byte-identisch zum bisherigen Prompt", () => {
+    const ohneFeld = baueAntwortPrompt({ eingangBetreff: "Frage", eingangText: "Hallo", anfrageKurz: "Büro" })
+    const mitNull = baueAntwortPrompt({ eingangBetreff: "Frage", eingangText: "Hallo", anfrageKurz: "Büro", angebot: null })
+    expect(mitNull).toBe(ohneFeld)
+  })
+  it("stellt bei einem Angebot die Angebots-Anweisung statt der Standard-Anweisung", () => {
+    const prompt = baueAntwortPrompt({
+      eingangBetreff: "Re: Büro Altstadt",
+      eingangText: "Können wir besichtigen?",
+      anfrageKurz: null,
+      angebot: { objektTitel: "Büro Altstadt", eckdaten: "240 m², CHF 245/m²" },
+    })
+    expect(prompt).toContain("Die Firma antwortet auf das Angebot für Büro Altstadt.")
+    expect(prompt).toContain("erfinde keine Termine, Preise oder weiteren Objekte.")
+    expect(prompt).toContain("240 m², CHF 245/m²")
+    expect(prompt).toContain(ANTWORT_ROLLE)
+    expect(prompt).not.toContain("prüft passende Flächen")
+  })
 })
 
 describe("baueObjektangebotPrompt", () => {

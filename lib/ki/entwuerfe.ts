@@ -4,7 +4,8 @@ import type { ErkannteFelder } from "./erkennung"
 
 export type Mailentwurf = { betreff: string; body: string }
 
-const AUSGABEFORMAT =
+// Exportiert, damit abschluss-entwuerfe.ts dasselbe Format nutzt statt es zu duplizieren.
+export const AUSGABEFORMAT =
   'Antworte ausschliesslich mit einem JSON-Objekt in genau diesem Format, ohne weitere Erklärung: {"betreff": string, "body": string}. Der Ton ist knapp, sachlich, per Sie, ohne Floskeln. Unterschrift: "Freundliche Grüsse\\nimmoheart".'
 
 export function parseMailAntwort(antwort: string): Mailentwurf {
@@ -25,7 +26,8 @@ export function parseMailAntwort(antwort: string): Mailentwurf {
   return { betreff: daten.betreff, body: daten.body }
 }
 
-async function frageKi(prompt: string): Promise<Mailentwurf> {
+// Exportiert, damit abschluss-entwuerfe.ts denselben KI-Aufruf/Parser nutzt statt ihn zu duplizieren.
+export async function frageKi(prompt: string): Promise<Mailentwurf> {
   const antwort = await generiereText(prompt)
   return parseMailAntwort(antwort)
 }
@@ -94,7 +96,8 @@ export function entwurfNachfass(anfrage: Anfrage, tageSeitKontakt: number): Prom
 // Eingehende Mails können sehr lang sein; für einen Antwortentwurf reicht der Anfang.
 const MAX_PROMPT_TEXT = 6_000
 
-function zitat(text: string): string {
+// Exportiert, damit abschluss-entwuerfe.ts z.B. die Objektmeldung des Eigentümers zitieren kann.
+export function zitat(text: string): string {
   return `"""\n${text.slice(0, MAX_PROMPT_TEXT)}\n"""`
 }
 
@@ -103,20 +106,32 @@ function zitat(text: string): string {
 export const ANTWORT_ROLLE =
   "Du schreibst im Namen von immoheart (dem Vermittler) an die Firma, von der die Mail stammt. Gib ihre Angaben nicht als eigene aus."
 
-export function baueAntwortPrompt(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): string {
+export type AntwortParams = {
+  eingangBetreff: string
+  eingangText: string
+  anfrageKurz: string | null
+  // Optional: Antwort hängt an einem Angebot -- dann bekommt die KI Objekt-Kontext statt der Standard-Anweisung.
+  angebot?: { objektTitel: string; eckdaten: string } | null
+}
+
+export function baueAntwortPrompt(p: AntwortParams): string {
   const bezug = p.anfrageKurz ? `\nDie Firma sucht: ${p.anfrageKurz}\n` : ""
+  const angebotBezug = p.angebot ? `\nEckdaten des Angebots: ${p.angebot.eckdaten}\n` : ""
+  const anweisung = p.angebot
+    ? `Die Firma antwortet auf das Angebot für ${p.angebot.objektTitel}. Gehe auf ihr Anliegen ein (z. B. Besichtigungswunsch aufnehmen), erfinde keine Termine, Preise oder weiteren Objekte.`
+    : "bestätige kurz die erhaltenen Angaben und schreibe, dass immoheart passende Flächen prüft und sich meldet. Frage nur nach, wenn für die Suche noch etwas Wichtiges fehlt. Erfinde keine Objekte, Preise oder Termine."
   return `Eine Firma hat auf eine Mail von immoheart (Vermittlung von Gewerbeflächen in der Region Solothurn) geantwortet.
-${bezug}
+${bezug}${angebotBezug}
 Betreff:
 ${zitat(p.eingangBetreff)}
 
 Mail:
 ${zitat(p.eingangText)}
 
-${ANTWORT_ROLLE} Bedanke dich für die Rückmeldung, bestätige kurz die erhaltenen Angaben und schreibe, dass immoheart passende Flächen prüft und sich meldet. Frage nur nach, wenn für die Suche noch etwas Wichtiges fehlt. Erfinde keine Objekte, Preise oder Termine. ${AUSGABEFORMAT}`
+${ANTWORT_ROLLE} Bedanke dich für die Rückmeldung, ${anweisung} ${AUSGABEFORMAT}`
 }
 
-export function entwurfAntwort(p: { eingangBetreff: string; eingangText: string; anfrageKurz: string | null }): Promise<Mailentwurf> {
+export function entwurfAntwort(p: AntwortParams): Promise<Mailentwurf> {
   return frageKi(baueAntwortPrompt(p))
 }
 
