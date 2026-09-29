@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { HerzLogo } from "@/components/public/HerzLogo"
+import { AnmeldeModell } from "./AnmeldeModell"
 import { Panel } from "@/components/ui/Panel"
 
 // Gemeinsamer Rahmen der Anmelde-Seiten (Login, Passwort vergessen/setzen, Link
@@ -19,6 +20,11 @@ export function AnmeldeRahmen({ titel, children }: { titel: string; children: Re
     <main className="flex min-h-dvh flex-col bg-bg lg:flex-row">
       <div className="flex-none bg-linear-to-br from-nav-von to-nav-bis px-4 py-3 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:p-12">
         <HerzLogo className={LOGO_HELL} />
+        {/* Das Stadtmodell der Startseite (gleicher Verlauf), nur auf Desktop: auf dem
+            Handy bleibt der Streifen schmal und das Login lädt kein three. */}
+        <div className="hidden min-h-0 flex-1 items-center justify-center py-6 lg:flex">
+          <AnmeldeModell />
+        </div>
         <div className="hidden lg:block">
           <p className="font-display text-4xl font-bold leading-tight text-nav-text">Gewerbeflächen mit Herzschlag.</p>
           <p className="mt-3 text-nav-text-2">Büro, Gewerbe, Produktion und Lager in der Region Solothurn.</p>
