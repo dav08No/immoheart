@@ -26,7 +26,7 @@ export function AnfragenTabelle({
   onZeileWahl: (id: string, bearbeitenSofort: boolean) => void
 }) {
   return (
-    <Tabelle ariaLabel="Anfragen">
+    <Tabelle ariaLabel="Anfragen" minBreite="min-w-[640px]">
       <thead>
         <tr>
           {SPALTEN.map((kopf, i) => (

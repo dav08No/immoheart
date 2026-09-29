@@ -10,7 +10,16 @@ const TABELLE = [
   "max-sm:[&_tr>*:first-child]:sticky max-sm:[&_tr>*:first-child]:left-0 max-sm:[&_tr>*:first-child]:bg-surface",
 ].join(" ")
 
-export function Tabelle({ children, ariaLabel }: { children: ReactNode; ariaLabel: string }) {
+// minBreite: breite Tabellen behalten ihre Spaltenbreiten und scrollen, statt zu quetschen.
+export function Tabelle({
+  children,
+  ariaLabel,
+  minBreite,
+}: {
+  children: ReactNode
+  ariaLabel: string
+  minBreite?: string
+}) {
   return (
     // tabIndex: eine scrollbare Fläche muss per Tastatur erreichbar sein.
     <div
@@ -19,7 +28,7 @@ export function Tabelle({ children, ariaLabel }: { children: ReactNode; ariaLabe
       tabIndex={0}
       className="overflow-x-auto rounded-panel focus-visible:outline-2 focus-visible:outline-ring"
     >
-      <table className={TABELLE}>{children}</table>
+      <table className={minBreite ? `${TABELLE} ${minBreite}` : TABELLE}>{children}</table>
     </div>
   )
 }
