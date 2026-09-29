@@ -1,20 +1,11 @@
+import type { Database } from "@/types/database"
+
 // Reine Übergangsregeln für Treffer (matches.status), gespiegelt zu den DB-Funktionen
 // (treffer_reservieren, treffer_vermitteln, reservierung_aufheben, treffer_ablehnen), damit
-// die Oberfläche Aktionen ohne Server-Rundreise ein-/ausblenden kann. TrefferStatus wird hier
-// von Hand geführt (nicht aus types/database.ts), solange Migration A noch nicht angewendet
-// und die DB nicht neu generiert ist -- danach zieht Task 7 die Werte gegen den Enum nach.
-export type TrefferStatus =
-  | "neu"
-  | "gesendet"
-  | "verworfen"
-  | "reserviert"
-  | "vermittelt"
-  | "abgelehnt"
-  | "erledigt"
-
-// Ebenfalls von Hand: objekt_status_enum ändert sich in Migration A nicht, aber die
-// Datei soll unabhängig von generierten Typen kompilieren.
-export type ObjektStatus = "verfuegbar" | "reserviert" | "vermietet"
+// die Oberfläche Aktionen ohne Server-Rundreise ein-/ausblenden kann. Beide Status-Typen
+// kommen direkt aus dem generierten Enum, damit sie nie von der DB abweichen.
+export type TrefferStatus = Database["public"]["Enums"]["match_status_enum"]
+export type ObjektStatus = Database["public"]["Enums"]["objekt_status_enum"]
 
 export const TREFFER_STATUS_LABEL: Record<TrefferStatus, string> = {
   neu: "Neu",

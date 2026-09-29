@@ -24,8 +24,10 @@ export const KATEGORIE_CHIPS: { wert: KategorieChip; label: string }[] = [
 type Filterbar = Pick<Nachricht, "richtung" | "quelle" | "kategorie">
 
 // Seit N5 gibt es für jede DB-Kategorie einen eigenen Chip (Objektanfragen von der Website).
+// objektmeldung (Abschluss-Migration) bekommt ihren eigenen Filter-Chip erst mit dem
+// Postfach-Teil des Abschluss-Feature; bis dahin ordnet sie sich keinem Chip zu.
 export function chipVon(kategorie: Kategorie | null): KategorieChip | null {
-  return kategorie
+  return kategorie === "objektmeldung" ? null : kategorie
 }
 
 export function passtZuFilter(n: Filterbar, filter: PostfachFilter): boolean {
@@ -87,7 +89,8 @@ export function aktionsBlock(
   if (n.richtung !== "eingang") return null
   if (n.ki_status === "offen" || n.ki_status === "laeuft") return null
   if (n.kategorie === null) return n.erkannte_felder !== null ? "suchanfrage" : null
-  return n.kategorie === "sonstiges" ? null : n.kategorie
+  // objektmeldung bekommt eigene Postfach-Aktionen erst mit dem Abschluss-Feature (später).
+  return n.kategorie === "sonstiges" || n.kategorie === "objektmeldung" ? null : n.kategorie
 }
 
 export type SuchanfrageKopf = { ueberschrift: string; rueckfrage: boolean }
