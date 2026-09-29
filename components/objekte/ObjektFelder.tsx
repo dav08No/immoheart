@@ -20,6 +20,26 @@ export function TextFeld({
   )
 }
 
+// Optional: ohne Adresse entstehen keine Eigentümer-Entwürfe (Reservierung, Vermietung).
+export function EigentuemerEmailFeld({
+  wert, setWert, disabled,
+}: { wert: string; setWert: (v: string) => void; disabled: boolean }) {
+  const id = useId()
+  return (
+    <FormFeld label="Eigentümer-E-Mail (optional)" htmlFor={id}>
+      <input
+        id={id}
+        type="email"
+        value={wert}
+        onChange={(e) => setWert(e.target.value)}
+        disabled={disabled}
+        autoComplete="off"
+        className={EINGABE_KLASSE}
+      />
+    </FormFeld>
+  )
+}
+
 export function SelectFeld<T extends string>({
   label, wert, setWert, optionen, disabled,
 }: { label: string; wert: T; setWert: (v: T) => void; optionen: { wert: T; label: string }[]; disabled: boolean }) {

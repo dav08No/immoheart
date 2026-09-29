@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { idSchema } from "@/app/actions/entwuerfe-hilfen"
 import { legeObjektAn, aktualisiereObjekt } from "@/lib/queries/objekte"
-import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
+import { holeNachricht, verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { MAX_BESCHREIBUNG } from "@/lib/objekt-fotos"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { eigentuemerEmailMitHerkunft, eigentuemerEmailSchema } from "@/lib/objekt-eigentuemer"
 import type { Database } from "@/types/database"
 
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
@@ -17,6 +18,13 @@ function pruefeBeschreibung(objekt: Partial<ObjektEinfuegen>) {
   if ((objekt.beschreibung?.length ?? 0) > MAX_BESCHREIBUNG) {
     throw new NutzerFehler(`Die Beschreibung ist länger als ${MAX_BESCHREIBUNG} Zeichen.`)
   }
+}
+
+// Gegen direkte Action-Aufrufe: leer → null, sonst gültige, kleingeschriebene Adresse.
+function pruefeEigentuemerEmail(wert: string | null | undefined): string | null {
+  const geprueft = eigentuemerEmailSchema.safeParse(wert ?? null)
+  if (!geprueft.success) throw new NutzerFehler("Die Eigentümer-E-Mail ist ungültig.")
+  return geprueft.data
 }
 
 // Öffentliche Liste und Detailseiten zeigen Titel, Beschreibung und Sichtbarkeit mit.
@@ -32,12 +40,14 @@ function oeffentlicheSeitenNeuLaden() {
 export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId?: string): Promise<void> {
   await holeEigenesProfil()
   pruefeBeschreibung(objekt)
-  const neues = await legeObjektAn(objekt)
+  const herkunftId = herkunftNachrichtId ? idSchema.safeParse(herkunftNachrichtId) : null
+  const herkunft = herkunftId?.success ? await holeNachricht(herkunftId.data) : null
+  // Leeres Feld: Absender der Herkunftsmail als Eigentümer-Adresse übernehmen.
+  const herkunftVon = herkunft?.richtung === "eingang" ? herkunft.von : null
+  const eigentuemer_email = eigentuemerEmailMitHerkunft(pruefeEigentuemerEmail(objekt.eigentuemer_email), herkunftVon)
+  const neues = await legeObjektAn({ ...objekt, eigentuemer_email })
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
-  if (herkunftNachrichtId) {
-    const geprueft = idSchema.safeParse(herkunftNachrichtId)
-    if (geprueft.success) await verknuepfeObjektMitEingang(geprueft.data, neues.id)
-  }
+  if (herkunftId?.success) await verknuepfeObjektMitEingang(herkunftId.data, neues.id)
   revalidatePath("/admin/objekte")
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
@@ -79,7 +89,9 @@ const MATCH_RELEVANTE_FELDER = [
 export async function objektAktualisieren(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
   await holeEigenesProfil()
   pruefeBeschreibung(aenderung)
-  await aktualisiereObjekt(id, aenderung)
+  const geprueft =
+    "eigentuemer_email" in aenderung ? { ...aenderung, eigentuemer_email: pruefeEigentuemerEmail(aenderung.eigentuemer_email) } : aenderung
+  await aktualisiereObjekt(id, geprueft)
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerObjekt(id)
   }

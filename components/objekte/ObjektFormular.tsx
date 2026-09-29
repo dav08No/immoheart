@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/Button"
 import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { DrawerLeiste } from "@/components/layout/DrawerLeiste"
-import { BeschreibungFeld, SelectFeld, SichtbarkeitFeld, TextFeld } from "./ObjektFelder"
+import { BeschreibungFeld, EigentuemerEmailFeld, SelectFeld, SichtbarkeitFeld, TextFeld } from "./ObjektFelder"
 import { ObjektFotos } from "./ObjektFotos"
 import { objektAnlegen, objektAktualisieren } from "@/app/actions/objekte"
 import type { ObjektVorbelegungWerte } from "@/lib/objekt-vorbelegung"
@@ -24,12 +24,12 @@ const STATUS_OPTIONEN: { wert: ObjektStatus; label: string }[] = [
 
 type Werte = {
   titel: string; adresse: string; ort: string; flaeche: string; preis: string
-  nutzung: Nutzung; verfuegbarAb: string; eigentuemer: string; beschreibung: string; oeffentlich: boolean
+  nutzung: Nutzung; verfuegbarAb: string; eigentuemer: string; eigentuemerEmail: string; beschreibung: string; oeffentlich: boolean
 }
 
 const LEER: Werte = {
   titel: "", adresse: "", ort: "", flaeche: "", preis: "",
-  nutzung: "gewerbe", verfuegbarAb: "", eigentuemer: "", beschreibung: "", oeffentlich: true,
+  nutzung: "gewerbe", verfuegbarAb: "", eigentuemer: "", eigentuemerEmail: "", beschreibung: "", oeffentlich: true,
 }
 
 // objekt (Bearbeiten) schlägt vorbelegung (aus einer Mail übernommen, Task 7) schlägt
@@ -44,6 +44,7 @@ function startwerte(objekt: ObjektRow | undefined, vorbelegung: ObjektVorbelegun
     nutzung: objekt?.nutzung ?? vorbelegung?.nutzung ?? LEER.nutzung,
     verfuegbarAb: objekt?.verfuegbar_ab ?? vorbelegung?.verfuegbarAb ?? LEER.verfuegbarAb,
     eigentuemer: objekt?.eigentuemer ?? vorbelegung?.eigentuemer ?? LEER.eigentuemer,
+    eigentuemerEmail: objekt?.eigentuemer_email ?? LEER.eigentuemerEmail,
     beschreibung: objekt?.beschreibung ?? LEER.beschreibung,
     oeffentlich: objekt?.oeffentlich ?? LEER.oeffentlich,
   }
@@ -70,6 +71,7 @@ export function ObjektFormular({
   const [nutzung, setNutzung] = useState<Nutzung>(start.nutzung)
   const [verfuegbarAb, setVerfuegbarAb] = useState(start.verfuegbarAb)
   const [eigentuemer, setEigentuemer] = useState(start.eigentuemer)
+  const [eigentuemerEmail, setEigentuemerEmail] = useState(start.eigentuemerEmail)
   const [beschreibung, setBeschreibung] = useState(start.beschreibung)
   const [oeffentlich, setOeffentlich] = useState(start.oeffentlich)
   // Nur im Bearbeiten-Modus gepflegt -- beim Anlegen greift der DB-Default 'verfuegbar'.
@@ -80,7 +82,7 @@ export function ObjektFormular({
   function setzeFelder(w: Werte) {
     setTitel(w.titel); setAdresse(w.adresse); setOrt(w.ort); setFlaeche(w.flaeche)
     setPreis(w.preis); setNutzung(w.nutzung); setVerfuegbarAb(w.verfuegbarAb)
-    setEigentuemer(w.eigentuemer); setBeschreibung(w.beschreibung); setOeffentlich(w.oeffentlich)
+    setEigentuemer(w.eigentuemer); setEigentuemerEmail(w.eigentuemerEmail); setBeschreibung(w.beschreibung); setOeffentlich(w.oeffentlich)
   }
 
   // Fallback-Reset, falls diese Komponente je ohne key-Wechsel weiterläuft (siehe
@@ -109,6 +111,8 @@ export function ObjektFormular({
         nutzung,
         verfuegbar_ab: verfuegbarAb,
         eigentuemer,
+        // Leer → null (auch serverseitig); beim Anlegen aus einer Mail übernimmt die Action den Absender.
+        eigentuemer_email: eigentuemerEmail.trim() || null,
         // foto_url wird nicht mehr gepflegt, bleibt aber als Fallback-Titelbild stehen.
         beschreibung: beschreibung.trim() || null,
         oeffentlich,
@@ -155,6 +159,7 @@ export function ObjektFormular({
         <SelectFeld label="Nutzung" wert={nutzung} setWert={setNutzung} optionen={NUTZUNGEN} disabled={speichert} />
         <TextFeld label="Verfügbar ab" typ="date" wert={verfuegbarAb} setWert={setVerfuegbarAb} disabled={speichert} />
         <TextFeld label="Eigentümer" wert={eigentuemer} setWert={setEigentuemer} disabled={speichert} />
+        <EigentuemerEmailFeld wert={eigentuemerEmail} setWert={setEigentuemerEmail} disabled={speichert} />
       </section>
       <section className="flex flex-col gap-3">
         {/* "Text" statt "Beschreibung": das Feld darunter heisst schon so (keine Doppelung). */}
