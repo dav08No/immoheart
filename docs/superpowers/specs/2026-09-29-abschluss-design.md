@@ -8,7 +8,7 @@ Aus einem versendeten Angebot wird ein nachvollziehbarer Abschluss: Objekt zuers
 
 Vorgaben von Davide:
 
-- Nach dem Angebot zuerst **reserviert**, mit Hinweis auf die anderen Firmen mit Angebot; die KI entwirft deren Absagen gleich mit.
+- Nach dem Angebot zuerst **reserviert**. Andere Firmen mit Angebot erhalten **erst bei der effektiven Vermietung** eine Absage (KI-Entwurf), nicht schon bei der Reservierung; bis dahin sieht Davide sie als Hinweis.
 - Eigentümer bekommt eine E-Mail-Adresse am Objekt und eigene Info-Entwürfe (Option A).
 - Eigentümer-Meldungen „nicht mehr verfügbar“ erkennt die KI; die Änderung selbst passiert per Klick (Vorschlag + ein Klick, Option A).
 - Weiterhin gilt: **nichts wird automatisch versendet**, jede Mail ist ein Entwurf, den Davide bestätigt.
@@ -23,13 +23,13 @@ Vorgaben von Davide:
 |---|---|---|---|
 | Angebot entwerfen | Matches | Treffer bleibt `neu`, bis die Angebotsmail **versendet** ist → `gesendet` + `angeboten_am`. Offener Angebots-Entwurf vorhanden → dieser wird geöffnet statt neu erzeugt. Entwurf gelöscht → Treffer bleibt `neu`. | Angebot |
 | Firma lehnt ab | Anfrage-Panel „Angebote“, Postfach-Antwort | Treffer `gesendet → abgelehnt` | – |
-| Reservieren | Anfrage-Panel „Angebote“, Objekt-Panel „Interessenten“ | Objekt `verfuegbar → reserviert`; Treffer `gesendet → reserviert` + `reserviert_am`; andere `gesendet`-Treffer desselben Objekts → `erledigt`; dessen `neu`-Treffer werden entfernt | Absage je Firma der erledigten Treffer; Info an Eigentümer (reserviert) |
-| Vertrag unterschrieben | dort | Objekt → `vermietet`; Treffer `reserviert → vermittelt` + `abgeschlossen_am`; Anfrage → `vermittelt`; übrige `gesendet`-Treffer der Anfrage → `erledigt`, ihre `neu`-Treffer werden entfernt | Info an Eigentümer (vermietet); Bestätigung an Firma |
-| Reservierung aufheben | dort | Objekt → `verfuegbar`; Treffer `reserviert → gesendet`, `reserviert_am` geleert; Rematching für das Objekt; noch **nicht gesendete** Absage-Entwürfe dieses Objekts werden gelöscht (soft); bereits gesendete bleiben | Info an Eigentümer (aufgehoben) |
+| Reservieren | Anfrage-Panel „Angebote“, Objekt-Panel „Interessenten“ | Objekt `verfuegbar → reserviert`; Treffer `gesendet → reserviert` + `reserviert_am`; andere `gesendet`-Treffer desselben Objekts **bleiben** `gesendet` (Hinweis „Objekt reserviert für <Firma>“ im Panel); `neu`-Treffer des Objekts werden entfernt | Info an Eigentümer (reserviert) — **keine** Absagen |
+| Vertrag unterschrieben | dort | Objekt → `vermietet`; Treffer `reserviert → vermittelt` + `abgeschlossen_am`; Anfrage → `vermittelt`; andere `gesendet`-Treffer **desselben Objekts** → `erledigt`; übrige `gesendet`-Treffer der Anfrage → `erledigt`, ihre `neu`-Treffer werden entfernt | Absage je Firma der erledigten Treffer desselben Objekts; Info an Eigentümer (vermietet); Bestätigung an Firma |
+| Reservierung aufheben | dort | Objekt → `verfuegbar`; Treffer `reserviert → gesendet`, `reserviert_am` geleert; Rematching für das Objekt; die anderen angebotenen Firmen waren nie abgesagt und bleiben `gesendet` | Info an Eigentümer (aufgehoben) |
 | Objektmeldung „nicht verfügbar“ bestätigen | Postfach | Objekt → `vermietet`; alle `gesendet`/`reserviert`-Treffer des Objekts → `erledigt`; `neu`-Treffer entfernt | Absage je betroffener Firma (Dank an Eigentümer entsteht schon beim Einlesen) |
 | Wieder verfügbar setzen | Postfach (Objektmeldung), Objekt-Panel | Objekt `reserviert`/`vermietet` → `verfuegbar`; ein `reserviert`-Treffer geht zurück auf `gesendet` (wie Aufheben); `vermittelt`-Treffer und vermittelte Anfragen bleiben als Historie unverändert; Rematching | – |
 
-Jede Aktion hat einen Bestätigungsdialog, der die Folgen auflistet (z. B. „2 andere Firmen erhalten einen Absage-Entwurf“).
+Jede Aktion hat einen Bestätigungsdialog, der die Folgen auflistet (z. B. beim Reservieren „2 andere Firmen haben ein Angebot – sie erhalten erst bei Vertragsabschluss eine Absage“, beim Vertrag „2 andere Firmen erhalten einen Absage-Entwurf“).
 
 Ungültige Übergänge (z. B. Reservieren eines nicht angebotenen Treffers, zweites Reservieren desselben Objekts) werden abgelehnt mit einer verständlichen Meldung.
 
@@ -86,7 +86,7 @@ Der Versand (`entwurfSenden`) setzt nach erfolgreichem `markiereGesendet` best-e
 
 **Tests** (Vitest): Übergangsregeln (erlaubt/verboten, pure Funktion spiegelt die DB-Regeln für die UI), Objektmeldung-Zuordnung (Verlauf, Eigentümer-Adresse, mehrdeutig), Prompt-Bau je neuem Entwurf, Einordnung neue Kategorie + `kein_interesse` + `aenderung`, „fehlende Entwürfe“-Berechnung ohne Duplikate, Zahlen (Quote, Median Tage bis Abschluss), Empfänger-Vorprüfung ohne KI-Aufruf, Nachfass-Deduplizierung.
 
-**Live-Test** (Preview, Testdaten, Mails nur an bekannte Testadressen): Angebot senden → zweite Firma bekommt Angebot für dasselbe Objekt → Reservieren (Absage- und Eigentümer-Entwürfe prüfen) → Aufheben → erneut Reservieren → Vertrag unterschrieben → Test-Objektmeldung per Mail an die immoheart-Gmail → erkannt → Klick → Absagen. Danach Testdaten aufräumen (Eingänge soft löschen).
+**Live-Test** (Preview, Testdaten, Mails nur an bekannte Testadressen): Angebot senden → zweite Firma bekommt Angebot für dasselbe Objekt → Reservieren (Eigentümer-Entwurf, **keine** Absage) → Aufheben → erneut Reservieren → Vertrag unterschrieben (Absage an zweite Firma, Eigentümer-Info, Bestätigung) → Test-Objektmeldung per Mail an die immoheart-Gmail → erkannt → Klick → Absagen. Danach Testdaten aufräumen (Eingänge soft löschen).
 
 ## Nicht im Umfang
 
