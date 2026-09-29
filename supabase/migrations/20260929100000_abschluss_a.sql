@@ -17,10 +17,13 @@ alter table objekte add column if not exists eigentuemer_email text
   check (eigentuemer_email is null or eigentuemer_email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 -- Eigentümer-Adresse aus der ältesten verknüpften Objektangebot-Mail übernehmen.
+-- Nur kategorie = 'objektangebot': sonst könnte eine Firmen-Anfrage oder Website-Objektanfrage
+-- mit gesetzter objekt_id fälschlich als Eigentümer-Adresse übernommen werden.
 update objekte o set eigentuemer_email = lower(sub.von)
 from (
   select distinct on (objekt_id) objekt_id, von from nachrichten
-  where richtung = 'eingang' and objekt_id is not null and von like '%@%'
+  where richtung = 'eingang' and objekt_id is not null and kategorie = 'objektangebot'
+    and von ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'
   order by objekt_id, coalesce(empfangen_am, created_at)
 ) sub
 where sub.objekt_id = o.id and o.eigentuemer_email is null;
