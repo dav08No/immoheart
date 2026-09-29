@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { anfrageStatusTon, kontoStatusTon, objektStatusTon, pulsTon } from "./status-ton"
+import { anfrageStatusTon, kontoStatusTon, objektStatusTon, pulsTon, trefferStatusTon } from "./status-ton"
 
 describe("objektStatusTon", () => {
   it("ordnet jeden Objektstatus einem Ton zu", () => {
@@ -30,5 +30,17 @@ describe("kontoStatusTon", () => {
     expect(kontoStatusTon("eingeladen")).toBe("info")
     expect(kontoStatusTon("aktiv")).toBe("gut")
     expect(kontoStatusTon("deaktiviert")).toBe("neutral")
+  })
+})
+
+describe("trefferStatusTon", () => {
+  it("ordnet jeden Trefferstatus einem Ton zu", () => {
+    expect(trefferStatusTon("neu")).toBe("info")
+    expect(trefferStatusTon("gesendet")).toBe("info")
+    expect(trefferStatusTon("verworfen")).toBe("neutral")
+    expect(trefferStatusTon("reserviert")).toBe("warn")
+    expect(trefferStatusTon("vermittelt")).toBe("gut")
+    expect(trefferStatusTon("abgelehnt")).toBe("neutral")
+    expect(trefferStatusTon("erledigt")).toBe("neutral")
   })
 })
