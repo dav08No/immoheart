@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { anfrageStatusFolge } from "./status-wechsel"
+import { anfrageStatusFolge, statusAenderung } from "./status-wechsel"
 
 describe("anfrageStatusFolge", () => {
   it("zurück auf offen löst Rematching aus", () => {
@@ -21,5 +21,17 @@ describe("anfrageStatusFolge", () => {
   it("ruhende oder vermittelte Anfragen werden auch bei geänderten Suchfeldern nicht gematcht", () => {
     expect(anfrageStatusFolge("ruhend", "ruhend", true)).toBe("nichts")
     expect(anfrageStatusFolge("vermittelt", "vermittelt", true)).toBe("nichts")
+  })
+})
+
+describe("statusAenderung", () => {
+  it("unveränderter Status wird nicht mitgeschickt", () => {
+    expect(statusAenderung("vermittelt", "vermittelt")).toEqual({})
+    expect(statusAenderung("offen", "offen")).toEqual({})
+  })
+
+  it("nur eine echte Änderung landet im Update", () => {
+    expect(statusAenderung("offen", "ruhend")).toEqual({ status: "ruhend" })
+    expect(statusAenderung("vermittelt", "offen")).toEqual({ status: "offen" })
   })
 })

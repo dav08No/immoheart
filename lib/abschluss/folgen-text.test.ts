@@ -36,7 +36,11 @@ describe("sichtbareAktionen", () => {
 
   it("vermittelte Anfrage: ein noch reservierter Treffer kann nur aufgehoben werden (R6/R9)", () => {
     expect(sichtbareAktionen("reserviert", "reserviert", "vermittelt")).toEqual(["aufheben"])
-    expect(sichtbareAktionen("gesendet", "verfuegbar", "vermittelt")).toEqual(["ablehnen", "reservieren"])
+  })
+
+  it("vermittelte Anfrage: ein angebotener Treffer kann nur noch abgelehnt werden (R10)", () => {
+    expect(sichtbareAktionen("gesendet", "verfuegbar", "vermittelt")).toEqual(["ablehnen"])
+    expect(sichtbareAktionen("gesendet", "reserviert", "vermittelt")).toEqual(["ablehnen"])
   })
 
   it("abgeschlossene Treffer haben keine Aktionen", () => {

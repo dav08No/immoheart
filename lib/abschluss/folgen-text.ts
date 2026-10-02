@@ -44,10 +44,13 @@ export function folgenText(aktion: TrefferAktion, andere: number): string {
   }
 }
 
-// R6/R9: Ist die Anfrage schon vermittelt, darf ein anderswo noch reservierter Treffer
-// nicht ein zweites Mal abschliessen -- nur die Reservierung lässt sich noch lösen.
+// R6/R9/R10: Ist die Anfrage schon vermittelt, schliesst kein weiterer Treffer mehr ab.
+// Ein reservierter lässt sich nur noch aufheben, ein angebotener nur ablehnen -- Reservieren
+// führte sonst in eine Sackgasse (Vermitteln ausgeblendet, Objekt bliebe blockiert).
 // erlaubteAktionen selbst bleibt unverändert (Spiegel der DB-Regeln).
 export function sichtbareAktionen(treffer: TrefferStatus, objekt: ObjektStatus, anfrage: AnfrageStatus): TrefferAktion[] {
-  const aktionen = erlaubteAktionen(treffer, objekt).filter((a) => !(anfrage === "vermittelt" && a === "vermitteln"))
+  const aktionen = erlaubteAktionen(treffer, objekt).filter(
+    (a) => !(anfrage === "vermittelt" && (a === "vermitteln" || a === "reservieren"))
+  )
   return [...aktionen.filter((a) => !istPrimaerAktion(a)), ...aktionen.filter(istPrimaerAktion)]
 }

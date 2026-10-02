@@ -11,3 +11,9 @@ export function anfrageStatusFolge(alt: AnfrageStatus, neu: AnfrageStatus, suchf
   if (neu !== "offen") return alt === neu ? "nichts" : "neu_loeschen"
   return alt !== "offen" || suchfelderGeaendert ? "rematch" : "nichts"
 }
+
+// Status nur mitschicken, wenn er im Formular wirklich geändert wurde: ein veralteter
+// Formularwert (z.B. "offen" nach "Vertrag unterschrieben") öffnete die Anfrage sonst still wieder.
+export function statusAenderung(gespeichert: AnfrageStatus, gewaehlt: AnfrageStatus): { status?: AnfrageStatus } {
+  return gewaehlt === gespeichert ? {} : { status: gewaehlt }
+}

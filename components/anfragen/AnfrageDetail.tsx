@@ -14,6 +14,7 @@ import { AnfrageEckdaten } from "./AnfrageEckdaten"
 import { AnfrageBearbeiten, eingabenAus, type Eingaben } from "./AnfrageBearbeiten"
 import { BesterTreffer, Verlauf } from "./AnfrageTrefferVerlauf"
 import { AnfrageAngebote } from "./AnfrageAngebote"
+import { statusAenderung } from "@/lib/abschluss/status-wechsel"
 import { ANFRAGE_STATUS_LABEL, type BesterMatch } from "./typen"
 
 export function AnfrageDetail({
@@ -83,7 +84,7 @@ export function AnfrageDetail({
         ort: eingaben.ort || null,
         budget_pro_m2: eingaben.budget ? Number(eingaben.budget) : null,
         bezug: eingaben.bezug || null,
-        status,
+        ...statusAenderung(anfrage.status, status),
       })
       if (anfrageIdRef.current === zielId) {
         setBearbeiten(false)
@@ -95,6 +96,15 @@ export function AnfrageDetail({
     } finally {
       if (anfrageIdRef.current === zielId) setLaufend(false)
     }
+  }
+
+  // Beim Start frisch aus dem aktuellen Prop: eine Abschluss-Aktion im Drawer kann den
+  // Status inzwischen serverseitig geändert haben (z.B. auf vermittelt).
+  function bearbeitenStarten() {
+    setEingaben(eingabenAus(anfrage))
+    setStatus(anfrage.status)
+    setFehler(null)
+    setBearbeiten(true)
   }
 
   function abbrechen() {
@@ -115,7 +125,7 @@ export function AnfrageDetail({
       </Button>
     </>
   ) : (
-    <Button icon={<Pencil className="size-4" aria-hidden />} onClick={() => setBearbeiten(true)}>
+    <Button icon={<Pencil className="size-4" aria-hidden />} onClick={bearbeitenStarten}>
       Bearbeiten
     </Button>
   )
