@@ -1,8 +1,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { legeAnfrageAn, aktualisiereAnfrage } from "@/lib/queries/anfragen"
+import { legeAnfrageAn, aktualisiereAnfrage, holeAnfrage } from "@/lib/queries/anfragen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
+import { loescheNeueMatchesFuerAnfrage } from "@/lib/queries/angebote"
+import { anfrageStatusFolge } from "@/lib/abschluss/status-wechsel"
 import type { Database } from "@/types/database"
 
 type AnfrageEinfuegen = Database["public"]["Tables"]["anfragen"]["Insert"]
@@ -31,11 +33,17 @@ const MATCH_RELEVANTE_FELDER = [
   "anforderungen",
 ] as const satisfies readonly (keyof AnfrageEinfuegen)[]
 
+// Status offen/ruhend/vermittelt ist jetzt im Bearbeiten setzbar (Spec §3): ruhende und
+// vermittelte Anfragen werden nicht gematcht, zurück auf offen rechnet neu. Ein manuelles
+// "vermittelt" berührt bewusst kein Objekt -- dafür gibt es "Vertrag unterschrieben".
 export async function anfrageAktualisieren(id: string, aenderung: Partial<AnfrageEinfuegen>): Promise<void> {
+  const vorher = await holeAnfrage(id)
+  if (!vorher) throw new Error("Anfrage nicht gefunden")
   await aktualisiereAnfrage(id, aenderung)
-  if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
-    await berechneUndSpeichereMatchesFuerAnfrage(id)
-  }
+  const suchfelderGeaendert = MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)
+  const folge = anfrageStatusFolge(vorher.status, aenderung.status ?? vorher.status, suchfelderGeaendert)
+  if (folge === "rematch") await berechneUndSpeichereMatchesFuerAnfrage(id)
+  if (folge === "neu_loeschen") await loescheNeueMatchesFuerAnfrage(id)
   revalidatePath("/admin/anfragen")
   revalidatePath("/admin")
 }

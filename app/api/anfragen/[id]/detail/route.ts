@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { holeBesterMatchFuerAnfrage } from "@/lib/queries/matches"
 import { holeVerlaufFuerAnfrage } from "@/lib/queries/anfragen"
+import { holeAngeboteFuerAnfrage } from "@/lib/queries/angebote"
 
 // Erste Route-Handler-API des Projekts (bisher lief jeder Datenzugriff über Server
 // Components + lib/queries/* direkt) -- gerechtfertigt, weil AnfragenAnsicht (Task 52)
@@ -10,6 +11,10 @@ import { holeVerlaufFuerAnfrage } from "@/lib/queries/anfragen"
 // dieselbe Signatur, die der Plan für diese Route vorsieht.
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const [besterMatch, verlauf] = await Promise.all([holeBesterMatchFuerAnfrage(id), holeVerlaufFuerAnfrage(id)])
-  return NextResponse.json({ besterMatch, verlauf })
+  const [besterMatch, verlauf, angebote] = await Promise.all([
+    holeBesterMatchFuerAnfrage(id),
+    holeVerlaufFuerAnfrage(id),
+    holeAngeboteFuerAnfrage(id),
+  ])
+  return NextResponse.json({ besterMatch, verlauf, angebote })
 }

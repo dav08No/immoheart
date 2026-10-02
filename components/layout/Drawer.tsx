@@ -22,7 +22,8 @@ export function Drawer({ offen, titel, untertitel, onSchliessen, children, chip,
 
   useEffect(() => {
     function beiEscape(ereignis: KeyboardEvent) {
-      if (offen && ereignis.key === "Escape") onSchliessen()
+      // Ein offener Bestätigungsdialog (Radix) verbraucht Escape selbst -- dann bleibt der Drawer offen.
+      if (offen && ereignis.key === "Escape" && !ereignis.defaultPrevented) onSchliessen()
     }
     document.addEventListener("keydown", beiEscape)
     return () => document.removeEventListener("keydown", beiEscape)
