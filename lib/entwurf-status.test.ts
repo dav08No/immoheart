@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { istReservierungAbgelaufen, RESERVIERUNG_TIMEOUT_MS, angebotGesperrt } from "./entwurf-status"
+import { ABSAGE_GESPERRT, ANGEBOT_GESPERRT, entwurfGesperrt, istReservierungAbgelaufen, RESERVIERUNG_TIMEOUT_MS } from "./entwurf-status"
 
 describe("istReservierungAbgelaufen", () => {
   it("ist nicht abgelaufen, direkt nach der Reservierung", () => {
@@ -27,7 +27,8 @@ describe("istReservierungAbgelaufen", () => {
   })
 })
 
-describe("angebotGesperrt", () => {
+describe("entwurfGesperrt -- Angebote", () => {
+  const angebotGesperrt = (...a: Parameters<typeof entwurfGesperrt>) => entwurfGesperrt(...a) !== null
   const angebot = { typ: "angebot", match_id: "m1" }
 
   it("lässt ein Angebot mit offenem Treffer auf verfügbarem Objekt durch", () => {
@@ -54,5 +55,28 @@ describe("angebotGesperrt", () => {
   it("betrifft nur Angebote, keine anderen Typen", () => {
     expect(angebotGesperrt({ typ: "nachfass", match_id: null }, null, null)).toBe(false)
     expect(angebotGesperrt({ typ: "absage", match_id: "m1" }, "erledigt", "vermietet")).toBe(false)
+  })
+
+  it("liefert Chip und Meldung für gesperrte Angebote", () => {
+    expect(entwurfGesperrt(angebot, "erledigt", "vermietet")).toEqual({ chip: "Angebot entfallen", meldung: ANGEBOT_GESPERRT })
+  })
+})
+
+describe("entwurfGesperrt -- Absagen (Ruling R17)", () => {
+  const absage = { typ: "absage", match_id: "m1" }
+
+  it("lässt eine Absage durch, solange der Treffer erledigt ist", () => {
+    expect(entwurfGesperrt(absage, "erledigt", "vermietet")).toBeNull()
+    expect(entwurfGesperrt(absage, "erledigt", "verfuegbar")).toBeNull()
+  })
+
+  it("sperrt eine Absage, wenn der Treffer nach wieder verfügbar neu ist", () => {
+    expect(entwurfGesperrt(absage, "neu", "verfuegbar")).toEqual({ chip: "Absage entfallen", meldung: ABSAGE_GESPERRT })
+    expect(entwurfGesperrt(absage, "gesendet", "verfuegbar")).not.toBeNull()
+    expect(entwurfGesperrt(absage, null, null)).not.toBeNull()
+  })
+
+  it("sperrt Absagen ohne Treffer nicht", () => {
+    expect(entwurfGesperrt({ typ: "absage", match_id: null }, null, null)).toBeNull()
   })
 })

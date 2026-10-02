@@ -1,4 +1,4 @@
-// Status von Treffer und Objekt zu einem Angebots-Entwurf, für die Sendesperre (angebotGesperrt).
+// Status von Treffer und Objekt zu einem Angebots- oder Absage-Entwurf, für die Sendesperre (entwurfGesperrt).
 // Eigene Datei, weil versand.ts und matches.ts am Zeilenlimit stehen.
 import { erstelleServerClient } from "@/lib/supabase/server"
 import type { Database } from "@/types/database"
@@ -9,7 +9,7 @@ export type AngebotsStatus = {
   objektStatus: Enums["objekt_status_enum"] | null
 }
 
-// Fehlender Treffer liefert null/null -- angebotGesperrt sperrt dann ohnehin.
+// Fehlender Treffer liefert null/null -- entwurfGesperrt sperrt dann ohnehin.
 export async function holeAngebotsStatus(matchId: string): Promise<AngebotsStatus> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase.from("matches").select("status, objekte(status)").eq("id", matchId).maybeSingle()

@@ -28,7 +28,7 @@ import { reserviereEntwurf } from "@/lib/queries/versand"
 import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { sendeMail } from "@/lib/mail/versand"
 import { holeAngebotsStatus } from "@/lib/queries/angebot-status"
-import { ANGEBOT_GESPERRT } from "@/lib/entwurf-status"
+import { ABSAGE_GESPERRT, ANGEBOT_GESPERRT } from "@/lib/entwurf-status"
 
 const ID = "11111111-1111-1111-1111-111111111111"
 
@@ -136,8 +136,27 @@ describe("entwurfSenden -- gesperrte Angebote (Live-Befund L1)", () => {
     expect(reserviereEntwurf).not.toHaveBeenCalled()
   })
 
-  it("prüft den Status bei anderen Typen gar nicht", async () => {
+  it("lehnt eine Absage ab, deren Treffer nach wieder verfügbar neu ist (R17)", async () => {
+    vi.mocked(holeNachricht).mockResolvedValue(zeile({ id: ID, typ: "absage", match_id: "m1" }))
+    vi.mocked(holeAngebotsStatus).mockResolvedValue({ matchStatus: "neu", objektStatus: "verfuegbar" })
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: ABSAGE_GESPERRT })
+    expect(reserviereEntwurf).not.toHaveBeenCalled()
+    expect(sendeMail).not.toHaveBeenCalled()
+  })
+
+  it("sendet eine Absage, solange der Treffer erledigt ist", async () => {
     const entwurf = zeile({ id: ID, typ: "absage", match_id: "m1" })
+    vi.mocked(holeNachricht).mockResolvedValue(entwurf)
+    vi.mocked(reserviereEntwurf).mockResolvedValue(entwurf)
+    vi.mocked(holeAngebotsStatus).mockResolvedValue({ matchStatus: "erledigt", objektStatus: "vermietet" })
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: null })
+    expect(sendeMail).toHaveBeenCalledTimes(1)
+  })
+
+  it("prüft den Status bei anderen Typen gar nicht", async () => {
+    const entwurf = zeile({ id: ID, typ: "bestaetigung", match_id: "m1" })
     vi.mocked(holeNachricht).mockResolvedValue(entwurf)
     vi.mocked(reserviereEntwurf).mockResolvedValue(entwurf)
 

@@ -8,7 +8,7 @@ import { aktualisiereAnfrage } from "@/lib/queries/anfragen"
 import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { entwurfSchema } from "@/lib/entwurf-schema"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
-import { ANGEBOT_GESPERRT, angebotGesperrt } from "@/lib/entwurf-status"
+import { entwurfGesperrt } from "@/lib/entwurf-status"
 import { holeAngebotsStatus } from "@/lib/queries/angebot-status"
 import { verlaufsKoepfe } from "@/lib/mail/verlauf"
 import { escapeHtml } from "@/lib/mail/vorlagen"
@@ -26,13 +26,12 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
     const entwurf = await offenerEntwurf(id)
-    // Vor der Reservierung: ein Angebot für ein vergebenes Objekt oder einen abgeschlossenen
-    // Treffer (z.B. nach "Vertrag unterschrieben" mit einer anderen Firma) darf nie raus.
-    if (entwurf.typ === "angebot") {
+    // Vor der Reservierung: ein Angebot für ein vergebenes Objekt bzw. einen abgeschlossenen
+    // Treffer oder eine Absage für einen wieder offenen Treffer darf nie raus (entwurfGesperrt).
+    if (entwurf.typ === "angebot" || entwurf.typ === "absage") {
       const status = entwurf.match_id ? await holeAngebotsStatus(entwurf.match_id) : null
-      if (angebotGesperrt(entwurf, status?.matchStatus ?? null, status?.objektStatus ?? null)) {
-        throw new NutzerFehler(ANGEBOT_GESPERRT)
-      }
+      const sperre = entwurfGesperrt(entwurf, status?.matchStatus ?? null, status?.objektStatus ?? null)
+      if (sperre) throw new NutzerFehler(sperre.meldung)
     }
 
     const gesendet = entwurf.anfrage_id ? await holeGesendeteIdsFuerAnfrage(entwurf.anfrage_id) : []

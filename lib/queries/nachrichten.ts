@@ -72,7 +72,7 @@ export async function zaehleNachrichten(): Promise<number> {
   return count ?? 0
 }
 
-// matchStatus/objektStatus: für die Sendesperre veralteter Angebote (angebotGesperrt), in
+// matchStatus/objektStatus: für die Sendesperre veralteter Angebote/Absagen (entwurfGesperrt), in
 // derselben Abfrage mitgeladen statt einer je Entwurf.
 export type EntwurfMitBezug = NachrichtRow & {
   bezug: string | null

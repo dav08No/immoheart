@@ -106,7 +106,8 @@ export async function reservierungAufheben(matchId: string): Promise<AbschlussEr
     const id = pruefeId(matchId)
     const u = await hebeReservierungAuf(id)
     const folgen = await entwuerfeSicher({ aktion: "aufheben", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
-    // Rematching zuerst: reine DB-Arbeit, die neuen Treffer sollen nicht auf die KI warten.
+    // Rematching und KI-Füllung laufen als getrennte after()-Rückrufe parallel; das Rematching
+    // wartet so nicht auf die KI.
     return {
       ...folgen,
       hinweise: [...folgen.hinweise, REMATCH_HINWEIS],
