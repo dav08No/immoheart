@@ -13,14 +13,8 @@ import { NUTZUNGEN as NUTZUNG_WERTE } from "@/lib/nutzung"
 import type { Nutzung } from "@/types"
 
 type ObjektRow = Database["public"]["Tables"]["objekte"]["Row"]
-type ObjektStatus = Database["public"]["Enums"]["objekt_status_enum"]
 
 const NUTZUNGEN: { wert: Nutzung; label: string }[] = NUTZUNG_WERTE.map((n) => ({ wert: n, label: n }))
-const STATUS_OPTIONEN: { wert: ObjektStatus; label: string }[] = [
-  { wert: "verfuegbar", label: "Verfügbar" },
-  { wert: "reserviert", label: "Reserviert" },
-  { wert: "vermietet", label: "Vermietet" },
-]
 
 type Werte = {
   titel: string; adresse: string; ort: string; flaeche: string; preis: string
@@ -74,8 +68,6 @@ export function ObjektFormular({
   const [eigentuemerEmail, setEigentuemerEmail] = useState(start.eigentuemerEmail)
   const [beschreibung, setBeschreibung] = useState(start.beschreibung)
   const [oeffentlich, setOeffentlich] = useState(start.oeffentlich)
-  // Nur im Bearbeiten-Modus gepflegt -- beim Anlegen greift der DB-Default 'verfuegbar'.
-  const [status, setStatus] = useState<ObjektStatus>(objekt?.status ?? "verfuegbar")
   const [speichert, setSpeichert] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
@@ -91,7 +83,6 @@ export function ObjektFormular({
   useEffect(() => {
     objektIdRef.current = objekt?.id ?? "neu"
     setzeFelder(startwerte(objekt, vorbelegung))
-    setStatus(objekt?.status ?? "verfuegbar")
     setFehler(null)
     setSpeichert(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,8 +106,8 @@ export function ObjektFormular({
         eigentuemer_email: eigentuemerEmail.trim() || null,
         // foto_url wird nicht mehr gepflegt, bleibt aber als Fallback-Titelbild stehen.
         beschreibung: beschreibung.trim() || null,
+        // Kein status: der wechselt nur über die Abschluss-Aktionen im Panel (Spec §3).
         oeffentlich,
-        ...(objekt ? { status } : {}),
       }
       if (objekt) {
         await objektAktualisieren(objekt.id, werte)
@@ -169,9 +160,6 @@ export function ObjektFormular({
       <section className="flex flex-col gap-3">
         <Abschnittstitel>Sichtbarkeit</Abschnittstitel>
         <SichtbarkeitFeld wert={oeffentlich} setWert={setOeffentlich} disabled={speichert} />
-        {objekt && (
-          <SelectFeld label="Status" wert={status} setWert={setStatus} optionen={STATUS_OPTIONEN} disabled={speichert} />
-        )}
       </section>
       {objekt ? (
         <ObjektFotos objektId={objekt.id} />

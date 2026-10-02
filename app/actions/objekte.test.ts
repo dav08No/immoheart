@@ -9,8 +9,9 @@ vi.mock("@/lib/queries/objekte", () => ({ legeObjektAn: vi.fn(), aktualisiereObj
 vi.mock("@/lib/queries/nachrichten", () => ({ holeNachricht: vi.fn(), verknuepfeObjektMitEingang: vi.fn() }))
 vi.mock("@/lib/queries/matches", () => ({ berechneUndSpeichereMatchesFuerObjekt: vi.fn() }))
 
-import { objektAnlegen } from "./objekte"
-import { legeObjektAn } from "@/lib/queries/objekte"
+import { objektAktualisieren, objektAnlegen } from "./objekte"
+import { aktualisiereObjekt, legeObjektAn } from "@/lib/queries/objekte"
+import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeNachricht, type NachrichtRow } from "@/lib/queries/nachrichten"
 import type { Database } from "@/types/database"
 
@@ -61,5 +62,38 @@ describe("objektAnlegen: Eigentümer-E-Mail aus Herkunftsmail", () => {
   it("lehnt eine ungültige eingetragene Adresse ab", async () => {
     await expect(objektAnlegen({ ...OBJEKT, eigentuemer_email: "kein-mail" })).rejects.toThrow("Eigentümer-E-Mail")
     expect(legeObjektAn).not.toHaveBeenCalled()
+  })
+})
+
+// Spec §3: Der Status wechselt nur über die Abschluss-Aktionen, nie über das Formular.
+describe("Objekt-Status nicht über das Formular", () => {
+  const OBJEKT_ID = "22222222-2222-2222-2222-222222222222"
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(legeObjektAn).mockResolvedValue({ id: "o1" } as Database["public"]["Tables"]["objekte"]["Row"])
+  })
+
+  it("objektAktualisieren lehnt status ab und speichert nichts", async () => {
+    const aenderung = { titel: "Neu", status: "vermietet" } as Parameters<typeof objektAktualisieren>[1]
+    await expect(objektAktualisieren(OBJEKT_ID, aenderung)).rejects.toThrow("Abschluss-Aktionen")
+    expect(aktualisiereObjekt).not.toHaveBeenCalled()
+    expect(berechneUndSpeichereMatchesFuerObjekt).not.toHaveBeenCalled()
+  })
+
+  it("objektAktualisieren rematcht weiterhin bei suchrelevanten Feldern", async () => {
+    await objektAktualisieren(OBJEKT_ID, { flaeche: 120 })
+    expect(aktualisiereObjekt).toHaveBeenCalledWith(OBJEKT_ID, { flaeche: 120 })
+    expect(berechneUndSpeichereMatchesFuerObjekt).toHaveBeenCalledWith(OBJEKT_ID)
+  })
+
+  it("objektAktualisieren rematcht nicht bei reinem Titel-Update", async () => {
+    await objektAktualisieren(OBJEKT_ID, { titel: "Anders" })
+    expect(berechneUndSpeichereMatchesFuerObjekt).not.toHaveBeenCalled()
+  })
+
+  it("objektAnlegen ignoriert einen mitgeschickten Status (DB-Default verfuegbar)", async () => {
+    await objektAnlegen({ ...OBJEKT, status: "vermietet" })
+    expect(vi.mocked(legeObjektAn).mock.calls[0]?.[0]).not.toHaveProperty("status")
   })
 })

@@ -9,7 +9,7 @@ export type { Angebot }
 
 // Offene Platzhalter je Objekt. Nicht roh nach ki_ausstehend zählen: ein von Hand
 // gefüllter Entwurf behält das Flag, zuFuellendePlatzhalter prüft zusätzlich den Text.
-async function zaehleFehlendeEntwuerfe(objektIds: string[]): Promise<Map<string, number>> {
+export async function zaehleFehlendeEntwuerfe(objektIds: string[]): Promise<Map<string, number>> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("nachrichten")
