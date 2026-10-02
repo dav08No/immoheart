@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { ObjektRaster, STATUS_LABEL } from "./ObjektRaster"
@@ -37,12 +37,24 @@ export function ObjekteAnsicht({
   // ?id=<Objekt-id> (Links aus dem Postfach) öffnet dieses Objekt direkt.
   const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : (oeffnenId ?? null))
   const bearbeitetesObjekt = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
+  // Frischer Status aus dem Interessenten-Nachladen, je Objekt-id; hat Vorrang vor den
+  // Seiten-Props, die nach einer Abschluss-Aktion kurz veraltet sein können.
+  const [frischerStatus, setFrischerStatus] = useState<Record<string, ObjektRow["status"]>>({})
+  const statusMelden = useCallback(
+    (status: ObjektRow["status"]) => {
+      if (modus && modus !== "neu") setFrischerStatus((alt) => (alt[modus] === status ? alt : { ...alt, [modus]: status }))
+    },
+    [modus]
+  )
+  const kopfStatus = bearbeitetesObjekt ? (frischerStatus[bearbeitetesObjekt.id] ?? bearbeitetesObjekt.status) : null
 
   // Nach Speichern UND nach Abbrechen ?aus= entfernen: sonst öffnet ein Reload den
   // Link erneut, und jedes spätere "Objekt anlegen" wäre noch mit der Mail vorbelegt
   // und würde sie still verknüpfen (Final-Review I5).
   function schliessen() {
     setModus(null)
+    // Raster mit dem aktuellen Stand neu laden (Status-Chips der Karten).
+    router.refresh()
     if (vorbelegung || oeffnenId) router.replace("/admin/objekte")
   }
 
@@ -85,9 +97,7 @@ export function ObjekteAnsicht({
         titel={bearbeitetesObjekt ? bearbeitetesObjekt.titel : "Neues Objekt"}
         untertitel=""
         chip={
-          bearbeitetesObjekt && (
-            <StatusChip ton={objektStatusTon(bearbeitetesObjekt.status)}>{STATUS_LABEL[bearbeitetesObjekt.status]}</StatusChip>
-          )
+          kopfStatus && <StatusChip ton={objektStatusTon(kopfStatus)}>{STATUS_LABEL[kopfStatus]}</StatusChip>
         }
         onSchliessen={schliessen}
       >
@@ -107,7 +117,12 @@ export function ObjekteAnsicht({
         */}
         {/* Status nur über Aktionen: Interessenten und Objekt-Aktionen vor dem Formular. */}
         {bearbeitetesObjekt && (
-          <ObjektInteressenten key={bearbeitetesObjekt.id} objektId={bearbeitetesObjekt.id} titel={bearbeitetesObjekt.titel} />
+          <ObjektInteressenten
+            key={bearbeitetesObjekt.id}
+            objektId={bearbeitetesObjekt.id}
+            titel={bearbeitetesObjekt.titel}
+            onStatus={statusMelden}
+          />
         )}
         <ObjektFormular
           key={bearbeitetesObjekt?.id ?? "neu"}
