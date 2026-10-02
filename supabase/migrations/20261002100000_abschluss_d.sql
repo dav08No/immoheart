@@ -18,9 +18,19 @@ begin
   update matches x set status = 'gesendet', reserviert_am = null
   where x.objekt_id = o.id and x.status = 'reserviert';
   -- Früher abgesagte Firmen mit weiterhin offener Suche werden wieder neue Treffer.
-  update matches x set status = 'neu'
-  from anfragen a
-  where x.objekt_id = o.id and x.status = 'erledigt' and a.id = x.anfrage_id and a.status = 'offen';
+  -- Ruling R16: deren alte, nie gesendete Angebots-Entwürfe werden weich gelöscht -- sonst
+  -- gäbe matchSenden (Dedup R2) den veralteten Text zurück statt eines neuen, der das
+  -- frühere Angebot erwähnt.
+  with zurueck as (
+    update matches x set status = 'neu'
+    from anfragen a
+    where x.objekt_id = o.id and x.status = 'erledigt' and a.id = x.anfrage_id and a.status = 'offen'
+    returning x.id
+  )
+  update nachrichten n set geloescht_am = now()
+  where n.match_id in (select id from zurueck)
+    and n.richtung = 'entwurf' and n.typ = 'angebot'
+    and n.gesendet_am is null and n.geloescht_am is null;
 end $$;
 
 revoke execute on function objekt_wieder_verfuegbar(uuid) from public, anon;
