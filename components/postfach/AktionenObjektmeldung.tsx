@@ -17,6 +17,10 @@ type Props = {
   ausfuehren: AktionAusfuehren
 }
 
+// R12: alle Objekte wählbar -- "wieder verfügbar" betrifft meist ein vermietetes. Der
+// Status steht im Label, damit die Wahl trotzdem eindeutig bleibt.
+const STATUS_TEXT = { verfuegbar: "verfügbar", reserviert: "reserviert", vermietet: "vermietet" } as const
+
 const AENDERUNG_TEXT = {
   nicht_verfuegbar: "Fläche nicht mehr verfügbar",
   wieder_verfuegbar: "Fläche wieder verfügbar",
@@ -29,8 +33,6 @@ export function AktionenObjektmeldung({ nachricht, objekte, laufend, ausfuehren 
   const [auswahl, setAuswahl] = useState("")
   const meldung = meldungAus(nachricht.erkannte_felder)
   const objekt = objekte.find((o) => o.id === nachricht.objekt_id)
-  // Wie bei der automatischen Zuordnung: für vermietete Flächen erwarten wir keine Meldung.
-  const waehlbar = objekte.filter((o) => o.status === "verfuegbar" || o.status === "reserviert")
 
   return (
     <section aria-label="Objektmeldung" className="flex flex-col gap-3">
@@ -61,15 +63,15 @@ export function AktionenObjektmeldung({ nachricht, objekte, laufend, ausfuehren 
             <select
               value={auswahl}
               onChange={(e) => setAuswahl(e.target.value)}
-              disabled={laufend !== null || waehlbar.length === 0}
+              disabled={laufend !== null || objekte.length === 0}
               className={AUSWAHL_KLASSE}
             >
               <option value="" disabled>
-                {waehlbar.length === 0 ? "Keine verfügbaren Objekte" : "Objekt wählen …"}
+                {objekte.length === 0 ? "Keine Objekte" : "Objekt wählen …"}
               </option>
-              {waehlbar.map((o) => (
+              {objekte.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.label}
+                  {`${o.label} (${STATUS_TEXT[o.status]})`}
                 </option>
               ))}
             </select>

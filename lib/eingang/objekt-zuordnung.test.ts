@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { findeObjektFuerMeldung, objektEckdaten } from "./objekt-zuordnung"
+import { findeObjektFuerMeldung, objektEckdaten, zuordenbareStatus } from "./objekt-zuordnung"
 
 const LEER = { referenzen: [], gesendete: [], absender: "x@y.ch", aktiveNachEigentuemer: {} }
 
@@ -64,5 +64,14 @@ describe("objektEckdaten", () => {
   })
   it("lässt fehlenden Preis weg", () => {
     expect(objektEckdaten({ flaeche: 200, preis_pro_m2: null, ort: "Grenchen" })).toBe("200 m², Grenchen")
+  })
+})
+
+describe("zuordenbareStatus", () => {
+  it("vermietete Objekte nur bei wieder_verfuegbar (R12)", () => {
+    expect(zuordenbareStatus("wieder_verfuegbar")).toEqual(["verfuegbar", "reserviert", "vermietet"])
+    expect(zuordenbareStatus("nicht_verfuegbar")).toEqual(["verfuegbar", "reserviert"])
+    expect(zuordenbareStatus("sonstige_aenderung")).toEqual(["verfuegbar", "reserviert"])
+    expect(zuordenbareStatus(undefined)).toEqual(["verfuegbar", "reserviert"])
   })
 })

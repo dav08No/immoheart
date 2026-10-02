@@ -1,5 +1,5 @@
 import "server-only"
-import { ordneEin, type Einordnung, type Kategorie } from "@/lib/ki/einordnung"
+import { ordneEin, type Aenderung, type Einordnung, type Kategorie } from "@/lib/ki/einordnung"
 import { entwurfAntwort, entwurfObjektangebot, entwurfRueckfrage, type Mailentwurf } from "@/lib/ki/entwuerfe"
 import { entwurfEigentuemerInfo } from "@/lib/ki/abschluss-entwuerfe"
 import { markerFelder } from "@/lib/abschluss/entwuerfe-plan"
@@ -18,7 +18,7 @@ import {
 } from "@/lib/queries/verarbeitung"
 import { holeAktiveObjekteNachEigentuemer, holeAngebotFuerTreffer, holeObjektTitel } from "@/lib/queries/objektmeldung"
 import { anfrageKurz, findeAnfrageFuerAntwort, referenzenAeltesteZuerst } from "./zuordnung"
-import { findeObjektFuerMeldung } from "./objekt-zuordnung"
+import { findeObjektFuerMeldung, zuordenbareStatus } from "./objekt-zuordnung"
 import { kiFehlerText } from "./ki-fehler"
 import type { Json } from "@/types/database"
 
@@ -102,11 +102,16 @@ async function verarbeiteObjektangebot(eingang: NachrichtRow, e: Einordnung): Pr
 }
 
 // Vorrang wie bei Antworten: Verlauf vor manueller Zuordnung vor Eigentümer-Adresse.
-async function objektFuerMeldung(eingang: NachrichtRow, referenzen: string[], gesendete: GesendeteImVerlauf[]): Promise<string | null> {
+async function objektFuerMeldung(
+  eingang: NachrichtRow,
+  referenzen: string[],
+  gesendete: GesendeteImVerlauf[],
+  aenderung: Aenderung | undefined
+): Promise<string | null> {
   const perVerlauf = findeObjektFuerMeldung({ referenzen, gesendete, absender: eingang.von, aktiveNachEigentuemer: {} })
   if (perVerlauf) return perVerlauf.objektId
   if (eingang.objekt_id) return eingang.objekt_id
-  const aktive = await holeAktiveObjekteNachEigentuemer()
+  const aktive = await holeAktiveObjekteNachEigentuemer(zuordenbareStatus(aenderung))
   return findeObjektFuerMeldung({ referenzen: [], gesendete: [], absender: eingang.von, aktiveNachEigentuemer: aktive })?.objektId ?? null
 }
 
@@ -117,7 +122,7 @@ async function verarbeiteObjektmeldung(
   referenzen: string[],
   gesendete: GesendeteImVerlauf[]
 ): Promise<void> {
-  const objektId = await objektFuerMeldung(eingang, referenzen, gesendete)
+  const objektId = await objektFuerMeldung(eingang, referenzen, gesendete, e.meldung?.aenderung)
   await speichereKiErgebnis(eingang.id, {
     kategorie: "objektmeldung",
     erkannte_felder: { meldung: e.meldung },

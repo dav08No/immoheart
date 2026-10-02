@@ -102,6 +102,31 @@ describe("verarbeite", () => {
     expect(legeNachrichtAn).toHaveBeenCalledWith(expect.objectContaining({ objekt_id: null }))
   })
 
+  // R12: ein "wieder verfügbar" betrifft fast immer ein vermietetes Objekt.
+  describe("vermietete Objekte nur bei wieder_verfuegbar", () => {
+    beforeEach(() => {
+      // Der Eigentümer hat genau ein Objekt, und das ist vermietet.
+      vi.mocked(holeAktiveObjekteNachEigentuemer).mockImplementation(
+        async (status): Promise<Record<string, string[]>> => (status.includes("vermietet") ? { "eigner@example.ch": ["o9"] } : {})
+      )
+    })
+
+    it("wieder_verfuegbar: ordnet das einzige vermietete Objekt des Eigentümers zu", async () => {
+      const meldung = { aenderung: "wieder_verfuegbar", zusammenfassung: "Wieder frei." } as const
+      vi.mocked(ordneEin).mockResolvedValue(einordnung({ kategorie: "objektmeldung", meldung }))
+      await verarbeite(eingang())
+      expect(holeAktiveObjekteNachEigentuemer).toHaveBeenCalledWith(["verfuegbar", "reserviert", "vermietet"])
+      expect(speichereKiErgebnis).toHaveBeenCalledWith("e1", expect.objectContaining({ objekt_id: "o9" }))
+    })
+
+    it("nicht_verfuegbar: ein nur vermietetes Objekt wird nicht zugeordnet", async () => {
+      vi.mocked(ordneEin).mockResolvedValue(einordnung({ kategorie: "objektmeldung", meldung: MELDUNG }))
+      await verarbeite(eingang())
+      expect(holeAktiveObjekteNachEigentuemer).toHaveBeenCalledWith(["verfuegbar", "reserviert"])
+      expect(speichereKiErgebnis).toHaveBeenCalledWith("e1", { kategorie: "objektmeldung", erkannte_felder: { meldung: MELDUNG } })
+    })
+  })
+
   it("objektmeldung: kein zweiter Entwurf und kein KI-Aufruf, wenn schon einer offen ist", async () => {
     vi.mocked(ordneEin).mockResolvedValue(einordnung({ kategorie: "objektmeldung", meldung: MELDUNG }))
     vi.mocked(hatOffenenEntwurfZu).mockResolvedValue(true)

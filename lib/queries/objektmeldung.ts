@@ -1,14 +1,15 @@
 import { erstelleServerClient } from "@/lib/supabase/server"
 import { objektEckdaten } from "@/lib/eingang/objekt-zuordnung"
+import type { ObjektStatus } from "@/lib/abschluss/uebergaenge"
 
-// Nur verfügbare/reservierte Objekte: für vermietete Flächen erwarten wir keine Meldung,
-// und sie würden die Eindeutigkeit per Eigentümer-Adresse unnötig verderben.
-export async function holeAktiveObjekteNachEigentuemer(): Promise<Record<string, string[]>> {
+// Status gibt der Aufrufer vor (zuordenbareStatus, R12): vermietete Objekte nur bei
+// "wieder verfügbar", sonst verderben sie die Eindeutigkeit per Eigentümer-Adresse.
+export async function holeAktiveObjekteNachEigentuemer(status: ObjektStatus[]): Promise<Record<string, string[]>> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("objekte")
     .select("id, eigentuemer_email")
-    .in("status", ["verfuegbar", "reserviert"])
+    .in("status", status)
     .not("eigentuemer_email", "is", null)
   if (error) throw error
   const nachEigentuemer: Record<string, string[]> = {}

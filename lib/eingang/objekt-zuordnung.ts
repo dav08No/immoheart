@@ -1,4 +1,14 @@
+import type { Aenderung } from "@/lib/ki/einordnung"
+import type { ObjektStatus } from "@/lib/abschluss/uebergaenge"
+
 export type ObjektZuordnung = { objektId: string; grund: "verlauf" | "eigentuemer" }
+
+// R12: Welche Objekte des Absenders für die Zuordnung per Eigentümer-Adresse zählen.
+// "Wieder verfügbar" betrifft fast immer ein vermietetes Objekt; für alle anderen Meldungen
+// bleiben vermietete aussen vor, damit sie die Eindeutigkeit nicht unnötig verderben.
+export function zuordenbareStatus(aenderung: Aenderung | undefined): ObjektStatus[] {
+  return aenderung === "wieder_verfuegbar" ? ["verfuegbar", "reserviert", "vermietet"] : ["verfuegbar", "reserviert"]
+}
 
 // Gleiche Regeln wie findeAnfrageFuerAntwort (zuordnung.ts): Verlauf ist der eindeutige
 // Beleg, die Absenderadresse nur, wenn sie genau ein aktives Objekt meint.
