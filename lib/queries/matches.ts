@@ -147,6 +147,8 @@ export type NeuerMatch = {
   firma: { name: string; website: string | null } | null
   // Offener Angebots-Entwurf -> Übersicht zeigt "Entwurf öffnen" statt "Angebot entwerfen".
   hatEntwurf: boolean
+  // Gesetzt bei einem 'neu'-Treffer: früher angeboten und abgesagt, nach "wieder verfügbar" neu.
+  angeboten_am: string | null
 }
 
 export async function holeNeueMatches(): Promise<NeuerMatch[]> {
@@ -178,6 +180,7 @@ export async function holeNeueMatches(): Promise<NeuerMatch[]> {
     const anfrage = anfragenNachId.get(m.anfrage_id)
     if (!anfrage || !m.objekte) return []
     const { foto_url, ...objekt } = m.objekte
+    const { firma_id, ...anfrageDaten } = anfrage
     return [
       {
         id: m.id,
@@ -185,14 +188,10 @@ export async function holeNeueMatches(): Promise<NeuerMatch[]> {
         kriterien: m.kriterien as Kriterium[],
         hinweis: m.hinweis,
         objekt: { ...objekt, titelbild: titelbilder[m.objekt_id] ?? foto_url },
-        anfrage: {
-          id: anfrage.id,
-          flaeche_min: anfrage.flaeche_min,
-          flaeche_max: anfrage.flaeche_max,
-          letzter_kontakt: anfrage.letzter_kontakt,
-        },
-        firma: anfrage.firma_id ? (firmenNachId.get(anfrage.firma_id) ?? null) : null,
+        anfrage: anfrageDaten,
+        firma: firma_id ? (firmenNachId.get(firma_id) ?? null) : null,
         hatEntwurf: entwurfIds.has(m.id),
+        angeboten_am: m.angeboten_am,
       },
     ]
   })

@@ -25,7 +25,7 @@ export function objektAktionen(status: ObjektStatus): ObjektAktion[] {
 // Folgen im Bestätigungsdialog (Spec §1); "absagen" = Treffer, die einen Absage-Entwurf erhalten.
 export function objektFolgenText(aktion: ObjektAktion, absagen: number): string {
   if (aktion === "wieder_verfuegbar") {
-    return "Das Objekt wird wieder verfügbar und neu gematcht. Abgeschlossene Vermittlungen bleiben als Verlauf erhalten"
+    return "Das Objekt wird wieder verfügbar und neu gematcht. Firmen mit früherer Absage und noch offener Suche erscheinen wieder als neue Treffer. Abgeschlossene Vermittlungen bleiben als Verlauf erhalten"
   }
   const satz = "Das Objekt wird als vermietet markiert."
   if (absagen === 0) return `${satz} Keine offenen Angebote – es entstehen keine Absagen`

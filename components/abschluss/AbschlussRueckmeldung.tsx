@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button"
 import { abschlussEntwuerfeNachholen } from "@/app/actions/abschluss"
+import { fehlendText } from "@/lib/abschluss/folgen-text"
 import type { AbschlussLauf } from "./useAbschlussLauf"
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
 // Rückmeldung nach einer Abschluss-Aktion: Fehler, Erfolg, Hinweise und "N Entwürfe fehlen".
 export function AbschlussRueckmeldung({ lauf, objektId, bezeichnung, fehlendeAnzeigen = true }: Props) {
   const fehlend = fehlendeAnzeigen && objektId ? lauf.fehlend : 0
+  // Zeilen ohne eigenen Nachholen-Knopf sagen trotzdem, dass ihre Entwürfe noch entstehen.
+  const nurHintergrund = !fehlendeAnzeigen && lauf.hintergrund && lauf.fehlend > 0
   return (
     <div
       ref={lauf.rueckmeldungRef}
@@ -30,6 +33,7 @@ export function AbschlussRueckmeldung({ lauf, objektId, bezeichnung, fehlendeAnz
       {/* Immer gerendert, damit Screenreader die Rückmeldung als Live-Region ansagen. */}
       <div role="status" className="flex flex-col gap-0.5 text-xs text-ink-2">
         {lauf.erfolg && <p>{lauf.erfolg}</p>}
+        {nurHintergrund && <p>{fehlendText(lauf.fehlend, true)}</p>}
         {lauf.hinweise.length > 0 && (
           <ul className="flex flex-col gap-0.5">
             {lauf.hinweise.map((h, i) => (
@@ -42,7 +46,7 @@ export function AbschlussRueckmeldung({ lauf, objektId, bezeichnung, fehlendeAnz
       </div>
       {fehlend > 0 && objektId && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-ink-2">{fehlend === 1 ? "1 Entwurf fehlt" : `${fehlend} Entwürfe fehlen`}</p>
+          <p className="text-xs text-ink-2">{fehlendText(fehlend, lauf.hintergrund)}</p>
           <Button
             disabled={lauf.laufend}
             aria-label={`Entwürfe erneut erzeugen: ${bezeichnung}`}

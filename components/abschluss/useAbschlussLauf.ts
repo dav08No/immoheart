@@ -6,6 +6,8 @@ export type AbschlussErgebnis = {
   fehler: string | null
   hinweise?: string[]
   fehlend?: number
+  // fehlend zählt dann Entwürfe, deren KI-Text gerade nach der Antwort entsteht (Ruling R15).
+  hintergrund?: boolean
 }
 
 // Gemeinsamer Ablauf für Treffer- und Objekt-Aktionen: Sperre während der Server Action,
@@ -18,6 +20,9 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
   const [erfolg, setErfolg] = useState<string | null>(null)
   // Frischer Wert aus der Aktion, bis die neu geladenen Daten ihn ablösen.
   const [fehlendAktuell, setFehlendAktuell] = useState<number | null>(null)
+  // Bleibt bis zur nächsten Aktion stehen: nach router.refresh zählt der Server dieselben
+  // Platzhalter noch als fehlend, obwohl die KI im Hintergrund an ihnen arbeitet.
+  const [hintergrund, setHintergrund] = useState(false)
   const rueckmeldungRef = useRef<HTMLDivElement>(null)
   const erfolgRef = useRef(false)
 
@@ -28,6 +33,7 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
     // Alte Hinweise mit zurücksetzen, sonst stehen sie neben einem neuen Fehler.
     setErfolg(null)
     setHinweise([])
+    setHintergrund(false)
     try {
       const e = await schritt()
       setFehler(e.fehler)
@@ -35,6 +41,7 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
       setErfolg(erfolgText)
       setHinweise(e.hinweise ?? [])
       setFehlendAktuell(e.fehlend ?? 0)
+      setHintergrund(e.hintergrund === true)
       onFertig()
       return true
     } catch {
@@ -76,6 +83,7 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
     hinweise,
     erfolg,
     fehlend: fehlendAktuell ?? fehlendeEntwuerfe,
+    hintergrund,
     rueckmeldungRef,
   }
 }

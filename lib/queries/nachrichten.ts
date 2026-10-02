@@ -72,7 +72,13 @@ export async function zaehleNachrichten(): Promise<number> {
   return count ?? 0
 }
 
-export type EntwurfMitBezug = NachrichtRow & { bezug: string | null }
+// matchStatus/objektStatus: für die Sendesperre veralteter Angebote (angebotGesperrt), in
+// derselben Abfrage mitgeladen statt einer je Entwurf.
+export type EntwurfMitBezug = NachrichtRow & {
+  bezug: string | null
+  matchStatus: Database["public"]["Enums"]["match_status_enum"] | null
+  objektStatus: Database["public"]["Enums"]["objekt_status_enum"] | null
+}
 
 // Bezug klammert die Herkunft ein: Objekttitel (Angebots-Match) vor
 // Firmenname vor blossem Ort der Anfrage, damit im Entwürfe-Postfach auf
@@ -82,7 +88,7 @@ export async function holeEntwuerfe(): Promise<EntwurfMitBezug[]> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("nachrichten")
-    .select("*, anfragen(ort, firmen(name)), matches(objekte(titel)), objekte(titel)")
+    .select("*, anfragen(ort, firmen(name)), matches(status, objekte(titel, status)), objekte(titel)")
     .eq("richtung", "entwurf")
     .is("geloescht_am", null)
     .order("created_at", { ascending: false })
@@ -91,6 +97,8 @@ export async function holeEntwuerfe(): Promise<EntwurfMitBezug[]> {
   return data.map(({ anfragen, matches, objekte, ...n }) => ({
     ...n,
     bezug: matches?.objekte?.titel ?? objekte?.titel ?? anfragen?.firmen?.name ?? anfragen?.ort ?? null,
+    matchStatus: matches?.status ?? null,
+    objektStatus: matches?.objekte?.status ?? null,
   }))
 }
 

@@ -3,7 +3,7 @@ import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { Leerzustand } from "@/components/ui/Leerzustand"
 import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
-import { trefferEntfallen } from "@/lib/entwurf-status"
+import { angebotGesperrt } from "@/lib/entwurf-status"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 import type { Database } from "@/types/database"
 
@@ -55,8 +55,8 @@ export function EntwurfListe({
                       badges={
                         unklar ? (
                           <StatusChip ton="warn">Versand unklar</StatusChip>
-                        ) : trefferEntfallen(entwurf) ? (
-                          <StatusChip ton="warn">Treffer entfallen</StatusChip>
+                        ) : angebotGesperrt(entwurf, entwurf.matchStatus, entwurf.objektStatus) ? (
+                          <StatusChip ton="warn">Angebot entfallen</StatusChip>
                         ) : istPlatzhalter(entwurf) ? (
                           <StatusChip ton="warn">KI-Text fehlt</StatusChip>
                         ) : (

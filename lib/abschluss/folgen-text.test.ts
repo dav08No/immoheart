@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { folgenText, sichtbareAktionen } from "./folgen-text"
+import { fehlendText, folgenText, sichtbareAktionen } from "./folgen-text"
 
 describe("folgenText", () => {
   it("Reservieren zählt die weiteren Angebote; Absagen erst beim Vertrag", () => {
@@ -44,5 +44,17 @@ describe("sichtbareAktionen", () => {
   it("abgeschlossene Treffer haben keine Aktionen", () => {
     expect(sichtbareAktionen("vermittelt", "vermietet", "vermittelt")).toEqual([])
     expect(sichtbareAktionen("erledigt", "vermietet", "offen")).toEqual([])
+  })
+})
+
+describe("fehlendText", () => {
+  it("meldet direkt nach der Aktion die Hintergrund-Erstellung statt fehlender Entwürfe", () => {
+    expect(fehlendText(3, true)).toBe("3 Entwürfe werden im Hintergrund erstellt – Seite in einem Moment neu laden")
+    expect(fehlendText(1, true)).toBe("1 Entwurf wird im Hintergrund erstellt – Seite in einem Moment neu laden")
+  })
+
+  it("bleibt sonst bei fehlenden Entwürfen", () => {
+    expect(fehlendText(2, false)).toBe("2 Entwürfe fehlen")
+    expect(fehlendText(1, false)).toBe("1 Entwurf fehlt")
   })
 })

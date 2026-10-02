@@ -20,12 +20,15 @@ vi.mock("@/lib/queries/versand", () => ({
 vi.mock("@/lib/queries/anfragen", () => ({ aktualisiereAnfrage: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/queries/matches", () => ({ markiereMatchAngeboten: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/mail/versand", () => ({ sendeMail: vi.fn() }))
+vi.mock("@/lib/queries/angebot-status", () => ({ holeAngebotsStatus: vi.fn() }))
 
 import { entwurfSenden } from "./entwurf-senden"
 import { holeNachricht } from "@/lib/queries/nachrichten"
 import { reserviereEntwurf } from "@/lib/queries/versand"
 import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { sendeMail } from "@/lib/mail/versand"
+import { holeAngebotsStatus } from "@/lib/queries/angebot-status"
+import { ANGEBOT_GESPERRT } from "@/lib/entwurf-status"
 
 const ID = "11111111-1111-1111-1111-111111111111"
 
@@ -66,6 +69,7 @@ beforeEach(() => {
   vi.mocked(holeNachricht).mockResolvedValue(null)
   vi.mocked(reserviereEntwurf).mockResolvedValue(null)
   vi.mocked(sendeMail).mockResolvedValue({ messageId: "msg-1" })
+  vi.mocked(holeAngebotsStatus).mockResolvedValue({ matchStatus: "neu", objektStatus: "verfuegbar" })
   vi.stubEnv("GMAIL_USER", "immoheart@example.ch")
 })
 
@@ -105,14 +109,39 @@ describe("entwurfSenden -- Treffer als angeboten markieren", () => {
   })
 })
 
-describe("entwurfSenden -- Angebot ohne Treffer", () => {
+describe("entwurfSenden -- gesperrte Angebote (Live-Befund L1)", () => {
   it("lehnt einen Angebots-Entwurf ab, dessen Treffer gelöscht wurde, ohne zu reservieren oder zu senden", async () => {
     vi.mocked(holeNachricht).mockResolvedValue(zeile({ id: ID, typ: "angebot", match_id: null }))
 
-    await expect(entwurfSenden(ID)).resolves.toEqual({
-      fehler: "Der Treffer zu diesem Angebot besteht nicht mehr – Entwurf löschen oder neu entwerfen.",
-    })
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: ANGEBOT_GESPERRT })
     expect(reserviereEntwurf).not.toHaveBeenCalled()
     expect(sendeMail).not.toHaveBeenCalled()
+  })
+
+  it("lehnt ein Angebot ab, wenn der Treffer erledigt und das Objekt vermietet ist", async () => {
+    vi.mocked(holeNachricht).mockResolvedValue(zeile({ id: ID, typ: "angebot", match_id: "m1" }))
+    vi.mocked(holeAngebotsStatus).mockResolvedValue({ matchStatus: "erledigt", objektStatus: "vermietet" })
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: ANGEBOT_GESPERRT })
+    expect(holeAngebotsStatus).toHaveBeenCalledWith("m1")
+    expect(reserviereEntwurf).not.toHaveBeenCalled()
+    expect(sendeMail).not.toHaveBeenCalled()
+  })
+
+  it("lehnt ein Angebot für ein reserviertes Objekt ab, auch wenn der Treffer noch neu ist", async () => {
+    vi.mocked(holeNachricht).mockResolvedValue(zeile({ id: ID, typ: "angebot", match_id: "m1" }))
+    vi.mocked(holeAngebotsStatus).mockResolvedValue({ matchStatus: "neu", objektStatus: "reserviert" })
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: ANGEBOT_GESPERRT })
+    expect(reserviereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it("prüft den Status bei anderen Typen gar nicht", async () => {
+    const entwurf = zeile({ id: ID, typ: "absage", match_id: "m1" })
+    vi.mocked(holeNachricht).mockResolvedValue(entwurf)
+    vi.mocked(reserviereEntwurf).mockResolvedValue(entwurf)
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({ fehler: null })
+    expect(holeAngebotsStatus).not.toHaveBeenCalled()
   })
 })

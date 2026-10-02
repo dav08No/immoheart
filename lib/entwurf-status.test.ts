@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { istReservierungAbgelaufen, RESERVIERUNG_TIMEOUT_MS, trefferEntfallen } from "./entwurf-status"
+import { istReservierungAbgelaufen, RESERVIERUNG_TIMEOUT_MS, angebotGesperrt } from "./entwurf-status"
 
 describe("istReservierungAbgelaufen", () => {
   it("ist nicht abgelaufen, direkt nach der Reservierung", () => {
@@ -27,10 +27,32 @@ describe("istReservierungAbgelaufen", () => {
   })
 })
 
-describe("trefferEntfallen", () => {
-  it("erkennt Angebote ohne Treffer, lässt andere Typen und verknüpfte Angebote durch", () => {
-    expect(trefferEntfallen({ typ: "angebot", match_id: null })).toBe(true)
-    expect(trefferEntfallen({ typ: "angebot", match_id: "m1" })).toBe(false)
-    expect(trefferEntfallen({ typ: "nachfass", match_id: null })).toBe(false)
+describe("angebotGesperrt", () => {
+  const angebot = { typ: "angebot", match_id: "m1" }
+
+  it("lässt ein Angebot mit offenem Treffer auf verfügbarem Objekt durch", () => {
+    expect(angebotGesperrt(angebot, "neu", "verfuegbar")).toBe(false)
+    expect(angebotGesperrt(angebot, "gesendet", "verfuegbar")).toBe(false)
+  })
+
+  it("sperrt Angebote ohne Treffer", () => {
+    expect(angebotGesperrt({ typ: "angebot", match_id: null }, null, null)).toBe(true)
+  })
+
+  it("sperrt Angebote mit abgeschlossenem Treffer, auch wenn das Objekt verfügbar ist", () => {
+    for (const status of ["erledigt", "abgelehnt", "verworfen", "vermittelt", "reserviert"] as const) {
+      expect(angebotGesperrt(angebot, status, "verfuegbar")).toBe(true)
+    }
+  })
+
+  it("sperrt Angebote für reservierte oder vermietete Objekte (Live-Befund L1)", () => {
+    expect(angebotGesperrt(angebot, "neu", "reserviert")).toBe(true)
+    expect(angebotGesperrt(angebot, "erledigt", "vermietet")).toBe(true)
+    expect(angebotGesperrt(angebot, "neu", null)).toBe(true)
+  })
+
+  it("betrifft nur Angebote, keine anderen Typen", () => {
+    expect(angebotGesperrt({ typ: "nachfass", match_id: null }, null, null)).toBe(false)
+    expect(angebotGesperrt({ typ: "absage", match_id: "m1" }, "erledigt", "vermietet")).toBe(false)
   })
 })

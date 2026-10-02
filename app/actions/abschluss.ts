@@ -2,7 +2,10 @@
 
 // Abschluss-Aktionen (Spec §1): zuerst der atomare DB-Übergang, danach die KI-Entwürfe.
 // Nichts wird versendet -- es entstehen nur Entwürfe, die Davide selbst prüft und sendet.
+// Ruling R15: Übergang + Platzhalter laufen vor der Antwort, KI-Füllung und Rematching erst
+// danach in after() -- sonst dauerten die Aktionen bis zu 60 s (Vercel-Timeout).
 import { revalidatePath } from "next/cache"
+import { after } from "next/server"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import {
@@ -18,8 +21,9 @@ import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { erzeugeAbschlussEntwuerfe, holeAbschlussEntwuerfeNach } from "@/lib/abschluss/entwuerfe-erzeugen"
 import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
-type AbschlussErgebnis = Ergebnis & { hinweise?: string[]; fehlend?: number }
-type Folgen = { hinweise?: string[]; fehlend?: number }
+// hintergrund: fehlend zählt Platzhalter, deren KI-Text gerade nach der Antwort entsteht.
+type AbschlussErgebnis = Ergebnis & { hinweise?: string[]; fehlend?: number; hintergrund?: boolean }
+type Folgen = { hinweise?: string[]; fehlend?: number; hintergrund?: boolean; nachher?: (() => Promise<void>)[] }
 
 function pruefeId(id: unknown): string {
   const geprueft = idSchema.safeParse(id)
@@ -35,11 +39,21 @@ function abschlussPfadeNeuLaden() {
 }
 
 // Gemeinsamer Rahmen: NutzerFehler (P0001 aus den Übergangsfunktionen, ungültige ID) als
-// { fehler } zurückgeben, alles andere als echten Fehler durchwerfen.
+// { fehler } zurückgeben, alles andere als echten Fehler durchwerfen. Die nachher-Schritte
+// laufen nach der Antwort; ihre Fehler werden nur geloggt (der Status ist längst gespeichert).
 async function ausfuehren(schritt: () => Promise<Folgen>): Promise<AbschlussErgebnis> {
   await holeEigenesProfil()
   try {
-    const folgen = await schritt()
+    const { nachher = [], ...folgen } = await schritt()
+    for (const aufgabe of nachher) {
+      after(async () => {
+        try {
+          await aufgabe()
+        } catch (fehler) {
+          console.error("Abschluss-Hintergrundschritt fehlgeschlagen", fehler)
+        }
+      })
+    }
     abschlussPfadeNeuLaden()
     return { fehler: null, ...folgen }
   } catch (e) {
@@ -48,23 +62,23 @@ async function ausfuehren(schritt: () => Promise<Folgen>): Promise<AbschlussErge
   }
 }
 
-// Der Status ist zu diesem Zeitpunkt schon gespeichert; ein Rechenfehler beim Rematching darf
-// die Aktion nicht als gescheitert melden, nur als Hinweis.
-async function rematchen(objektId: string): Promise<string[]> {
-  try {
-    await berechneUndSpeichereMatchesFuerObjekt(objektId)
-    return []
-  } catch (fehler) {
-    console.error("Rematching nach Abschluss-Aktion fehlgeschlagen", objektId, fehler)
-    return ["Treffer konnten nicht neu berechnet werden."]
-  }
+const REMATCH_HINWEIS = "Treffer werden im Hintergrund neu berechnet."
+
+function rematchen(objektId: string): () => Promise<void> {
+  return () => berechneUndSpeichereMatchesFuerObjekt(objektId)
 }
 
 // Status ist nach dem RPC bereits gespeichert: ein Fehler beim Laden des Kontexts oder Anlegen
-// der Entwürfe darf die Aktion nicht als gescheitert melden (sonst klickt man erneut).
+// der Platzhalter darf die Aktion nicht als gescheitert melden (sonst klickt man erneut).
 async function entwuerfeSicher(p: Parameters<typeof erzeugeAbschlussEntwuerfe>[0]): Promise<Folgen & { hinweise: string[] }> {
   try {
-    return await erzeugeAbschlussEntwuerfe(p)
+    const { hinweise, angelegt, fuellen } = await erzeugeAbschlussEntwuerfe(p)
+    if (angelegt === 0) return { hinweise }
+    const fuellenUndMelden = async () => {
+      const fehlend = await fuellen()
+      if (fehlend > 0) console.error("Abschluss-Entwürfe ohne KI-Text", p.objektId, fehlend)
+    }
+    return { hinweise, fehlend: angelegt, hintergrund: true, nachher: [fuellenUndMelden] }
   } catch (fehler) {
     console.error("Abschluss-Entwürfe konnten nicht angelegt werden", p.objektId, fehler)
     return { hinweise: ["Status gespeichert, aber die Entwürfe konnten nicht angelegt werden."] }
@@ -92,7 +106,12 @@ export async function reservierungAufheben(matchId: string): Promise<AbschlussEr
     const id = pruefeId(matchId)
     const u = await hebeReservierungAuf(id)
     const folgen = await entwuerfeSicher({ aktion: "aufheben", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
-    return { ...folgen, hinweise: [...folgen.hinweise, ...(await rematchen(u.objekt_id))] }
+    // Rematching zuerst: reine DB-Arbeit, die neuen Treffer sollen nicht auf die KI warten.
+    return {
+      ...folgen,
+      hinweise: [...folgen.hinweise, REMATCH_HINWEIS],
+      nachher: [rematchen(u.objekt_id), ...(folgen.nachher ?? [])],
+    }
   })
 }
 
@@ -124,7 +143,7 @@ export async function objektWiederVerfuegbar(objektId: string): Promise<Abschlus
   return ausfuehren(async () => {
     const id = pruefeId(objektId)
     await setzeObjektWiederVerfuegbar(id)
-    return { hinweise: await rematchen(id) }
+    return { hinweise: [REMATCH_HINWEIS], nachher: [rematchen(id)] }
   })
 }
 

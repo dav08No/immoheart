@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { StatusChip } from "@/components/ui/StatusChip"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { KriteriumStatus } from "@/types"
+import { formatZeitpunkt } from "@/lib/format"
 
 const STATUS_ZEICHEN: Record<KriteriumStatus, string> = { ok: "✓", teilweise: "~", nein: "✕" }
 const STATUS_FARBE: Record<KriteriumStatus, string> = { ok: "text-good", teilweise: "text-warn", nein: "text-crit" }
@@ -80,6 +81,11 @@ export function MatchDetail({
         </tbody>
       </table>
       <p className="text-xs text-ink-2">{letzterMatch.hinweis}</p>
+      {letzterMatch.angeboten_am && (
+        <p className="text-xs text-ink-2">
+          Früher abgesagt am {formatZeitpunkt(new Date(letzterMatch.angeboten_am))} – das Objekt ist wieder verfügbar.
+        </p>
+      )}
     </Drawer>
   )
 }

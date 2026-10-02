@@ -88,6 +88,23 @@ describe("matchSenden", () => {
     // erstelleServerClient wird nur für das eine Lesen aufgerufen -- kein zweiter
     // Aufruf für ein Status-Update, matchSenden setzt den Status nicht mehr selbst.
     expect(erstelleServerClient).toHaveBeenCalledTimes(1)
+    // Ohne früheres Angebot kein Zusatz im Prompt.
+    expect(entwurfAngebot).toHaveBeenCalledWith(expect.anything(), expect.anything(), [], "gut", null)
+  })
+
+  it("übergibt bei früher abgesagtem Treffer das Angebotsdatum an die KI (I5)", async () => {
+    vi.mocked(holeOffenenAngebotsEntwurf).mockResolvedValue(null)
+    mockMatchesSelect({
+      status: "neu", anfrage_id: ANFRAGE_ID, objekt_id: "o1", kriterien: [], hinweis: "gut", angeboten_am: "2026-09-14T10:00:00Z",
+    })
+    vi.mocked(holeAnfrage).mockResolvedValue({ id: ANFRAGE_ID, firma_id: "f1" } as never)
+    vi.mocked(holeFirma).mockResolvedValue(FIRMA_MIT_MAIL)
+    vi.mocked(holeObjekt).mockResolvedValue({ id: "o1" } as never)
+    vi.mocked(entwurfAngebot).mockResolvedValue({ betreff: "Betreff", body: "Text" })
+    vi.mocked(legeNachrichtAn).mockResolvedValue({ id: "entwurf-neu" } as never)
+
+    await matchSenden(MATCH_ID)
+    expect(entwurfAngebot).toHaveBeenCalledWith(expect.anything(), expect.anything(), [], "gut", "14.09.2026")
   })
 })
 

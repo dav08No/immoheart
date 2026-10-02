@@ -51,15 +51,20 @@ describe("erzeugeAbschlussEntwuerfe", () => {
     const ergebnis = await erzeugeAbschlussEntwuerfe({ aktion: "reservieren", objektId: "o1", hauptMatchId: "m1", erledigte: [] })
     expect(generiereText).not.toHaveBeenCalled()
     expect(legePlatzhalterAn).not.toHaveBeenCalled()
-    expect(ergebnis).toEqual({ hinweise: ["Eigentümer-E-Mail fehlt – keine Info-Mail möglich"], fehlend: 0 })
+    expect(ergebnis).toMatchObject({ hinweise: ["Eigentümer-E-Mail fehlt – keine Info-Mail möglich"], angelegt: 0 })
+    await expect(ergebnis.fuellen()).resolves.toBe(0)
+    expect(generiereText).not.toHaveBeenCalled()
   })
 
-  it("legt je Entwurf einen Platzhalter mit richtigem Verlauf an und füllt ihn", async () => {
+  it("legt je Entwurf einen Platzhalter mit richtigem Verlauf an und füllt ihn erst über fuellen()", async () => {
     vi.mocked(holeAbschlussKontext).mockResolvedValue(
       kontext("eigner@example.ch", [treffer("m1", "a1", "haupt@firma.ch"), treffer("m2", "a2", "b@firma.ch")])
     )
     const ergebnis = await erzeugeAbschlussEntwuerfe({ aktion: "vermitteln", objektId: "o1", hauptMatchId: "m1", erledigte: ["m2"] })
-    expect(ergebnis).toEqual({ hinweise: [], fehlend: 0 })
+    expect(ergebnis).toMatchObject({ hinweise: [], angelegt: 3 })
+    // Ruling R15: ohne fuellen() noch kein KI-Aufruf -- die Aktion antwortet vorher.
+    expect(generiereText).not.toHaveBeenCalled()
+    await expect(ergebnis.fuellen()).resolves.toBe(0)
 
     const zeilen = vi.mocked(legePlatzhalterAn).mock.calls[0]?.[0] ?? []
     expect(zeilen.map((z) => [z.typ, z.an, z.match_id, z.anfrage_id, z.objekt_id])).toEqual([
@@ -90,7 +95,9 @@ describe("erzeugeAbschlussEntwuerfe", () => {
     )
     vi.mocked(generiereText).mockRejectedValueOnce(new Error("429 Kontingent"))
     const ergebnis = await erzeugeAbschlussEntwuerfe({ aktion: "vermitteln", objektId: "o1", hauptMatchId: "m1", erledigte: ["m2"] })
-    expect(ergebnis.fehlend).toBe(1)
+    const konsole = vi.spyOn(console, "error").mockImplementation(() => {})
+    await expect(ergebnis.fuellen()).resolves.toBe(1)
+    konsole.mockRestore()
     expect(fuellePlatzhalter).toHaveBeenCalledTimes(2)
     expect(fuellePlatzhalter).not.toHaveBeenCalledWith("n1", expect.anything())
   })

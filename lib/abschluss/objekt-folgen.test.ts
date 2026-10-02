@@ -32,7 +32,7 @@ describe("objektFolgenText", () => {
 
   it("Wieder verfügbar hat einen kurzen Folgesatz unabhängig von der Zahl", () => {
     expect(objektFolgenText("wieder_verfuegbar", 0)).toBe(
-      "Das Objekt wird wieder verfügbar und neu gematcht. Abgeschlossene Vermittlungen bleiben als Verlauf erhalten"
+      "Das Objekt wird wieder verfügbar und neu gematcht. Firmen mit früherer Absage und noch offener Suche erscheinen wieder als neue Treffer. Abgeschlossene Vermittlungen bleiben als Verlauf erhalten"
     )
     expect(objektFolgenText("wieder_verfuegbar", 5)).toBe(objektFolgenText("wieder_verfuegbar", 0))
   })

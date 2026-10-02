@@ -77,12 +77,18 @@ async function fuelleAlle(platzhalter: NachrichtRow[], kontext: AbschlussKontext
   return fehlend
 }
 
+// Ruling R15: Platzhalter sofort anlegen (schnell, nur DB), die langsame KI-Füllung als
+// Funktion zurückgeben -- die Server Action startet sie erst nach der Antwort (after()).
+export type AngelegteEntwuerfe = { hinweise: string[]; angelegt: number; fuellen: () => Promise<number> }
+
+const NICHTS_ZU_FUELLEN = async () => 0
+
 export async function erzeugeAbschlussEntwuerfe(p: {
   aktion: AbschlussAktion
   objektId: string
   hauptMatchId: string | null
   erledigte: string[]
-}): Promise<EntwurfsErgebnis> {
+}): Promise<AngelegteEntwuerfe> {
   const ids = p.hauptMatchId ? [p.hauptMatchId, ...p.erledigte] : p.erledigte
   const kontext = await holeAbschlussKontext(p.objektId, ids)
   const empfaenger = (id: string) => {
@@ -96,7 +102,7 @@ export async function erzeugeAbschlussEntwuerfe(p: {
     treffer: p.hauptMatchId ? empfaenger(p.hauptMatchId) : null,
     erledigte: p.erledigte.map(empfaenger),
   })
-  if (geplant.length === 0) return { hinweise, fehlend: 0 }
+  if (geplant.length === 0) return { hinweise, angelegt: 0, fuellen: NICHTS_ZU_FUELLEN }
 
   let platzhalter: NachrichtRow[]
   try {
@@ -104,9 +110,13 @@ export async function erzeugeAbschlussEntwuerfe(p: {
   } catch (fehler) {
     // Der Status ist bereits gespeichert; ein Fehler hier darf ihn nicht als gescheitert melden.
     console.error("Abschluss-Platzhalter konnten nicht angelegt werden", fehler)
-    return { hinweise: [...hinweise, "Status gespeichert, aber die Entwürfe konnten nicht angelegt werden."], fehlend: 0 }
+    return {
+      hinweise: [...hinweise, "Status gespeichert, aber die Entwürfe konnten nicht angelegt werden."],
+      angelegt: 0,
+      fuellen: NICHTS_ZU_FUELLEN,
+    }
   }
-  return { hinweise, fehlend: await fuelleAlle(platzhalter, kontext) }
+  return { hinweise, angelegt: platzhalter.length, fuellen: () => fuelleAlle(platzhalter, kontext) }
 }
 
 // Idempotent: füllt nur vorhandene, noch leere Platzhalter des Objekts, legt nie neue an.

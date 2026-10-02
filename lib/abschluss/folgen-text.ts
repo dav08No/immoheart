@@ -60,3 +60,13 @@ export function sichtbareAktionen(treffer: TrefferStatus, objekt: ObjektStatus, 
 export function absageEntwuerfeText(anzahl: number): string {
   return anzahl === 1 ? "1 Absage-Entwurf wird erstellt" : `${anzahl} Absage-Entwürfe werden erstellt`
 }
+
+// Ruling R15: direkt nach der Aktion entstehen die KI-Texte noch im Hintergrund -- dann kein
+// "fehlen", das nach einem Fehler klingt.
+export function fehlendText(anzahl: number, hintergrund: boolean): string {
+  if (hintergrund) {
+    const teil = anzahl === 1 ? "1 Entwurf wird" : `${anzahl} Entwürfe werden`
+    return `${teil} im Hintergrund erstellt – Seite in einem Moment neu laden`
+  }
+  return anzahl === 1 ? "1 Entwurf fehlt" : `${anzahl} Entwürfe fehlen`
+}

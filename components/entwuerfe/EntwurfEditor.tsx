@@ -10,7 +10,7 @@ import { entwurfSenden } from "@/app/actions/entwurf-senden"
 import { VersandBanner } from "./VersandBanner"
 import { PlatzhalterHinweis } from "./PlatzhalterHinweis"
 import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
-import { trefferEntfallen } from "@/lib/entwurf-status"
+import { ANGEBOT_GESPERRT, angebotGesperrt } from "@/lib/entwurf-status"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 type Laufend = "speichern" | "senden" | "loeschen" | null
@@ -42,8 +42,8 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   // Platzhalter ohne KI-Text: Senden erst, wenn ein Text dasteht (das Schema sperrt ohnehin).
   const platzhalter = istPlatzhalter(entwurf)
   const ohneText = platzhalter && body.trim() === ""
-  // Treffer gelöscht: entwurfSenden lehnt ab, deshalb Senden gar nicht erst anbieten.
-  const ohneTreffer = trefferEntfallen(entwurf)
+  // Treffer weg/abgeschlossen oder Objekt vergeben: entwurfSenden lehnt ab, also gar nicht anbieten.
+  const ohneTreffer = angebotGesperrt(entwurf, entwurf.matchStatus, entwurf.objektStatus)
 
   async function speichern() {
     setLaufend("speichern")
@@ -102,9 +102,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
         {!reserviert && entwurf.versand_fehler && <p className="text-sm text-crit">{entwurf.versand_fehler}</p>}
         {!reserviert && platzhalter && <PlatzhalterHinweis objektId={entwurf.objekt_id} />}
         {!reserviert && ohneTreffer && (
-          <p className="text-sm text-ink-2">
-            Der Treffer zu diesem Angebot besteht nicht mehr – Entwurf löschen oder neu entwerfen.
-          </p>
+          <p className="text-sm text-ink-2">{ANGEBOT_GESPERRT}</p>
         )}
         <FormFeld label="An" htmlFor="entwurf-an">
           <input

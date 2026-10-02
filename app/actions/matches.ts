@@ -9,6 +9,7 @@ import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeOffenenAngebotsEntwurf, holeOffenenNachfassEntwurf } from "@/lib/queries/versand"
 import { erstelleServerClient } from "@/lib/supabase/server"
+import { formatZeitpunkt } from "@/lib/format"
 import type { Kriterium } from "@/types"
 
 // Bewusst kein Fallback auf eine generische Platzhalter-Adresse (z.B.
@@ -62,7 +63,9 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
 
   const anfrage = zuAnfrageDomain(anfrageRow)
   const objekt = zuObjektDomain(objektRow)
-  const entwurf = await entwurfAngebot(anfrage, objekt, matchRow.kriterien as Kriterium[], matchRow.hinweis)
+  // angeboten_am bei 'neu': früher abgesagt, nach "wieder verfügbar" erneut anbietbar (I5).
+  const frueher = matchRow.angeboten_am ? formatZeitpunkt(new Date(matchRow.angeboten_am)) : null
+  const entwurf = await entwurfAngebot(anfrage, objekt, matchRow.kriterien as Kriterium[], matchRow.hinweis, frueher)
   const betreff = await betreffFuerAnfrage(anfrage.id, entwurf.betreff)
 
   const neu = await legeNachrichtAn({

@@ -60,16 +60,27 @@ export function entwurfRueckfrage(felder: ErkannteFelder): Promise<Mailentwurf> 
 // anfrage wird aktuell nicht im Prompt verwendet (nur objekt/kriterien/hinweis)
 // -- bleibt Teil der Signatur für künftige Personalisierung ab M8, siehe
 // "Produces"-Zeile oben. Absichtlich nicht entfernen.
-export function baueAngebotPrompt(anfrage: Anfrage, objekt: Objekt, kriterien: Kriterium[], hinweis: string): string {
+// frueherAngeboten (Datum, Davide-Entscheid I5): das Objekt wurde der Firma schon einmal
+// angeboten und ist nach "wieder verfügbar" erneut frei. Ohne Wert bleibt der Prompt unverändert.
+export function baueAngebotPrompt(
+  anfrage: Anfrage,
+  objekt: Objekt,
+  kriterien: Kriterium[],
+  hinweis: string,
+  frueherAngeboten: string | null = null
+): string {
   const kriterienText = kriterien
     .map((k) => `- ${k.kriterium}: gesucht ${k.gesucht}, Objekt ${k.angeboten} (${k.status})`)
     .join("\n")
+  const frueher = frueherAngeboten
+    ? `\nDieses Objekt wurde der Firma am ${frueherAngeboten} schon einmal angeboten und war danach vergeben; es ist unerwartet wieder verfügbar. Erwähne das kurz zu Beginn.`
+    : ""
   return `Eine Firma sucht eine Gewerbefläche. Folgendes Objekt passt:
 
 Objekt: ${objekt.titel}, ${objekt.flaeche} m², ${objekt.preisProM2 !== null ? `CHF ${objekt.preisProM2}/m²` : "Preis auf Anfrage"}
 Vergleich:
 ${kriterienText}
-Wichtigster Hinweis: ${hinweis}
+Wichtigster Hinweis: ${hinweis}${frueher}
 
 Schreibe eine kurze Angebots-Mail an die Firma, die das Objekt vorstellt und zu einer Besichtigung einlädt. ${AUSGABEFORMAT}`
 }
@@ -78,9 +89,10 @@ export function entwurfAngebot(
   anfrage: Anfrage,
   objekt: Objekt,
   kriterien: Kriterium[],
-  hinweis: string
+  hinweis: string,
+  frueherAngeboten: string | null = null
 ): Promise<Mailentwurf> {
-  return frageKi(baueAngebotPrompt(anfrage, objekt, kriterien, hinweis))
+  return frageKi(baueAngebotPrompt(anfrage, objekt, kriterien, hinweis, frueherAngeboten))
 }
 
 export function baueNachfassPrompt(anfrage: Anfrage, tageSeitKontakt: number): string {
