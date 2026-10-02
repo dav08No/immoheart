@@ -14,12 +14,18 @@ import { TREFFER_STATUS_LABEL } from "@/lib/abschluss/uebergaenge"
 import { trefferStatusTon } from "@/lib/ui/status-ton"
 import type { ObjektInteressentenDaten } from "@/lib/queries/interessenten"
 
-type Props = { objektId: string; titel: string }
+type Props = {
+  objektId: string
+  titel: string
+  // Meldet den frisch geladenen Objektstatus an den Drawer-Kopf (der Seiten-Refresh kann
+  // nach einer Aktion hinterherhinken).
+  onStatus?: (status: ObjektInteressentenDaten["objektStatus"]) => void
+}
 
 // Treffer des Objekts ab "Angeboten" mit Abschluss-Aktionen je Firma, dazu die Aktionen
 // am Objekt selbst (Spec §3). Lädt per fetch nach wie das Anfrage-Panel; der Elternteil
 // setzt key={objektId}, ein Objektwechsel startet also mit leerem Zustand.
-export function ObjektInteressenten({ objektId, titel }: Props) {
+export function ObjektInteressenten({ objektId, titel, onStatus }: Props) {
   const router = useRouter()
   const [daten, setDaten] = useState<ObjektInteressentenDaten | null>(null)
   const [ladeFehler, setLadeFehler] = useState(false)
@@ -28,13 +34,15 @@ export function ObjektInteressenten({ objektId, titel }: Props) {
     try {
       const res = await fetch(`/api/objekte/${objektId}/interessenten`)
       if (!res.ok) throw new Error(`Serverfehler (${res.status})`)
-      setDaten((await res.json()) as ObjektInteressentenDaten)
+      const neu = (await res.json()) as ObjektInteressentenDaten
+      setDaten(neu)
+      onStatus?.(neu.objektStatus)
       setLadeFehler(false)
     } catch (e) {
       console.error("ObjektInteressenten: Laden fehlgeschlagen", e)
       setLadeFehler(true)
     }
-  }, [objektId])
+  }, [objektId, onStatus])
 
   useEffect(() => {
     void laden()
