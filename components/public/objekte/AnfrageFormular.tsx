@@ -7,12 +7,14 @@ import { AnfrageFeld } from "@/components/public/formular/AnfrageFeld"
 import { DankeHinweis, FormularFehler, Honeypot } from "@/components/public/formular/FormularTeile"
 import { useWebsiteFormular } from "@/components/public/formular/useWebsiteFormular"
 
-type Props = { objektId: string; zeitToken: string; nachrichtVorlage: string }
+// reserviert: Formular bleibt nutzbar (Spec §3) -- fällt die Reservierung weg, ist die
+// nächste Firma schon da.
+type Props = { objektId: string; zeitToken: string; nachrichtVorlage: string; reserviert?: boolean }
 
 type Felder = { firma: string; name: string; email: string; telefon: string; nachricht: string }
 type FeldName = keyof Felder
 
-export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage }: Props) {
+export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage, reserviert = false }: Props) {
   const id = useId()
   const [felder, setFelder] = useState<Felder>({ firma: "", name: "", email: "", telefon: "", nachricht: nachrichtVorlage })
   const formular = useWebsiteFormular(zeitToken)
@@ -28,6 +30,9 @@ export function AnfrageFormular({ objektId, zeitToken, nachrichtVorlage }: Props
     <form method="post" onSubmit={(e) => formular.senden(e, (schutz) => objektAnfragen({ ...felder, objektId, ...schutz }))}
       noValidate aria-labelledby={`${id}-titel`} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
       <h2 id={`${id}-titel`} className="font-display text-xl font-bold text-ink">Objekt anfragen</h2>
+      {reserviert && (
+        <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn">Derzeit reserviert – Sie können trotzdem Interesse anmelden.</p>
+      )}
       {formular.fehler && <FormularFehler text={formular.fehler} fehlerRef={formular.fehlerRef} />}
       <AnfrageFeld id={feld("firma")} label="Firma" wert={felder.firma} fehler={feldFehler.firma} onWechsel={setze("firma")}
         autoComplete="organization" maxLength={120} />

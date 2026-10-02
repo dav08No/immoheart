@@ -31,13 +31,12 @@ export function vermittlungsquote(anfragen: { status: string }[]): { quote: numb
   return { quote: gesamt > 0 ? vermittelt / gesamt : null, vermittelt, gesamt }
 }
 
-export function tageBisErstangebot(paare: { anfrage_erstellt: string; gesendet_am: string }[]): {
-  median: number | null
-  schnitt: number | null
-  anzahl: number
-} {
+type Spannen = { median: number | null; schnitt: number | null; anzahl: number }
+
+// Gemeinsam für Erstangebot und Abschluss: Tage zwischen zwei Zeitpunkten, Median und Schnitt.
+function spannenInTagen(paare: { von: string; bis: string }[]): Spannen {
   const tage = paare
-    .map((p) => (new Date(p.gesendet_am).getTime() - new Date(p.anfrage_erstellt).getTime()) / 86_400_000)
+    .map((p) => (new Date(p.bis).getTime() - new Date(p.von).getTime()) / 86_400_000)
     .filter((t) => t >= 0) // negative Spannen sind Dateneingabefehler, nicht Teil der Kennzahl
     .sort((a, b) => a - b)
   const anzahl = tage.length
@@ -50,6 +49,27 @@ export function tageBisErstangebot(paare: { anfrage_erstellt: string; gesendet_a
   const median = mittlereWerte.reduce((s, v) => s + v, 0) / mittlereWerte.length
   const schnitt = tage.reduce((s, v) => s + v, 0) / anzahl
   return { median, schnitt, anzahl }
+}
+
+export function tageBisErstangebot(paare: { anfrage_erstellt: string; gesendet_am: string }[]): Spannen {
+  return spannenInTagen(paare.map((p) => ({ von: p.anfrage_erstellt, bis: p.gesendet_am })))
+}
+
+// Spec §3: Median abgeschlossen_am - anfragen.created_at über vermittelte Treffer.
+export function tageBisAbschluss(paare: { anfrage_erstellt: string; abgeschlossen_am: string }[]): Spannen {
+  return spannenInTagen(paare.map((p) => ({ von: p.anfrage_erstellt, bis: p.abgeschlossen_am })))
+}
+
+// Nur vermittelte Treffer mit Datum; Treffer zu unbekannten Anfragen (RLS, gelöscht) fallen weg.
+export function abschluesseJeAnfrage(
+  treffer: { anfrage_id: string; status: string; abgeschlossen_am: string | null }[],
+  anfrageErstellt: Record<string, string>
+): { anfrage_erstellt: string; abgeschlossen_am: string }[] {
+  return treffer.flatMap((t) => {
+    const erstellt = anfrageErstellt[t.anfrage_id]
+    if (t.status !== "vermittelt" || !t.abgeschlossen_am || !erstellt) return []
+    return [{ anfrage_erstellt: erstellt, abgeschlossen_am: t.abgeschlossen_am }]
+  })
 }
 
 // Direktanfragen pro Objekt (objekt_id gesetzt) -- die Vorfilterung auf die Kategorie

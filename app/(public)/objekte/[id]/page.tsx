@@ -68,7 +68,7 @@ export default async function ObjektDetailPage({ params }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand">{nutzungLabel(objekt.nutzung)}</span>
             {objekt.status === "reserviert" && (
-              <span className="rounded-full bg-warn-bg px-2.5 py-0.5 text-xs font-semibold text-warn">reserviert</span>
+              <span className="rounded-full bg-warn-bg px-2.5 py-0.5 text-xs font-semibold text-warn">Reserviert</span>
             )}
           </div>
           <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">{objekt.titel}</h1>
@@ -116,7 +116,12 @@ export default async function ObjektDetailPage({ params }: Props) {
 
         <aside className="flex flex-col gap-6 lg:self-start" aria-label="Eckdaten und Anfrage">
           <Eckdaten objekt={objekt} heute={heute} />
-          <AnfrageFormular objektId={objekt.id} zeitToken={zeitTokenOderLeer("Objektseite")} nachrichtVorlage={vorbelegteNachricht(objekt.titel)} />
+          <AnfrageFormular
+            objektId={objekt.id}
+            zeitToken={zeitTokenOderLeer("Objektseite")}
+            nachrichtVorlage={vorbelegteNachricht(objekt.titel)}
+            reserviert={objekt.status === "reserviert"}
+          />
         </aside>
       </div>
 

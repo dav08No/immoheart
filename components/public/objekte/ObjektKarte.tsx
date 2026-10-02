@@ -22,7 +22,7 @@ export function ObjektKarte({ objekt, titelEbene: Titel = "h2" }: { objekt: Oeff
         )}
         {reserviert && (
           <span className="absolute top-3 left-3 rounded-full bg-warn-bg px-2.5 py-0.5 text-xs font-semibold text-warn">
-            reserviert
+            Reserviert
           </span>
         )}
       </div>

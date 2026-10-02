@@ -16,13 +16,14 @@ import type { NeuerMatch } from "@/lib/queries/matches"
 import type { AnfrageMitFirma } from "@/lib/queries/anfragen"
 
 export function MatchesAnsicht({
-  matches, letzteKontakte, offeneAnzahl, langeStillAnzahl, objektAnzahl, langeStillAnfragen,
+  matches, letzteKontakte, offeneAnzahl, langeStillAnzahl, objektAnzahl, reserviertAnzahl, langeStillAnfragen,
 }: {
   matches: NeuerMatch[]
   letzteKontakte: Date[]
   offeneAnzahl: number
   langeStillAnzahl: number
   objektAnzahl: number
+  reserviertAnzahl: number
   langeStillAnfragen: AnfrageMitFirma[]
 }) {
   const router = useRouter()
@@ -106,13 +107,14 @@ export function MatchesAnsicht({
 
   return (
     <>
-      {/* Controller-Ruling (Nachtrag zu Task 3): die vier Überblickszahlen bleiben eine
-          eigene Kachelreihe über Bestandspuls, nicht nur Text in dessen Beschreibung --
-          gleiche Werte/Labels wie zuvor, nur als Kennzahl-Baustein statt Ad-hoc-Divs. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Controller-Ruling (Nachtrag zu Task 3): die Überblickszahlen bleiben eine eigene
+          Kachelreihe über Bestandspuls, nicht nur Text in dessen Beschreibung; seit dem
+          Abschluss-Feature mit "Reserviert" als fünfter Kachel. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Kennzahl label="Neue Matches" wert={formatZahl(matches.length)} />
         <Kennzahl label="Offene Anfragen" wert={formatZahl(offeneAnzahl)} />
         <Kennzahl label="Objekte" wert={formatZahl(objektAnzahl)} />
+        <Kennzahl label="Reserviert" wert={formatZahl(reserviertAnzahl)} />
         <Kennzahl label="Lange still" wert={formatZahl(langeStillAnzahl)} />
       </div>
 

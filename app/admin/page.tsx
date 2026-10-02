@@ -21,13 +21,15 @@ export default async function MatchesPage() {
   const langeStillAnfragen = offeneAnfragen.slice(0, 3)
 
   const offeneAnzahl = offeneAnfragen.length
+  // Reservierte Objekte warten auf "Vertrag unterschrieben" oder Aufheben (Spec §3).
+  const reserviertAnzahl = objekte.filter((o) => o.status === "reserviert").length
   const langeStillAnzahl = offeneAnfragen.filter(
     (a) => a.letzter_kontakt !== null && puls(new Date(a.letzter_kontakt)) < 25
   ).length
 
   return (
     <>
-      <Seitenkopf titel="Matches" kontext={kontextMatches(matches.length, langeStillAnzahl)} />
+      <Seitenkopf titel="Matches" kontext={kontextMatches(matches.length, langeStillAnzahl, reserviertAnzahl)} />
       <main className={SEITEN_INHALT_KLASSE}>
         <MatchesAnsicht
           matches={matches satisfies NeuerMatch[]}
@@ -35,6 +37,7 @@ export default async function MatchesPage() {
           offeneAnzahl={offeneAnzahl}
           langeStillAnzahl={langeStillAnzahl}
           objektAnzahl={objekte.length}
+          reserviertAnzahl={reserviertAnzahl}
           langeStillAnfragen={langeStillAnfragen}
         />
       </main>

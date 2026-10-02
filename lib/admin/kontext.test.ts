@@ -17,6 +17,11 @@ describe("kontextMatches", () => {
   it("formatiert grosse Zahlen", () => {
     expect(kontextMatches(1200, 0)).toBe("1’200 neue Treffer")
   })
+  it("nennt reservierte Objekte zwischen Treffern und Nachfass", () => {
+    expect(kontextMatches(3, 2, 1)).toBe("3 neue Treffer · 1 reserviert · 2 lange ohne Kontakt")
+    expect(kontextMatches(0, 0, 4)).toBe("Keine neuen Treffer · 4 reserviert")
+    expect(kontextMatches(2, 0, 0)).toBe("2 neue Treffer")
+  })
 })
 
 describe("kontextAnfragen", () => {
