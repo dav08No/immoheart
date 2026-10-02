@@ -6,7 +6,8 @@ import type { AbschlussLauf } from "./useAbschlussLauf"
 
 type Props = {
   lauf: AbschlussLauf
-  objektId: string
+  // Ohne Objekt (z.B. "Firma lehnt ab" im Postfach) gibt es nichts nachzuholen.
+  objektId?: string
   bezeichnung: string
   // Im Objekt-Panel zeigt nur der Objekt-Block die fehlenden Entwürfe, nicht jede Zeile.
   fehlendeAnzeigen?: boolean
@@ -14,7 +15,7 @@ type Props = {
 
 // Rückmeldung nach einer Abschluss-Aktion: Fehler, Erfolg, Hinweise und "N Entwürfe fehlen".
 export function AbschlussRueckmeldung({ lauf, objektId, bezeichnung, fehlendeAnzeigen = true }: Props) {
-  const fehlend = fehlendeAnzeigen ? lauf.fehlend : 0
+  const fehlend = fehlendeAnzeigen && objektId ? lauf.fehlend : 0
   return (
     <div
       ref={lauf.rueckmeldungRef}
@@ -39,7 +40,7 @@ export function AbschlussRueckmeldung({ lauf, objektId, bezeichnung, fehlendeAnz
           </ul>
         )}
       </div>
-      {fehlend > 0 && (
+      {fehlend > 0 && objektId && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-ink-2">{fehlend === 1 ? "1 Entwurf fehlt" : `${fehlend} Entwürfe fehlen`}</p>
           <Button

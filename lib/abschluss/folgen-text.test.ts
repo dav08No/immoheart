@@ -2,23 +2,21 @@ import { describe, expect, it } from "vitest"
 import { folgenText, sichtbareAktionen } from "./folgen-text"
 
 describe("folgenText", () => {
-  it("Reservieren nennt die anderen Firmen und dass die Absage erst beim Vertrag kommt", () => {
+  it("Reservieren zählt die weiteren Angebote; Absagen erst beim Vertrag", () => {
     expect(folgenText("reservieren", 2)).toBe(
-      "2 andere Firmen haben ein Angebot – sie erhalten erst bei Vertragsabschluss eine Absage"
+      "2 weitere Angebote zu diesem Objekt – Absagen erst bei Vertragsabschluss"
     )
-    expect(folgenText("reservieren", 1)).toBe(
-      "1 andere Firma hat ein Angebot – sie erhält erst bei Vertragsabschluss eine Absage"
-    )
+    expect(folgenText("reservieren", 1)).toBe("1 weiteres Angebot zu diesem Objekt – Absage erst bei Vertragsabschluss")
   })
 
-  it("Vermitteln nennt die Zahl der Absage-Entwürfe", () => {
-    expect(folgenText("vermitteln", 3)).toBe("3 andere Firmen erhalten einen Absage-Entwurf")
-    expect(folgenText("vermitteln", 1)).toBe("1 andere Firma erhält einen Absage-Entwurf")
+  it("Vermitteln nennt die Zahl der Absage-Entwürfe, nicht der Firmen", () => {
+    expect(folgenText("vermitteln", 3)).toBe("3 Absage-Entwürfe werden erstellt")
+    expect(folgenText("vermitteln", 1)).toBe("1 Absage-Entwurf wird erstellt")
   })
 
-  it("ohne andere Angebote ein schlichter Bestätigungssatz ohne Zahl", () => {
-    expect(folgenText("reservieren", 0)).toBe("Keine andere Firma hat ein Angebot für dieses Objekt")
-    expect(folgenText("vermitteln", 0)).toBe("Keine andere Firma hat ein Angebot – es entstehen keine Absagen")
+  it("ohne weitere Angebote ein schlichter Satz ohne Zahl", () => {
+    expect(folgenText("reservieren", 0)).toBe("Keine weiteren Angebote zu diesem Objekt")
+    expect(folgenText("vermitteln", 0)).toBe("Keine weiteren Angebote – es entstehen keine Absagen")
   })
 
   it("Aufheben und Ablehnen haben kurze Folgesätze unabhängig von der Zahl", () => {

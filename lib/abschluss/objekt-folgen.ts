@@ -1,3 +1,4 @@
+import { absageEntwuerfeText } from "./folgen-text"
 import type { ObjektStatus } from "./uebergaenge"
 
 // Aktionen am Objekt selbst (Objekt-Panel), seit der Status nicht mehr frei setzbar ist.
@@ -27,6 +28,6 @@ export function objektFolgenText(aktion: ObjektAktion, absagen: number): string 
     return "Das Objekt wird wieder verfügbar und neu gematcht. Abgeschlossene Vermittlungen bleiben als Verlauf erhalten"
   }
   const satz = "Das Objekt wird als vermietet markiert."
-  if (absagen === 0) return `${satz} Keine Firma hat ein offenes Angebot – es entstehen keine Absagen`
-  return absagen === 1 ? `${satz} 1 Firma erhält einen Absage-Entwurf` : `${satz} ${absagen} Firmen erhalten einen Absage-Entwurf`
+  if (absagen === 0) return `${satz} Keine offenen Angebote – es entstehen keine Absagen`
+  return `${satz} ${absageEntwuerfeText(absagen)}`
 }

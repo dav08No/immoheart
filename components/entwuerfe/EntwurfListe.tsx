@@ -2,6 +2,7 @@ import { ListenZeile } from "@/components/ui/ListenZeile"
 import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { Leerzustand } from "@/components/ui/Leerzustand"
+import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 import type { Database } from "@/types/database"
 
@@ -13,6 +14,7 @@ type NachrichtTyp = Database["public"]["Enums"]["nachricht_typ_enum"]
 const GRUPPEN: { titel: string; typen: NachrichtTyp[] }[] = [
   { titel: "Antworten", typen: ["antwort", "rueckfrage"] },
   { titel: "Angebote", typen: ["angebot"] },
+  { titel: "Abschluss", typen: ["absage", "eigentuemer_info", "bestaetigung"] },
   { titel: "Nachfass", typen: ["nachfass"] },
   { titel: "Frei", typen: ["frei"] },
 ]
@@ -52,6 +54,8 @@ export function EntwurfListe({
                       badges={
                         unklar ? (
                           <StatusChip ton="warn">Versand unklar</StatusChip>
+                        ) : istPlatzhalter(entwurf) ? (
+                          <StatusChip ton="warn">KI-Text fehlt</StatusChip>
                         ) : (
                           entwurf.versand_fehler && (
                             <span

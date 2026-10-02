@@ -20,13 +20,13 @@ describe("objektAktionen", () => {
 describe("objektFolgenText", () => {
   it("Nicht mehr verfügbar nennt die Zahl der Absage-Entwürfe", () => {
     expect(objektFolgenText("nicht_verfuegbar", 3)).toBe(
-      "Das Objekt wird als vermietet markiert. 3 Firmen erhalten einen Absage-Entwurf"
+      "Das Objekt wird als vermietet markiert. 3 Absage-Entwürfe werden erstellt"
     )
     expect(objektFolgenText("nicht_verfuegbar", 1)).toBe(
-      "Das Objekt wird als vermietet markiert. 1 Firma erhält einen Absage-Entwurf"
+      "Das Objekt wird als vermietet markiert. 1 Absage-Entwurf wird erstellt"
     )
     expect(objektFolgenText("nicht_verfuegbar", 0)).toBe(
-      "Das Objekt wird als vermietet markiert. Keine Firma hat ein offenes Angebot – es entstehen keine Absagen"
+      "Das Objekt wird als vermietet markiert. Keine offenen Angebote – es entstehen keine Absagen"
     )
   })
 

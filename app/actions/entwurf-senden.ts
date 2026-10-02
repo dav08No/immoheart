@@ -107,7 +107,9 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
     }
     // Ebenso best-effort und aus demselben Grund wie letzter_kontakt oben: ein Treffer
     // gilt erst mit diesem tatsächlichen Versand (nicht schon mit dem Anlegen des
-    // Entwurfs, siehe matchSenden) als angeboten. Nur Angebots-Entwürfe tragen match_id.
+    // Entwurfs, siehe matchSenden) als angeboten. Auch Abschluss-Entwürfe (Absage,
+    // Bestätigung) tragen match_id; sie ändern hier nichts, weil markiereMatchAngeboten
+    // nur Treffer im Status "neu" anfasst (.eq("status", "neu")).
     if (entwurf.match_id) {
       try {
         await markiereMatchAngeboten(entwurf.match_id)

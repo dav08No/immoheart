@@ -25,18 +25,19 @@ export function istPrimaerAktion(aktion: TrefferAktion): boolean {
 }
 
 // Folgen im Bestätigungsdialog (Spec §1). "andere" = weitere angebotene Treffer desselben
-// Objekts; beim Reservieren bewusst der Hinweis, dass sie noch KEINE Absage bekommen.
+// Objekts; gezählt werden Treffer bzw. Absage-Entwürfe, nicht Firmen (eine Firma kann
+// mehrere Anfragen haben). Beim Reservieren bewusst der Hinweis: noch KEINE Absage.
 export function folgenText(aktion: TrefferAktion, andere: number): string {
   const eine = andere === 1
   switch (aktion) {
     case "reservieren":
-      if (andere === 0) return "Keine andere Firma hat ein Angebot für dieses Objekt"
+      if (andere === 0) return "Keine weiteren Angebote zu diesem Objekt"
       return eine
-        ? "1 andere Firma hat ein Angebot – sie erhält erst bei Vertragsabschluss eine Absage"
-        : `${andere} andere Firmen haben ein Angebot – sie erhalten erst bei Vertragsabschluss eine Absage`
+        ? "1 weiteres Angebot zu diesem Objekt – Absage erst bei Vertragsabschluss"
+        : `${andere} weitere Angebote zu diesem Objekt – Absagen erst bei Vertragsabschluss`
     case "vermitteln":
-      if (andere === 0) return "Keine andere Firma hat ein Angebot – es entstehen keine Absagen"
-      return eine ? "1 andere Firma erhält einen Absage-Entwurf" : `${andere} andere Firmen erhalten einen Absage-Entwurf`
+      if (andere === 0) return "Keine weiteren Angebote – es entstehen keine Absagen"
+      return absageEntwuerfeText(andere)
     case "aufheben":
       return "Das Objekt wird wieder verfügbar, die anderen Angebote bleiben bestehen"
     case "ablehnen":
@@ -53,4 +54,9 @@ export function sichtbareAktionen(treffer: TrefferStatus, objekt: ObjektStatus, 
     (a) => !(anfrage === "vermittelt" && (a === "vermitteln" || a === "reservieren"))
   )
   return [...aktionen.filter((a) => !istPrimaerAktion(a)), ...aktionen.filter(istPrimaerAktion)]
+}
+
+// Gemeinsam mit dem Objekt-Dialog ("nicht verfügbar"): die Zahl meint Entwürfe.
+export function absageEntwuerfeText(anzahl: number): string {
+  return anzahl === 1 ? "1 Absage-Entwurf wird erstellt" : `${anzahl} Absage-Entwürfe werden erstellt`
 }

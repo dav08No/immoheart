@@ -15,6 +15,7 @@ import { AktionenSuchanfrage } from "./AktionenSuchanfrage"
 import { AktionenAntwort } from "./AktionenAntwort"
 import { AktionenObjektangebot } from "./AktionenObjektangebot"
 import { AktionenObjektanfrage } from "./AktionenObjektanfrage"
+import { AktionenObjektmeldung } from "./AktionenObjektmeldung"
 import { useAktion } from "./useAktion"
 import type { AnfrageOption, EntwurfVerweis, ObjektOption } from "./typen"
 
@@ -23,12 +24,13 @@ type Props = {
   entwuerfe: EntwurfVerweis[]
   anfragen: AnfrageOption[]
   objekte: ObjektOption[]
+  angeboteneTreffer: string[]
   onRueckfrageOeffnen: () => void
 }
 
 // Wird mit key={nachricht.id} gerendert: ein Wechsel mountet neu, lokaler State
 // (laufende Aktion, Auswahlfelder, Anhang-Links) muss nicht zurückgesetzt werden.
-export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueckfrageOeffnen }: Props) {
+export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, angeboteneTreffer, onRueckfrageOeffnen }: Props) {
   const router = useRouter()
   const { laufend, ausfuehren } = useAktion()
   const block = aktionsBlock(nachricht)
@@ -94,9 +96,18 @@ export function EingangDetail({ nachricht, entwuerfe, anfragen, objekte, onRueck
           />
         )}
         {block === "antwort" && (
-          <AktionenAntwort nachricht={nachricht} anfragen={anfragen} laufend={laufend} ausfuehren={ausfuehren} />
+          <AktionenAntwort
+            nachricht={nachricht}
+            anfragen={anfragen}
+            angeboteneTreffer={angeboteneTreffer}
+            laufend={laufend}
+            ausfuehren={ausfuehren}
+          />
         )}
         {block === "objektangebot" && <AktionenObjektangebot nachricht={nachricht} />}
+        {block === "objektmeldung" && (
+          <AktionenObjektmeldung nachricht={nachricht} objekte={objekte} laufend={laufend} ausfuehren={ausfuehren} />
+        )}
         {block === "objektanfrage" && (
           <AktionenObjektanfrage
             nachricht={nachricht}

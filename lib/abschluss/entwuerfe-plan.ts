@@ -111,3 +111,8 @@ export function zuFuellendePlatzhalter<T extends PlatzhalterKandidat>(zeilen: T[
       abschlussMarker(z.erkannte_felder)?.ki_ausstehend === true
   )
 }
+
+// Einzelprüfung für die Oberfläche (Entwurfsliste, Editor): dieselbe Regel wie beim Nachholen.
+export function istPlatzhalter(zeile: PlatzhalterKandidat): boolean {
+  return zuFuellendePlatzhalter([zeile]).length > 0
+}

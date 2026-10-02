@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { abschlussMarker, planeEntwuerfe, zuFuellendePlatzhalter } from "./entwuerfe-plan"
+import { abschlussMarker, planeEntwuerfe, zuFuellendePlatzhalter, istPlatzhalter } from "./entwuerfe-plan"
 
 const objekt = { id: "o1", titel: "Büro Altstadt", eigentuemer_email: "eigner@example.ch" }
 const treffer = { id: "m1", firmaEmail: "haupt@firma.ch", firma: "Haupt AG" }
@@ -111,5 +111,13 @@ describe("zuFuellendePlatzhalter", () => {
     const zeilen = [platzhalter, { ...platzhalter, id: "n2" }]
     expect(zuFuellendePlatzhalter(zeilen)).toHaveLength(2)
     expect(zuFuellendePlatzhalter(zuFuellendePlatzhalter(zeilen))).toHaveLength(2)
+  })
+})
+
+describe("istPlatzhalter", () => {
+  it("erkennt einen einzelnen Platzhalter wie das Nachholen", () => {
+    expect(istPlatzhalter(platzhalter)).toBe(true)
+    expect(istPlatzhalter({ ...platzhalter, body: "Text" })).toBe(false)
+    expect(istPlatzhalter({ ...platzhalter, erkannte_felder: { abschluss: { ki_ausstehend: false } } })).toBe(false)
   })
 })

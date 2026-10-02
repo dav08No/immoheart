@@ -19,6 +19,16 @@ export async function holePostfachNachrichten(): Promise<PostfachNachricht[]> {
   return data.map(({ nachricht_anhaenge, ...n }) => ({ ...n, anhangTypen: nachricht_anhaenge.map((a) => a.mime_type) }))
 }
 
+// "Firma lehnt ab" nur für Treffer, die noch "Angeboten" sind (Spec §2); ohne Kandidaten
+// keine Abfrage. Die IDs stammen aus Antworten mit kein_interesse, also wenige.
+export async function holeAngeboteneTreffer(matchIds: string[]): Promise<string[]> {
+  if (matchIds.length === 0) return []
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase.from("matches").select("id").in("id", matchIds).eq("status", "gesendet")
+  if (error) throw error
+  return data.map((m) => m.id)
+}
+
 export type AnhangLink = {
   id: string
   dateiname: string

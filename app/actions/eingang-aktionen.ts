@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 import { holeEigenesProfil } from "@/lib/queries/profile"
-import { aktualisiereNachricht, holeNachricht } from "@/lib/queries/nachrichten"
+import { aktualisiereNachricht, holeNachricht, verknuepfeDankEntwurfMitObjekt } from "@/lib/queries/nachrichten"
 import { holeAnfrage } from "@/lib/queries/anfragen"
 import { holeObjekt } from "@/lib/queries/objekte"
 import { anfrageAktualisieren } from "@/app/actions/anfragen"
@@ -34,7 +34,8 @@ export async function anfrageZuordnen(nachrichtId: string, anfrageId: string): P
 }
 
 // Wie anfrageZuordnen, für Objektmeldungen ohne eindeutige Zuordnung (weder Verlauf
-// noch genau ein aktives Objekt des Absenders). Setzt nur den Bezug, keinen Status.
+// noch genau ein aktives Objekt des Absenders). Setzt nur den Bezug (Meldung und offener
+// Dank-Entwurf), keinen Status.
 export async function objektZuordnen(nachrichtId: string, objektId: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
@@ -46,6 +47,7 @@ export async function objektZuordnen(nachrichtId: string, objektId: string): Pro
     if (!(await holeObjekt(oId))) throw new NutzerFehler("Objekt nicht gefunden.")
 
     await aktualisiereNachricht(nId, { objekt_id: oId })
+    await verknuepfeDankEntwurfMitObjekt(nId, oId)
     pfadeNeuLaden()
     return { fehler: null }
   } catch (e) {

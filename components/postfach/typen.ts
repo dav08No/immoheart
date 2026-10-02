@@ -1,5 +1,6 @@
 import { EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import type { AnfrageWerte } from "@/lib/eingang/anfrage-aus-eingang"
+import type { ObjektStatus } from "@/lib/abschluss/uebergaenge"
 
 // Minimaler Ausschnitt eines Entwurfs (holeEntwuerfe, page.tsx): reicht, um zu einem
 // Eingang den Rückfrage-/Antwort-Entwurf zu finden und zu öffnen.
@@ -32,5 +33,6 @@ export const FELD_LABELS = {
 // Gleiche Felder wie in allen Formularen (Rahmen >= 3:1, Fokusring); Name bleibt für bestehende Aufrufer.
 export const AUSWAHL_KLASSE = EINGABE_KLASSE
 
-// Nur Titel + Ort für die Objekt-Auswahl (Mail-Bild als Objektfoto), keine Adresse.
-export type ObjektOption = { id: string; label: string }
+// Nur Titel + Ort für die Objekt-Auswahl (Mail-Bild als Objektfoto), keine Adresse;
+// status für "Objekt zuordnen" bei Objektmeldungen (nur verfügbare/reservierte).
+export type ObjektOption = { id: string; label: string; status: ObjektStatus }

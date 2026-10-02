@@ -6,19 +6,23 @@ import { Button } from "@/components/ui/Button"
 import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { anfrageZuordnen, feldUebernehmen } from "@/app/actions/eingang-aktionen"
 import { feldUnterscheidetSich, UEBERNEHMBARE_FELDER } from "@/lib/eingang/anfrage-aus-eingang"
+import { abgelehnterTreffer } from "@/lib/abschluss/postfach-aktionen"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
 import type { PostfachNachricht } from "@/lib/queries/postfach"
+import { FirmaLehntAb } from "./FirmaLehntAb"
 import { AUSWAHL_KLASSE, FELD_LABELS, nutzungLabel, type AktionAusfuehren, type AnfrageOption } from "./typen"
 
 type Props = {
   nachricht: PostfachNachricht
   anfragen: AnfrageOption[]
+  angeboteneTreffer: string[]
   laufend: string | null
   ausfuehren: AktionAusfuehren
 }
 
-export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Props) {
+export function AktionenAntwort({ nachricht, anfragen, angeboteneTreffer, laufend, ausfuehren }: Props) {
   const [auswahl, setAuswahl] = useState("")
+  const abgelehnt = abgelehnterTreffer(nachricht.erkannte_felder)
   const felder = nachricht.erkannte_felder as ErkannteFelder | null
   const zugeordnet = anfragen.find((a) => a.id === nachricht.anfrage_id)
   const offene = anfragen.filter((a) => a.offen)
@@ -71,6 +75,7 @@ export function AktionenAntwort({ nachricht, anfragen, laufend, ausfuehren }: Pr
           </Button>
         </div>
       )}
+      {abgelehnt && <FirmaLehntAb matchId={abgelehnt} angeboten={angeboteneTreffer.includes(abgelehnt)} />}
       {felder && neueAngaben.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <div className="text-xs text-ink-2">Neue Angaben in dieser Mail</div>

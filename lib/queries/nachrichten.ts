@@ -82,14 +82,15 @@ export async function holeEntwuerfe(): Promise<EntwurfMitBezug[]> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("nachrichten")
-    .select("*, anfragen(ort, firmen(name)), matches(objekte(titel))")
+    .select("*, anfragen(ort, firmen(name)), matches(objekte(titel)), objekte(titel)")
     .eq("richtung", "entwurf")
     .is("geloescht_am", null)
     .order("created_at", { ascending: false })
   if (error) throw error
-  return data.map(({ anfragen, matches, ...n }) => ({
+  // objekte direkt: Eigentümer-Infos zum Abschluss tragen objekt_id, aber oft keinen Treffer.
+  return data.map(({ anfragen, matches, objekte, ...n }) => ({
     ...n,
-    bezug: matches?.objekte?.titel ?? anfragen?.firmen?.name ?? anfragen?.ort ?? null,
+    bezug: matches?.objekte?.titel ?? objekte?.titel ?? anfragen?.firmen?.name ?? anfragen?.ort ?? null,
   }))
 }
 
@@ -116,6 +117,22 @@ export async function verknuepfeObjektMitEingang(eingangId: string, objektId: st
     .eq("id", eingangId)
     .eq("richtung", "eingang")
     // Eine schon übernommene Mail behält ihr erstes Objekt (kein stilles Umhängen).
+    .is("objekt_id", null)
+  if (error) throw error
+}
+
+// Manuelle Zuordnung einer Objektmeldung: der beim Einlesen ohne Objekt angelegte Dank-
+// Entwurf soll mit am Objekt hängen (Nachholen, Entwurfs-Bezug). Nur offen, nicht gelöscht
+// und nur ohne Objekt -- ein bewusst anders gesetzter Bezug bleibt stehen.
+export async function verknuepfeDankEntwurfMitObjekt(eingangId: string, objektId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ objekt_id: objektId })
+    .eq("antwort_auf", eingangId)
+    .eq("typ", "eigentuemer_info")
+    .eq("richtung", "entwurf")
+    .is("geloescht_am", null)
     .is("objekt_id", null)
   if (error) throw error
 }
