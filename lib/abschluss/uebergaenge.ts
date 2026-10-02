@@ -21,9 +21,10 @@ export type TrefferAktion = "reservieren" | "vermitteln" | "aufheben" | "ablehne
 
 // Welche Aktionen im aktuellen Zustand erlaubt sind. gesendet+reserviert heisst: das Objekt
 // ist für eine andere Firma reserviert -- dieser Treffer kann dann nur noch abgelehnt werden.
+// reserviert setzt wie die SQL-Funktionen ein reserviertes Objekt voraus, sonst keine Aktion.
 export function erlaubteAktionen(treffer: TrefferStatus, objekt: ObjektStatus): TrefferAktion[] {
   if (treffer === "gesendet" && objekt === "verfuegbar") return ["reservieren", "ablehnen"]
   if (treffer === "gesendet" && objekt === "reserviert") return ["ablehnen"]
-  if (treffer === "reserviert") return ["vermitteln", "aufheben"]
+  if (treffer === "reserviert" && objekt === "reserviert") return ["vermitteln", "aufheben"]
   return []
 }

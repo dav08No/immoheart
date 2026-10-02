@@ -60,11 +60,22 @@ async function rematchen(objektId: string): Promise<string[]> {
   }
 }
 
+// Status ist nach dem RPC bereits gespeichert: ein Fehler beim Laden des Kontexts oder Anlegen
+// der Entwürfe darf die Aktion nicht als gescheitert melden (sonst klickt man erneut).
+async function entwuerfeSicher(p: Parameters<typeof erzeugeAbschlussEntwuerfe>[0]): Promise<Folgen & { hinweise: string[] }> {
+  try {
+    return await erzeugeAbschlussEntwuerfe(p)
+  } catch (fehler) {
+    console.error("Abschluss-Entwürfe konnten nicht angelegt werden", p.objektId, fehler)
+    return { hinweise: ["Status gespeichert, aber die Entwürfe konnten nicht angelegt werden."] }
+  }
+}
+
 export async function trefferReservieren(matchId: string): Promise<AbschlussErgebnis> {
   return ausfuehren(async () => {
     const id = pruefeId(matchId)
     const u = await reserviereTreffer(id)
-    return erzeugeAbschlussEntwuerfe({ aktion: "reservieren", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
+    return entwuerfeSicher({ aktion: "reservieren", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
   })
 }
 
@@ -72,7 +83,7 @@ export async function trefferVermitteln(matchId: string): Promise<AbschlussErgeb
   return ausfuehren(async () => {
     const id = pruefeId(matchId)
     const u = await vermittleTreffer(id)
-    return erzeugeAbschlussEntwuerfe({ aktion: "vermitteln", objektId: u.objekt_id, hauptMatchId: id, erledigte: u.erledigte_treffer })
+    return entwuerfeSicher({ aktion: "vermitteln", objektId: u.objekt_id, hauptMatchId: id, erledigte: u.erledigte_treffer })
   })
 }
 
@@ -80,7 +91,7 @@ export async function reservierungAufheben(matchId: string): Promise<AbschlussEr
   return ausfuehren(async () => {
     const id = pruefeId(matchId)
     const u = await hebeReservierungAuf(id)
-    const folgen = await erzeugeAbschlussEntwuerfe({ aktion: "aufheben", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
+    const folgen = await entwuerfeSicher({ aktion: "aufheben", objektId: u.objekt_id, hauptMatchId: id, erledigte: [] })
     return { ...folgen, hinweise: [...folgen.hinweise, ...(await rematchen(u.objekt_id))] }
   })
 }
@@ -105,7 +116,7 @@ export async function objektNichtVerfuegbar(objektId: string, eingangId?: string
         console.error("Objektmeldung konnte nicht mit dem Objekt verknüpft werden", eingang, fehler)
       }
     }
-    return erzeugeAbschlussEntwuerfe({ aktion: "nicht_verfuegbar", objektId: u.objekt_id, hauptMatchId: null, erledigte: u.erledigte_treffer })
+    return entwuerfeSicher({ aktion: "nicht_verfuegbar", objektId: u.objekt_id, hauptMatchId: null, erledigte: u.erledigte_treffer })
   })
 }
 

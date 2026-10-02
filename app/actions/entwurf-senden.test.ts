@@ -104,3 +104,15 @@ describe("entwurfSenden -- Treffer als angeboten markieren", () => {
     expect(markiereMatchAngeboten).not.toHaveBeenCalled()
   })
 })
+
+describe("entwurfSenden -- Angebot ohne Treffer", () => {
+  it("lehnt einen Angebots-Entwurf ab, dessen Treffer gelöscht wurde, ohne zu reservieren oder zu senden", async () => {
+    vi.mocked(holeNachricht).mockResolvedValue(zeile({ id: ID, typ: "angebot", match_id: null }))
+
+    await expect(entwurfSenden(ID)).resolves.toEqual({
+      fehler: "Der Treffer zu diesem Angebot besteht nicht mehr – Entwurf löschen oder neu entwerfen.",
+    })
+    expect(reserviereEntwurf).not.toHaveBeenCalled()
+    expect(sendeMail).not.toHaveBeenCalled()
+  })
+})

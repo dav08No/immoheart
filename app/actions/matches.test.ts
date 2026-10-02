@@ -9,7 +9,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("@/lib/queries/profile", () => ({ holeEigenesProfil: vi.fn().mockResolvedValue({ id: "p1" }) }))
 vi.mock("@/lib/ki/entwuerfe", () => ({ entwurfAngebot: vi.fn(), entwurfNachfass: vi.fn() }))
 vi.mock("@/lib/abschluss/betreff", () => ({ betreffFuerAnfrage: vi.fn(async (_id: string, b: string) => b) }))
-vi.mock("@/lib/queries/nachrichten", () => ({ legeNachrichtAn: vi.fn() }))
+vi.mock("@/lib/queries/nachrichten", () => ({ legeNachrichtAn: vi.fn(), loescheOffenenAngebotsEntwurf: vi.fn() }))
 vi.mock("@/lib/queries/anfragen", () => ({
   holeAnfrage: vi.fn(),
   holeFirma: vi.fn(),
@@ -22,9 +22,9 @@ vi.mock("@/lib/queries/objekte", () => ({ holeObjekt: vi.fn(), zuObjektDomain: v
 vi.mock("@/lib/queries/versand", () => ({ holeOffenenAngebotsEntwurf: vi.fn(), holeOffenenNachfassEntwurf: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ erstelleServerClient: vi.fn() }))
 
-import { anfrageNachfragen, matchSenden } from "./matches"
+import { anfrageNachfragen, matchSenden, matchVerwerfen } from "./matches"
 import { entwurfAngebot, entwurfNachfass } from "@/lib/ki/entwuerfe"
-import { legeNachrichtAn } from "@/lib/queries/nachrichten"
+import { legeNachrichtAn, loescheOffenenAngebotsEntwurf } from "@/lib/queries/nachrichten"
 import { holeAnfrage, holeFirma } from "@/lib/queries/anfragen"
 import { holeObjekt } from "@/lib/queries/objekte"
 import { holeOffenenAngebotsEntwurf, holeOffenenNachfassEntwurf } from "@/lib/queries/versand"
@@ -107,5 +107,37 @@ describe("anfrageNachfragen", () => {
 
     await expect(anfrageNachfragen(ANFRAGE_ID)).rejects.toThrow("kein Empfänger für den Versand vorhanden")
     expect(entwurfNachfass).not.toHaveBeenCalled()
+  })
+})
+
+describe("matchVerwerfen", () => {
+  // Fake für from("matches").update(...).eq(...).select("id").maybeSingle().
+  function mockMatchesUpdate(data: { id: string } | null, merke: string[]) {
+    vi.mocked(erstelleServerClient).mockResolvedValue({
+      from: () => ({
+        update: () => ({ eq: () => ({ select: () => ({ maybeSingle: async () => (merke.push("verworfen"), { data, error: null }) }) }) }),
+      }),
+    } as unknown as Awaited<ReturnType<typeof erstelleServerClient>>)
+  }
+
+  it("löscht den offenen Angebots-Entwurf vor dem Verwerfen des Treffers", async () => {
+    const reihenfolge: string[] = []
+    vi.mocked(loescheOffenenAngebotsEntwurf).mockImplementation(async () => {
+      reihenfolge.push("entwurf")
+    })
+    mockMatchesUpdate({ id: MATCH_ID }, reihenfolge)
+
+    await matchVerwerfen(MATCH_ID)
+    expect(loescheOffenenAngebotsEntwurf).toHaveBeenCalledWith(MATCH_ID)
+    expect(reihenfolge).toEqual(["entwurf", "verworfen"])
+  })
+
+  it("verwirft den Treffer nicht, wenn das Löschen des Entwurfs fehlschlägt", async () => {
+    const reihenfolge: string[] = []
+    vi.mocked(loescheOffenenAngebotsEntwurf).mockRejectedValue(new Error("db down"))
+    mockMatchesUpdate({ id: MATCH_ID }, reihenfolge)
+
+    await expect(matchVerwerfen(MATCH_ID)).rejects.toThrow("db down")
+    expect(reihenfolge).toEqual([])
   })
 })

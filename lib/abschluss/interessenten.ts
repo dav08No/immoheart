@@ -39,7 +39,7 @@ export function baueInteressenten(roh: InteressentRoh[]): Interessent[] {
 }
 
 // "Nicht mehr verfügbar" schliesst alle angebotenen und reservierten Treffer; je Treffer
-// entsteht ein Absage-Entwurf (Schlüssel Typ + Empfänger + Treffer).
+// entsteht ein Absage-Entwurf (je Treffer ein eigener Platzhalter, Ruling R7).
 export function absageEmpfaenger(interessenten: Interessent[]): number {
   return interessenten.filter((i) => i.status === "gesendet" || i.status === "reserviert").length
 }

@@ -25,7 +25,9 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
 
   async function mitSperre(schritt: () => Promise<AbschlussErgebnis>, erfolgText: string): Promise<boolean> {
     setLaufend(true)
+    // Alte Hinweise mit zurücksetzen, sonst stehen sie neben einem neuen Fehler.
     setErfolg(null)
+    setHinweise([])
     try {
       const e = await schritt()
       setFehler(e.fehler)

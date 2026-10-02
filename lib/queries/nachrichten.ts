@@ -139,3 +139,18 @@ export async function verknuepfeDankEntwurfMitObjekt(eingangId: string, objektId
 
 // Versand-Zustandsmaschine (reservieren/senden/markieren/freigeben) steht seit
 // N3-Review Fund 1 in lib/queries/versand.ts (Datei-Längenlimit).
+
+// Beim Verwerfen eines Treffers: nur der offene, noch nicht reservierte Angebots-Entwurf.
+// Ein gerade reservierter (gesendet_am gesetzt) bleibt, sein Versand läuft womöglich schon.
+export async function loescheOffenenAngebotsEntwurf(matchId: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase
+    .from("nachrichten")
+    .update({ geloescht_am: new Date().toISOString() })
+    .eq("match_id", matchId)
+    .eq("richtung", "entwurf")
+    .eq("typ", "angebot")
+    .is("gesendet_am", null)
+    .is("geloescht_am", null)
+  if (error) throw error
+}

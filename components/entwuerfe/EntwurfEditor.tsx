@@ -10,6 +10,7 @@ import { entwurfSenden } from "@/app/actions/entwurf-senden"
 import { VersandBanner } from "./VersandBanner"
 import { PlatzhalterHinweis } from "./PlatzhalterHinweis"
 import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
+import { trefferEntfallen } from "@/lib/entwurf-status"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 type Laufend = "speichern" | "senden" | "loeschen" | null
@@ -41,6 +42,8 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   // Platzhalter ohne KI-Text: Senden erst, wenn ein Text dasteht (das Schema sperrt ohnehin).
   const platzhalter = istPlatzhalter(entwurf)
   const ohneText = platzhalter && body.trim() === ""
+  // Treffer gelöscht: entwurfSenden lehnt ab, deshalb Senden gar nicht erst anbieten.
+  const ohneTreffer = trefferEntfallen(entwurf)
 
   async function speichern() {
     setLaufend("speichern")
@@ -98,6 +101,11 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
         {reserviert && <VersandBanner entwurf={entwurf} />}
         {!reserviert && entwurf.versand_fehler && <p className="text-sm text-crit">{entwurf.versand_fehler}</p>}
         {!reserviert && platzhalter && <PlatzhalterHinweis objektId={entwurf.objekt_id} />}
+        {!reserviert && ohneTreffer && (
+          <p className="text-sm text-ink-2">
+            Der Treffer zu diesem Angebot besteht nicht mehr – Entwurf löschen oder neu entwerfen.
+          </p>
+        )}
         <FormFeld label="An" htmlFor="entwurf-an">
           <input
             id="entwurf-an"
@@ -146,7 +154,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
                 {laufend === "speichern" ? "Wird gespeichert…" : "Speichern"}
               </Button>
             </div>
-            <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt || ohneText}>
+            <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt || ohneText || ohneTreffer}>
               Senden
             </Button>
           </div>

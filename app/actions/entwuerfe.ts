@@ -5,6 +5,7 @@ import { holeEigenesProfil } from "@/lib/queries/profile"
 import { aktualisiereNachricht, holeNachricht, legeNachrichtAn } from "@/lib/queries/nachrichten"
 import { gibFestsitzendeReservierungFrei, markiereAlsManuellGesendet } from "@/lib/queries/versand"
 import { aktualisiereAnfrage } from "@/lib/queries/anfragen"
+import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { entwurfSchema, type EntwurfEingabe } from "@/lib/entwurf-schema"
 import { istReservierungAbgelaufen } from "@/lib/entwurf-status"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
@@ -82,6 +83,15 @@ export async function alsGesendetMarkieren(id: string): Promise<Ergebnis> {
         revalidatePath("/admin/anfragen")
       } catch (fehler) {
         console.error("aktualisiereAnfrage fehlgeschlagen nach alsGesendetMarkieren", fehler)
+      }
+    }
+    // Wie entwurfSenden: das Angebot ist raus, der Treffer gilt als angeboten. Sonst bliebe er
+    // 'neu' und böte "Angebot entwerfen" erneut an (Doppel-Angebot).
+    if (aktualisiert.match_id) {
+      try {
+        await markiereMatchAngeboten(aktualisiert.match_id)
+      } catch (fehler) {
+        console.error("markiereMatchAngeboten fehlgeschlagen nach alsGesendetMarkieren", fehler)
       }
     }
     pfadeNeuLaden()

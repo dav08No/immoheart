@@ -27,10 +27,10 @@ describe("erlaubteAktionen", () => {
     expect(erlaubteAktionen("gesendet", "reserviert")).toEqual(["ablehnen"])
   })
 
-  it("erlaubt bei reserviert Vermitteln und Aufheben, unabhängig vom Objektstatus", () => {
-    for (const objekt of OBJEKT_STATI) {
-      expect(erlaubteAktionen("reserviert", objekt)).toEqual(["vermitteln", "aufheben"])
-    }
+  it("erlaubt bei reserviert Vermitteln und Aufheben nur, wenn das Objekt reserviert ist", () => {
+    expect(erlaubteAktionen("reserviert", "reserviert")).toEqual(["vermitteln", "aufheben"])
+    expect(erlaubteAktionen("reserviert", "verfuegbar")).toEqual([])
+    expect(erlaubteAktionen("reserviert", "vermietet")).toEqual([])
   })
 
   it("erlaubt bei vermittelt keine weitere Aktion", () => {
@@ -47,7 +47,7 @@ describe("erlaubteAktionen", () => {
           expect(aktionen).toEqual(["reservieren", "ablehnen"])
         } else if (treffer === "gesendet" && objekt === "reserviert") {
           expect(aktionen).toEqual(["ablehnen"])
-        } else if (treffer === "reserviert") {
+        } else if (treffer === "reserviert" && objekt === "reserviert") {
           expect(aktionen).toEqual(["vermitteln", "aufheben"])
         } else {
           expect(aktionen).toEqual([])

@@ -8,6 +8,7 @@ import { aktualisiereAnfrage } from "@/lib/queries/anfragen"
 import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { entwurfSchema } from "@/lib/entwurf-schema"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { trefferEntfallen } from "@/lib/entwurf-status"
 import { verlaufsKoepfe } from "@/lib/mail/verlauf"
 import { escapeHtml } from "@/lib/mail/vorlagen"
 import { sendeMail } from "@/lib/mail/versand"
@@ -24,6 +25,11 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
     const entwurf = await offenerEntwurf(id)
+    // Wurde der Treffer gelöscht (Reservieren, Rematch usw.), setzt die DB match_id auf null.
+    // Ein solches Angebot würde ein evtl. vergebenes Objekt anbieten und nirgends nachverfolgt.
+    if (trefferEntfallen(entwurf)) {
+      throw new NutzerFehler("Der Treffer zu diesem Angebot besteht nicht mehr – Entwurf löschen oder neu entwerfen.")
+    }
 
     const gesendet = entwurf.anfrage_id ? await holeGesendeteIdsFuerAnfrage(entwurf.anfrage_id) : []
     const beantwortet = entwurf.antwort_auf ? await holeNachricht(entwurf.antwort_auf) : null

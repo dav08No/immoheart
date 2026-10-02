@@ -17,7 +17,7 @@ function fakeKette() {
 
 vi.mock("@/lib/supabase/server", () => ({ erstelleServerClient: vi.fn() }))
 
-import { verknuepfeDankEntwurfMitObjekt } from "./nachrichten"
+import { loescheOffenenAngebotsEntwurf, verknuepfeDankEntwurfMitObjekt } from "./nachrichten"
 import { erstelleServerClient } from "@/lib/supabase/server"
 
 describe("verknuepfeDankEntwurfMitObjekt", () => {
@@ -39,6 +39,29 @@ describe("verknuepfeDankEntwurfMitObjekt", () => {
       { methode: "eq", args: ["richtung", "entwurf"] },
       { methode: "is", args: ["geloescht_am", null] },
       { methode: "is", args: ["objekt_id", null] },
+    ])
+  })
+})
+
+describe("loescheOffenenAngebotsEntwurf", () => {
+  it("löscht weich nur den offenen, nicht reservierten Angebots-Entwurf des Treffers", async () => {
+    const { kette, aufrufe } = fakeKette()
+    vi.mocked(erstelleServerClient).mockResolvedValue({
+      from: (tabelle: string) => {
+        expect(tabelle).toBe("nachrichten")
+        return kette
+      },
+    } as unknown as Awaited<ReturnType<typeof erstelleServerClient>>)
+
+    await loescheOffenenAngebotsEntwurf("m1")
+
+    expect(aufrufe).toEqual([
+      { methode: "update", args: [{ geloescht_am: expect.any(String) }] },
+      { methode: "eq", args: ["match_id", "m1"] },
+      { methode: "eq", args: ["richtung", "entwurf"] },
+      { methode: "eq", args: ["typ", "angebot"] },
+      { methode: "is", args: ["gesendet_am", null] },
+      { methode: "is", args: ["geloescht_am", null] },
     ])
   })
 })

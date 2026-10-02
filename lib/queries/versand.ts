@@ -11,6 +11,7 @@ import type { NachrichtRow } from "@/lib/queries/nachrichten"
 // Dedup-Check vor jedem Angebots-/Nachfass-Entwurf (Ruling R2, "Lücke Empfänger/Nachfass"):
 // existiert bereits ein offener (nicht gelöschter) Entwurf, wird dessen id zurückgegeben,
 // statt einen zweiten teuren KI-Aufruf auszulösen und einen zweiten Entwurf anzulegen.
+// limit(1): Altbestände mit zwei offenen Entwürfen liessen maybeSingle sonst scheitern.
 export async function holeOffenenAngebotsEntwurf(matchId: string): Promise<NachrichtRow | null> {
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
@@ -20,6 +21,8 @@ export async function holeOffenenAngebotsEntwurf(matchId: string): Promise<Nachr
     .eq("richtung", "entwurf")
     .eq("typ", "angebot")
     .is("geloescht_am", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle()
   if (error) throw error
   return data
@@ -34,6 +37,8 @@ export async function holeOffenenNachfassEntwurf(anfrageId: string): Promise<Nac
     .eq("richtung", "entwurf")
     .eq("typ", "nachfass")
     .is("geloescht_am", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle()
   if (error) throw error
   return data

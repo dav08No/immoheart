@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { entwurfAngebot, entwurfNachfass } from "@/lib/ki/entwuerfe"
-import { legeNachrichtAn } from "@/lib/queries/nachrichten"
+import { legeNachrichtAn, loescheOffenenAngebotsEntwurf } from "@/lib/queries/nachrichten"
 import { betreffFuerAnfrage } from "@/lib/abschluss/betreff"
 import { holeAnfrage, holeFirma, zuAnfrageDomain } from "@/lib/queries/anfragen"
 import { holeObjekt, zuObjektDomain } from "@/lib/queries/objekte"
@@ -87,6 +87,9 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
 
 export async function matchVerwerfen(matchId: string): Promise<void> {
   await holeEigenesProfil()
+  // Offenen Angebots-Entwurf zuerst wegräumen: er bliebe sonst sendbar und böte ein
+  // verworfenes Objekt an. Scheitert danach das Verwerfen, ist der Treffer neu entwerfbar.
+  await loescheOffenenAngebotsEntwurf(matchId)
   await aktualisiereMatchStatus(matchId, "verworfen")
   revalidatePath("/admin")
 }
