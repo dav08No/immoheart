@@ -5,8 +5,11 @@ import { holeEigenesProfil } from "@/lib/queries/profile"
 import { aktualisiereNachricht, holeNachricht } from "@/lib/queries/nachrichten"
 import { gibReservierungFrei, holeGesendeteIdsFuerAnfrage, markiereGesendet, reserviereEntwurf } from "@/lib/queries/versand"
 import { aktualisiereAnfrage } from "@/lib/queries/anfragen"
+import { markiereMatchAngeboten } from "@/lib/queries/matches"
 import { entwurfSchema } from "@/lib/entwurf-schema"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { entwurfGesperrt } from "@/lib/entwurf-status"
+import { holeAngebotsStatus } from "@/lib/queries/angebot-status"
 import { verlaufsKoepfe } from "@/lib/mail/verlauf"
 import { escapeHtml } from "@/lib/mail/vorlagen"
 import { sendeMail } from "@/lib/mail/versand"
@@ -23,6 +26,13 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
   await holeEigenesProfil()
   try {
     const entwurf = await offenerEntwurf(id)
+    // Vor der Reservierung: ein Angebot für ein vergebenes Objekt bzw. einen abgeschlossenen
+    // Treffer oder eine Absage für einen wieder offenen Treffer darf nie raus (entwurfGesperrt).
+    if (entwurf.typ === "angebot" || entwurf.typ === "absage") {
+      const status = entwurf.match_id ? await holeAngebotsStatus(entwurf.match_id) : null
+      const sperre = entwurfGesperrt(entwurf, status?.matchStatus ?? null, status?.objektStatus ?? null)
+      if (sperre) throw new NutzerFehler(sperre.meldung)
+    }
 
     const gesendet = entwurf.anfrage_id ? await holeGesendeteIdsFuerAnfrage(entwurf.anfrage_id) : []
     const beantwortet = entwurf.antwort_auf ? await holeNachricht(entwurf.antwort_auf) : null
@@ -102,6 +112,18 @@ export async function entwurfSenden(id: string): Promise<Ergebnis> {
         revalidatePath("/admin/anfragen")
       } catch (fehler) {
         console.error("aktualisiereAnfrage fehlgeschlagen nach erfolgreichem Versand", fehler)
+      }
+    }
+    // Ebenso best-effort und aus demselben Grund wie letzter_kontakt oben: ein Treffer
+    // gilt erst mit diesem tatsächlichen Versand (nicht schon mit dem Anlegen des
+    // Entwurfs, siehe matchSenden) als angeboten. Auch Abschluss-Entwürfe (Absage,
+    // Bestätigung) tragen match_id; sie ändern hier nichts, weil markiereMatchAngeboten
+    // nur Treffer im Status "neu" anfasst (.eq("status", "neu")).
+    if (entwurf.match_id) {
+      try {
+        await markiereMatchAngeboten(entwurf.match_id)
+      } catch (fehler) {
+        console.error("markiereMatchAngeboten fehlgeschlagen nach erfolgreichem Versand", fehler)
       }
     }
     pfadeNeuLaden()

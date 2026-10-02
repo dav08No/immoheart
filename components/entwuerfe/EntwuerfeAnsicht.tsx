@@ -7,6 +7,7 @@ import { useListeDetail } from "@/components/layout/useListeDetail"
 import { ZurueckZurListe } from "@/components/layout/ZurueckZurListe"
 import { Panel } from "@/components/ui/Panel"
 import { Leerzustand } from "@/components/ui/Leerzustand"
+import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 // "Neue Mail" lebt jetzt in EntwuerfeKopf (Seitenkopf-Hauptaktion) statt hier --
@@ -63,7 +64,11 @@ export function EntwuerfeAnsicht({ entwuerfe, startId }: { entwuerfe: EntwurfMit
           {!ausgewaehlt && (
             <Leerzustand text={entwuerfe.length === 0 ? "Keine offenen Entwürfe." : "Kein Entwurf ausgewählt."} />
           )}
-          {ausgewaehlt && <EntwurfEditor key={ausgewaehlt.id} entwurf={ausgewaehlt} />}
+          {/* Platzhalter im Schlüssel: füllt das Nachholen den KI-Text, mountet der Editor neu
+              und übernimmt den Text statt des alten (leeren) lokalen Stands. */}
+          {ausgewaehlt && (
+            <EntwurfEditor key={`${ausgewaehlt.id}:${istPlatzhalter(ausgewaehlt)}`} entwurf={ausgewaehlt} />
+          )}
         </Panel>
       </div>
     </div>

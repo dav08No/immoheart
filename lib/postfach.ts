@@ -9,8 +9,8 @@ type Nachricht = Tabellen["nachrichten"]["Row"]
 type Kategorie = Database["public"]["Enums"]["nachricht_kategorie_enum"]
 
 export type PostfachFilter = "alle" | "eingang" | "website" | "gesendet"
-export type KategorieChip = "suchanfrage" | "antwort" | "objektangebot" | "objektanfrage" | "sonstiges"
-export type AktionsBlock = "suchanfrage" | "antwort" | "objektangebot" | "objektanfrage" | null
+export type KategorieChip = Kategorie
+export type AktionsBlock = Exclude<Kategorie, "sonstiges"> | null
 export type KiAnzeige = "wartet" | "laeuft" | "fehler" | null
 
 export const KATEGORIE_CHIPS: { wert: KategorieChip; label: string }[] = [
@@ -18,12 +18,14 @@ export const KATEGORIE_CHIPS: { wert: KategorieChip; label: string }[] = [
   { wert: "antwort", label: "Antwort" },
   { wert: "objektangebot", label: "Objektangebot" },
   { wert: "objektanfrage", label: "Objektanfrage" },
+  { wert: "objektmeldung", label: "Objektmeldung" },
   { wert: "sonstiges", label: "Sonstiges" },
 ]
 
 type Filterbar = Pick<Nachricht, "richtung" | "quelle" | "kategorie">
 
-// Seit N5 gibt es für jede DB-Kategorie einen eigenen Chip (Objektanfragen von der Website).
+// Für jede DB-Kategorie gibt es einen eigenen Chip (seit N5 Objektanfrage, seit dem
+// Abschluss-Feature Objektmeldung).
 export function chipVon(kategorie: Kategorie | null): KategorieChip | null {
   return kategorie
 }
@@ -50,6 +52,7 @@ export function zaehleChips(nachrichten: Filterbar[], filter: PostfachFilter): R
     antwort: 0,
     objektangebot: 0,
     objektanfrage: 0,
+    objektmeldung: 0,
     sonstiges: 0,
   }
   for (const n of nachrichten) {

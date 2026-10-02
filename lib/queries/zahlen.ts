@@ -3,7 +3,14 @@
 import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import { erstelleAdminClient } from "@/lib/supabase/admin"
-import { anfragenProMonat, tageBisErstangebot, topObjekte, vermittlungsquote } from "@/lib/zahlen/anfragen"
+import {
+  abschluesseJeAnfrage,
+  anfragenProMonat,
+  tageBisAbschluss,
+  tageBisErstangebot,
+  topObjekte,
+  vermittlungsquote,
+} from "@/lib/zahlen/anfragen"
 import { entwuerfeVerlauf, mailsProWoche } from "@/lib/zahlen/nachrichten"
 import { groessenVerteilung, nutzungVerteilung, pulsVerteilung } from "@/lib/zahlen/verteilungen"
 import { erstesAngebotJeAnfrage } from "@/lib/zahlen/anzeige"
@@ -27,6 +34,7 @@ async function alleSeiten<T>(
 export type ZahlenDaten = {
   anfragen: { gesamt: number; offen: number; quote: number | null; vermittelt: number }
   erstangebot: { median: number | null; anzahl: number }
+  abschluss: { median: number | null; anzahl: number }
   proMonat: ReturnType<typeof anfragenProMonat>
   mails: ReturnType<typeof mailsProWoche>
   entwuerfe: ReturnType<typeof entwuerfeVerlauf>
@@ -39,7 +47,7 @@ export type ZahlenDaten = {
 // `jetzt` kommt vom Aufrufer, damit alle Zeitfenster denselben Stichtag haben.
 export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   const supabase = await erstelleServerClient()
-  const [anfragen, nachrichten] = await Promise.all([
+  const [anfragen, nachrichten, treffer] = await Promise.all([
     alleSeiten((von, bis) =>
       supabase
         .from("anfragen")
@@ -54,6 +62,15 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
         .order("id")
         .range(von, bis)
     ),
+    // Nur Treffer, die je angeboten wurden: sie tragen angeboten_am bzw. abgeschlossen_am.
+    alleSeiten((von, bis) =>
+      supabase
+        .from("matches")
+        .select("anfrage_id, status, angeboten_am, abgeschlossen_am")
+        .not("angeboten_am", "is", null)
+        .order("id")
+        .range(von, bis)
+    ),
   ])
 
   const offene = anfragen.filter((a) => a.status === "offen")
@@ -62,14 +79,18 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   // dem Postfach entfernt wird).
   const sichtbar = nachrichten.filter((n) => n.geloescht_am === null)
   const direkt = sichtbar.filter((n) => n.kategorie === "objektanfrage" && n.richtung === "eingang")
-  const angebote = nachrichten.filter((n) => n.typ === "angebot" && n.richtung === "gesendet")
   const erstellt = Object.fromEntries(anfragen.map((a) => [a.id, a.created_at]))
+  // angeboten_am wird beim tatsächlichen Versand gesetzt (Spec §3) -- verlässlicher als
+  // gesendete Angebots-Mails, die gelöscht oder von Hand verschickt sein können.
+  const angebote = treffer.map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
   const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(angebote, erstellt))
+  const abschluss = tageBisAbschluss(abschluesseJeAnfrage(treffer, erstellt))
   const { quote, vermittelt, gesamt } = vermittlungsquote(anfragen)
 
   return {
     anfragen: { gesamt, offen: offene.length, quote, vermittelt },
     erstangebot: { median: erstangebot.median, anzahl: erstangebot.anzahl },
+    abschluss: { median: abschluss.median, anzahl: abschluss.anzahl },
     proMonat: anfragenProMonat(anfragen, jetzt, 12),
     mails: mailsProWoche(sichtbar, jetzt, 12),
     entwuerfe: entwuerfeVerlauf(nachrichten, jetzt, 6),

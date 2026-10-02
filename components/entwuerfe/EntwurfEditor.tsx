@@ -8,6 +8,9 @@ import { FormFeld, EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import { entwurfLoeschen, entwurfSpeichern } from "@/app/actions/entwuerfe"
 import { entwurfSenden } from "@/app/actions/entwurf-senden"
 import { VersandBanner } from "./VersandBanner"
+import { PlatzhalterHinweis } from "./PlatzhalterHinweis"
+import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
+import { entwurfGesperrt } from "@/lib/entwurf-status"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 
 type Laufend = "speichern" | "senden" | "loeschen" | null
@@ -36,6 +39,11 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
   const reserviert = entwurf.gesendet_am !== null
   const geaendert = an !== entwurf.an || betreff !== entwurf.betreff || body !== entwurf.body
   const gesperrt = laufend !== null || reserviert
+  // Platzhalter ohne KI-Text: Senden erst, wenn ein Text dasteht (das Schema sperrt ohnehin).
+  const platzhalter = istPlatzhalter(entwurf)
+  const ohneText = platzhalter && body.trim() === ""
+  // Veraltetes Angebot bzw. Absage (entwurfGesperrt): entwurfSenden lehnt ab, also gar nicht anbieten.
+  const sperre = entwurfGesperrt(entwurf, entwurf.matchStatus, entwurf.objektStatus)
 
   async function speichern() {
     setLaufend("speichern")
@@ -92,6 +100,10 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
       <div className="flex flex-col gap-4 p-4 sm:p-5">
         {reserviert && <VersandBanner entwurf={entwurf} />}
         {!reserviert && entwurf.versand_fehler && <p className="text-sm text-crit">{entwurf.versand_fehler}</p>}
+        {!reserviert && platzhalter && <PlatzhalterHinweis objektId={entwurf.objekt_id} />}
+        {!reserviert && sperre && (
+          <p className="text-sm text-ink-2">{sperre.meldung}</p>
+        )}
         <FormFeld label="An" htmlFor="entwurf-an">
           <input
             id="entwurf-an"
@@ -140,7 +152,7 @@ export function EntwurfEditor({ entwurf }: { entwurf: EntwurfMitBezug }) {
                 {laufend === "speichern" ? "Wird gespeichert…" : "Speichern"}
               </Button>
             </div>
-            <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt}>
+            <Button variante="primaer" onClick={() => setBestaetigung("senden")} disabled={gesperrt || ohneText || sperre !== null}>
               Senden
             </Button>
           </div>

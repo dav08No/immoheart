@@ -3,7 +3,8 @@ import { PostfachKopf } from "@/components/postfach/PostfachKopf"
 import { PostfachAnsicht } from "@/components/postfach/PostfachAnsicht"
 import type { AnfrageOption, ObjektOption } from "@/components/postfach/typen"
 import { holeEntwuerfe } from "@/lib/queries/nachrichten"
-import { holePostfachNachrichten } from "@/lib/queries/postfach"
+import { holeAngeboteneTreffer, holePostfachNachrichten } from "@/lib/queries/postfach"
+import { abgelehnterTreffer } from "@/lib/abschluss/postfach-aktionen"
 import { holeAbrufStatus } from "@/lib/queries/eingang"
 import { holeAnfragen } from "@/lib/queries/anfragen"
 import { holeObjekte } from "@/lib/queries/objekte"
@@ -35,7 +36,13 @@ export default async function PostfachPage() {
       nutzung: a.nutzung,
     },
   }))
-  const objektOptionen: ObjektOption[] = objekte.map((o) => ({ id: o.id, label: `${o.titel} · ${o.ort}` }))
+  const objektOptionen: ObjektOption[] = objekte.map((o) => ({ id: o.id, label: `${o.titel} · ${o.ort}`, status: o.status }))
+  // Nachgelagert, weil die Kandidaten erst aus den geladenen Antworten feststehen.
+  const kandidaten = nachrichten.flatMap((n) => {
+    const id = n.kategorie === "antwort" ? abgelehnterTreffer(n.erkannte_felder) : null
+    return id ? [id] : []
+  })
+  const angeboteneTreffer = await holeAngeboteneTreffer([...new Set(kandidaten)])
 
   return (
     <>
@@ -48,6 +55,7 @@ export default async function PostfachPage() {
           abrufStatus={abrufStatus}
           anfragen={anfrageOptionen}
           objekte={objektOptionen}
+          angeboteneTreffer={angeboteneTreffer}
         />
       </main>
     </>

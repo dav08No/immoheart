@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { anfragenProMonat, tageBisErstangebot, topObjekte, vermittlungsquote } from "./anfragen"
+import { abschluesseJeAnfrage, anfragenProMonat, tageBisAbschluss, tageBisErstangebot, topObjekte, vermittlungsquote } from "./anfragen"
 
 describe("anfragenProMonat", () => {
   it("liefert Leerwerte für jeden Monat bei leerer Eingabe", () => {
@@ -108,5 +108,46 @@ describe("topObjekte", () => {
 
   it("fällt bei fehlendem Titel auf die Objekt-ID zurück", () => {
     expect(topObjekte([{ objekt_id: "geloescht-1" }], {}, 5)).toEqual([{ titel: "Gelöschtes Objekt", anzahl: 1 }])
+  })
+})
+
+describe("tageBisAbschluss", () => {
+  it("liefert Leerwerte ohne Abschlüsse", () => {
+    expect(tageBisAbschluss([])).toEqual({ median: null, schnitt: null, anzahl: 0 })
+  })
+
+  it("berechnet den Median der Spannen Anfrage -> Abschluss", () => {
+    const ergebnis = tageBisAbschluss([
+      { anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-01-11T00:00:00Z" }, // 10 Tage
+      { anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-01-21T00:00:00Z" }, // 20 Tage
+      { anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-02-10T00:00:00Z" }, // 40 Tage
+      { anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-01-31T00:00:00Z" }, // 30 Tage
+    ])
+    expect(ergebnis).toEqual({ median: 25, schnitt: 25, anzahl: 4 })
+  })
+
+  it("ignoriert negative Zeitspannen (Datenfehler)", () => {
+    const ergebnis = tageBisAbschluss([
+      { anfrage_erstellt: "2026-01-05T00:00:00Z", abgeschlossen_am: "2026-01-01T00:00:00Z" },
+      { anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-01-08T00:00:00Z" },
+    ])
+    expect(ergebnis).toEqual({ median: 7, schnitt: 7, anzahl: 1 })
+  })
+})
+
+describe("abschluesseJeAnfrage", () => {
+  const erstellt = { a1: "2026-01-01T00:00:00Z", a2: "2026-01-02T00:00:00Z" }
+
+  it("nimmt nur vermittelte Treffer mit Abschlussdatum und bekannter Anfrage", () => {
+    const ergebnis = abschluesseJeAnfrage(
+      [
+        { anfrage_id: "a1", status: "vermittelt", abgeschlossen_am: "2026-01-10T00:00:00Z" },
+        { anfrage_id: "a2", status: "erledigt", abgeschlossen_am: "2026-01-12T00:00:00Z" },
+        { anfrage_id: "a2", status: "vermittelt", abgeschlossen_am: null },
+        { anfrage_id: "fremd", status: "vermittelt", abgeschlossen_am: "2026-01-12T00:00:00Z" },
+      ],
+      erstellt
+    )
+    expect(ergebnis).toEqual([{ anfrage_erstellt: "2026-01-01T00:00:00Z", abgeschlossen_am: "2026-01-10T00:00:00Z" }])
   })
 })

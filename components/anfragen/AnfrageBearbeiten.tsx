@@ -4,8 +4,14 @@ import { useId } from "react"
 import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { FormFeld, EINGABE_KLASSE } from "@/components/ui/FormFeld"
 import type { AnfrageMitFirma } from "@/lib/queries/anfragen"
+import type { Database } from "@/types/database"
+import { ANFRAGE_STATUS_LABEL } from "./typen"
+
+type AnfrageStatus = Database["public"]["Enums"]["anfrage_status_enum"]
 
 export type Eingaben = { flaecheMin: string; flaecheMax: string; ort: string; budget: string; bezug: string }
+
+const STATI: AnfrageStatus[] = ["offen", "ruhend", "vermittelt"]
 
 // Startwerte (und Werte nach "Abbrechen") aus der gespeicherten Anfrage.
 export function eingabenAus(anfrage: AnfrageMitFirma): Eingaben {
@@ -29,11 +35,13 @@ const FELDER: { schluessel: keyof Eingaben; label: string; platzhalter?: string 
 type Props = {
   eingaben: Eingaben
   onAendern: (schluessel: keyof Eingaben, wert: string) => void
+  status: AnfrageStatus
+  onStatus: (status: AnfrageStatus) => void
   laufend: boolean
   fehler: string | null
 }
 
-export function AnfrageBearbeiten({ eingaben, onAendern, laufend, fehler }: Props) {
+export function AnfrageBearbeiten({ eingaben, onAendern, status, onStatus, laufend, fehler }: Props) {
   const idBasis = useId()
   return (
     <section className="flex flex-col gap-3">
@@ -54,6 +62,23 @@ export function AnfrageBearbeiten({ eingaben, onAendern, laufend, fehler }: Prop
             </FormFeld>
           )
         })}
+        {/* Ruhend: kein Matching. Manuell "Vermittelt" ändert kein Objekt (Spec §3). */}
+        <FormFeld label="Status" htmlFor={`${idBasis}-status`} hinweis="Ruhend und Vermittelt entfernen neue Treffer.">
+          <select
+            id={`${idBasis}-status`}
+            value={status}
+            onChange={(e) => onStatus(STATI.find((s) => s === e.target.value) ?? status)}
+            disabled={laufend}
+            aria-describedby={`${idBasis}-status-hinweis`}
+            className={EINGABE_KLASSE}
+          >
+            {STATI.map((s) => (
+              <option key={s} value={s}>
+                {ANFRAGE_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </FormFeld>
       </div>
       {fehler && (
         <p role="alert" className="text-sm text-crit wrap-break-word">

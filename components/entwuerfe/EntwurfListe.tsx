@@ -2,6 +2,8 @@ import { ListenZeile } from "@/components/ui/ListenZeile"
 import { Abschnittstitel } from "@/components/ui/Abschnittstitel"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { Leerzustand } from "@/components/ui/Leerzustand"
+import { istPlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
+import { entwurfGesperrt } from "@/lib/entwurf-status"
 import type { EntwurfMitBezug } from "@/lib/queries/nachrichten"
 import type { Database } from "@/types/database"
 
@@ -13,6 +15,7 @@ type NachrichtTyp = Database["public"]["Enums"]["nachricht_typ_enum"]
 const GRUPPEN: { titel: string; typen: NachrichtTyp[] }[] = [
   { titel: "Antworten", typen: ["antwort", "rueckfrage"] },
   { titel: "Angebote", typen: ["angebot"] },
+  { titel: "Abschluss", typen: ["absage", "eigentuemer_info", "bestaetigung"] },
   { titel: "Nachfass", typen: ["nachfass"] },
   { titel: "Frei", typen: ["frei"] },
 ]
@@ -42,6 +45,7 @@ export function EntwurfListe({
                 // (siehe reservierungFreigeben) -- in beiden Fällen unklar, ob die
                 // Mail bereits raus ist, deshalb eigene Markierung statt versand_fehler.
                 const unklar = entwurf.gesendet_am !== null
+                const sperre = entwurfGesperrt(entwurf, entwurf.matchStatus, entwurf.objektStatus)
                 return (
                   <li key={entwurf.id}>
                     <ListenZeile
@@ -52,6 +56,10 @@ export function EntwurfListe({
                       badges={
                         unklar ? (
                           <StatusChip ton="warn">Versand unklar</StatusChip>
+                        ) : sperre ? (
+                          <StatusChip ton="warn">{sperre.chip}</StatusChip>
+                        ) : istPlatzhalter(entwurf) ? (
+                          <StatusChip ton="warn">KI-Text fehlt</StatusChip>
                         ) : (
                           entwurf.versand_fehler && (
                             <span

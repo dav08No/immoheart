@@ -161,32 +161,41 @@ export type Database = {
       }
       matches: {
         Row: {
+          abgeschlossen_am: string | null
           anfrage_id: string
+          angeboten_am: string | null
           created_at: string
           hinweis: string
           id: string
           kriterien: Json
           objekt_id: string
+          reserviert_am: string | null
           score: number
           status: Database["public"]["Enums"]["match_status_enum"]
         }
         Insert: {
+          abgeschlossen_am?: string | null
           anfrage_id: string
+          angeboten_am?: string | null
           created_at?: string
           hinweis: string
           id?: string
           kriterien: Json
           objekt_id: string
+          reserviert_am?: string | null
           score: number
           status?: Database["public"]["Enums"]["match_status_enum"]
         }
         Update: {
+          abgeschlossen_am?: string | null
           anfrage_id?: string
+          angeboten_am?: string | null
           created_at?: string
           hinweis?: string
           id?: string
           kriterien?: Json
           objekt_id?: string
+          reserviert_am?: string | null
           score?: number
           status?: Database["public"]["Enums"]["match_status_enum"]
         }
@@ -430,6 +439,7 @@ export type Database = {
           created_at: string
           eigenschaften: Json
           eigentuemer: string
+          eigentuemer_email: string | null
           flaeche: number
           foto_url: string | null
           id: string
@@ -447,6 +457,7 @@ export type Database = {
           created_at?: string
           eigenschaften?: Json
           eigentuemer: string
+          eigentuemer_email?: string | null
           flaeche: number
           foto_url?: string | null
           id?: string
@@ -464,6 +475,7 @@ export type Database = {
           created_at?: string
           eigenschaften?: Json
           eigentuemer?: string
+          eigentuemer_email?: string | null
           flaeche?: number
           foto_url?: string | null
           id?: string
@@ -555,6 +567,26 @@ export type Database = {
         Returns: number
       }
       ist_aktives_konto: { Args: never; Returns: boolean }
+      objekt_nicht_verfuegbar: {
+        Args: { p_objekt: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
+      objekt_wieder_verfuegbar: {
+        Args: { p_objekt: string }
+        Returns: undefined
+      }
+      reservierung_aufheben: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
       speicher_belegt: {
         Args: never
         Returns: {
@@ -562,16 +594,41 @@ export type Database = {
           bytes: number
         }[]
       }
+      treffer_ablehnen: { Args: { p_match: string }; Returns: undefined }
+      treffer_reservieren: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
+      treffer_vermitteln: {
+        Args: { p_match: string }
+        Returns: {
+          anfrage_id: string
+          erledigte_treffer: string[]
+          objekt_id: string
+        }[]
+      }
     }
     Enums: {
       anfrage_status_enum: "offen" | "vermittelt" | "ruhend"
-      match_status_enum: "neu" | "gesendet" | "verworfen"
+      match_status_enum:
+        | "neu"
+        | "gesendet"
+        | "verworfen"
+        | "reserviert"
+        | "vermittelt"
+        | "abgelehnt"
+        | "erledigt"
       nachricht_kategorie_enum:
         | "suchanfrage"
         | "antwort"
         | "objektangebot"
         | "objektanfrage"
         | "sonstiges"
+        | "objektmeldung"
       nachricht_richtung_enum: "eingang" | "entwurf" | "gesendet"
       nachricht_typ_enum:
         | "anfrage"
@@ -580,6 +637,9 @@ export type Database = {
         | "nachfass"
         | "antwort"
         | "frei"
+        | "absage"
+        | "eigentuemer_info"
+        | "bestaetigung"
       nutzung_enum:
         | "buero"
         | "gewerbe"
@@ -716,13 +776,22 @@ export const Constants = {
   public: {
     Enums: {
       anfrage_status_enum: ["offen", "vermittelt", "ruhend"],
-      match_status_enum: ["neu", "gesendet", "verworfen"],
+      match_status_enum: [
+        "neu",
+        "gesendet",
+        "verworfen",
+        "reserviert",
+        "vermittelt",
+        "abgelehnt",
+        "erledigt",
+      ],
       nachricht_kategorie_enum: [
         "suchanfrage",
         "antwort",
         "objektangebot",
         "objektanfrage",
         "sonstiges",
+        "objektmeldung",
       ],
       nachricht_richtung_enum: ["eingang", "entwurf", "gesendet"],
       nachricht_typ_enum: [
@@ -732,6 +801,9 @@ export const Constants = {
         "nachfass",
         "antwort",
         "frei",
+        "absage",
+        "eigentuemer_info",
+        "bestaetigung",
       ],
       nutzung_enum: [
         "buero",

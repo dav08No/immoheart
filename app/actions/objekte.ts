@@ -3,20 +3,31 @@
 import { revalidatePath } from "next/cache"
 import { idSchema } from "@/app/actions/entwuerfe-hilfen"
 import { legeObjektAn, aktualisiereObjekt } from "@/lib/queries/objekte"
-import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
+import { holeNachricht, verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { MAX_BESCHREIBUNG } from "@/lib/objekt-fotos"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
+import { istUebernehmbarerEingang } from "@/lib/objekt-vorbelegung"
+import { eigentuemerEmailMitHerkunft, eigentuemerEmailSchema } from "@/lib/objekt-eigentuemer"
 import type { Database } from "@/types/database"
 
 type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
+// Spec §3: status wechselt nur über die Abschluss-Aktionen (app/actions/abschluss.ts).
+type ObjektAenderung = Partial<Omit<ObjektEinfuegen, "status">>
 
 // Das Formular begrenzt bereits per maxLength; hier gegen direkte Action-Aufrufe.
 function pruefeBeschreibung(objekt: Partial<ObjektEinfuegen>) {
   if ((objekt.beschreibung?.length ?? 0) > MAX_BESCHREIBUNG) {
     throw new NutzerFehler(`Die Beschreibung ist länger als ${MAX_BESCHREIBUNG} Zeichen.`)
   }
+}
+
+// Gegen direkte Action-Aufrufe: leer → null, sonst gültige, kleingeschriebene Adresse.
+function pruefeEigentuemerEmail(wert: string | null | undefined): string | null {
+  const geprueft = eigentuemerEmailSchema.safeParse(wert ?? null)
+  if (!geprueft.success) throw new NutzerFehler("Die Eigentümer-E-Mail ist ungültig.")
+  return geprueft.data
 }
 
 // Öffentliche Liste und Detailseiten zeigen Titel, Beschreibung und Sichtbarkeit mit.
@@ -31,13 +42,18 @@ function oeffentlicheSeitenNeuLaden() {
 // deshalb ein eigener Parameter statt eines Felds in ObjektEinfuegen.
 export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId?: string): Promise<void> {
   await holeEigenesProfil()
-  pruefeBeschreibung(objekt)
-  const neues = await legeObjektAn(objekt)
+  // Neue Objekte starten immer mit dem DB-Default 'verfuegbar'.
+  const ohneStatus: ObjektEinfuegen = { ...objekt }
+  delete ohneStatus.status
+  pruefeBeschreibung(ohneStatus)
+  const herkunftId = herkunftNachrichtId ? idSchema.safeParse(herkunftNachrichtId) : null
+  const herkunft = herkunftId?.success ? await holeNachricht(herkunftId.data) : null
+  // Leeres Feld: Absender der Herkunftsmail übernehmen, aber nur aus einem Objektangebot.
+  const herkunftVon = herkunft && istUebernehmbarerEingang(herkunft) ? herkunft.von : null
+  const eigentuemer_email = eigentuemerEmailMitHerkunft(pruefeEigentuemerEmail(ohneStatus.eigentuemer_email), herkunftVon)
+  const neues = await legeObjektAn({ ...ohneStatus, eigentuemer_email })
   await berechneUndSpeichereMatchesFuerObjekt(neues.id)
-  if (herkunftNachrichtId) {
-    const geprueft = idSchema.safeParse(herkunftNachrichtId)
-    if (geprueft.success) await verknuepfeObjektMitEingang(geprueft.data, neues.id)
-  }
+  if (herkunftId?.success) await verknuepfeObjektMitEingang(herkunftId.data, neues.id)
   revalidatePath("/admin/objekte")
   revalidatePath("/admin")
   revalidatePath("/admin/postfach")
@@ -57,15 +73,8 @@ export async function objektAnlegen(objekt: ObjektEinfuegen, herkunftNachrichtId
 // berechneUndSpeichereMatchesFuerObjekt), ohne dass sich am Ergebnis je etwas
 // ändern könnte.
 //
-// status ist seit dem M7 Whole-Branch-Review-Fix in matches.ts bewusst DABEI
-// (anders als zuvor angenommen): berechneUndSpeichereMatchesFuerObjekt sperrt
-// dort inzwischen selbst gegen ein Nicht-verfuegbar-Objekt und räumt dessen
-// bestehende status='neu'-Matches auf, sobald es den Status wechselt (Kritischer
-// Fund, siehe Kommentar dort). Ein reiner Statuswechsel -- ohne dass sich ein
-// anderes hier gelistetes Feld ändert -- muss also weiterhin einen Aufruf
-// auslösen, sonst bliebe genau diese Aufräumung aus. berechneMatch selbst
-// liest objekt.status zwar nach wie vor nicht (der Status wirkt nur als Gate
-// VOR der eigentlichen Match-Berechnung, nicht als deren Eingabe).
+// status fehlt hier seit dem Abschluss (Spec §3) bewusst: er lässt sich über diese
+// Action nicht mehr ändern; die Abschluss-Aktionen rematchen selbst.
 const MATCH_RELEVANTE_FELDER = [
   "flaeche",
   "preis_pro_m2",
@@ -73,13 +82,18 @@ const MATCH_RELEVANTE_FELDER = [
   "nutzung",
   "eigenschaften",
   "verfuegbar_ab",
-  "status",
 ] as const satisfies readonly (keyof ObjektEinfuegen)[]
 
-export async function objektAktualisieren(id: string, aenderung: Partial<ObjektEinfuegen>): Promise<void> {
+export async function objektAktualisieren(id: string, aenderung: ObjektAenderung): Promise<void> {
   await holeEigenesProfil()
+  // Ablehnen statt still verwerfen: ein direkter Aufruf mit status soll laut scheitern.
+  if ("status" in aenderung) {
+    throw new NutzerFehler("Der Status lässt sich nur über die Abschluss-Aktionen ändern.")
+  }
   pruefeBeschreibung(aenderung)
-  await aktualisiereObjekt(id, aenderung)
+  const geprueft =
+    "eigentuemer_email" in aenderung ? { ...aenderung, eigentuemer_email: pruefeEigentuemerEmail(aenderung.eigentuemer_email) } : aenderung
+  await aktualisiereObjekt(id, geprueft)
   if (MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)) {
     await berechneUndSpeichereMatchesFuerObjekt(id)
   }

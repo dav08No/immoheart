@@ -8,9 +8,12 @@ import { MailAbrufer } from "@/components/layout/MailAbrufer"
 
 // KI-Aufrufe mit Retry/Ersatzmodell (siehe lib/ki/gemini.ts) können im
 // Worst Case (6 Versuche + ~4s Backoff) länger dauern als Vercels
-// Standard-Timeout; 60s ist das Maximum im Hobby-Plan. Gilt auch für Server
-// Actions, die von /admin-Seiten ausgelöst werden.
-export const maxDuration = 60
+// Standard-Timeout. Gilt auch für Server Actions, die von /admin-Seiten ausgelöst
+// werden. Früher hiess es hier "60 s = Hobby-Maximum" -- beim Deploy prüfen, ob der Plan
+// (Fluid Compute) 120 s erlaubt.
+// 120 s (R17): die KI-Füllung der Abschluss-Entwürfe in after() zählt zur Laufzeit der
+// Funktion; vermitteln mit mehreren Entwürfen braucht live über 60 s.
+export const maxDuration = 120
 
 // robots.ts verbietet /admin Crawlern bereits per Disallow, aber nicht jeder
 // Bot hält sich daran -- der Meta-Tag ist die zweite, zuverlässigere Sperre.

@@ -9,15 +9,19 @@ import { anfrageAktualisieren } from "@/app/actions/anfragen"
 import { puls } from "@/lib/puls"
 import { anfrageStatusTon } from "@/lib/ui/status-ton"
 import type { AnfrageMitFirma, VerlaufEintrag } from "@/lib/queries/anfragen"
+import type { Angebot } from "@/lib/abschluss/angebote"
 import { AnfrageEckdaten } from "./AnfrageEckdaten"
 import { AnfrageBearbeiten, eingabenAus, type Eingaben } from "./AnfrageBearbeiten"
 import { BesterTreffer, Verlauf } from "./AnfrageTrefferVerlauf"
+import { AnfrageAngebote } from "./AnfrageAngebote"
+import { statusAenderung } from "@/lib/abschluss/status-wechsel"
 import { ANFRAGE_STATUS_LABEL, type BesterMatch } from "./typen"
 
 export function AnfrageDetail({
   anfrage,
   besterMatch,
   verlauf,
+  angebote,
   offen,
   sofortBearbeiten,
   onSchliessen,
@@ -26,6 +30,7 @@ export function AnfrageDetail({
   anfrage: AnfrageMitFirma
   besterMatch: BesterMatch
   verlauf: VerlaufEintrag[]
+  angebote: Angebot[]
   offen: boolean
   sofortBearbeiten: boolean
   onSchliessen: () => void
@@ -37,6 +42,7 @@ export function AnfrageDetail({
   // Tabelle (README-Anforderung) — dann startet der Drawer im Bearbeiten-Modus.
   const [bearbeiten, setBearbeiten] = useState(sofortBearbeiten)
   const [eingaben, setEingaben] = useState<Eingaben>(() => eingabenAus(anfrage))
+  const [status, setStatus] = useState(anfrage.status)
   const [laufend, setLaufend] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   // anfrageAktualisieren löst bei den Suchfeldern serverseitig ein Rematching aus,
@@ -53,6 +59,7 @@ export function AnfrageDetail({
     anfrageIdRef.current = anfrage.id
     setBearbeiten(sofortBearbeiten)
     setEingaben(eingabenAus(anfrage))
+    setStatus(anfrage.status)
     setFehler(null)
     setLaufend(false)
     setMatchesVeraltet(false)
@@ -77,6 +84,7 @@ export function AnfrageDetail({
         ort: eingaben.ort || null,
         budget_pro_m2: eingaben.budget ? Number(eingaben.budget) : null,
         bezug: eingaben.bezug || null,
+        ...statusAenderung(anfrage.status, status),
       })
       if (anfrageIdRef.current === zielId) {
         setBearbeiten(false)
@@ -90,8 +98,18 @@ export function AnfrageDetail({
     }
   }
 
+  // Beim Start frisch aus dem aktuellen Prop: eine Abschluss-Aktion im Drawer kann den
+  // Status inzwischen serverseitig geändert haben (z.B. auf vermittelt).
+  function bearbeitenStarten() {
+    setEingaben(eingabenAus(anfrage))
+    setStatus(anfrage.status)
+    setFehler(null)
+    setBearbeiten(true)
+  }
+
   function abbrechen() {
     setEingaben(eingabenAus(anfrage))
+    setStatus(anfrage.status)
     setFehler(null)
     setBearbeiten(false)
   }
@@ -107,7 +125,7 @@ export function AnfrageDetail({
       </Button>
     </>
   ) : (
-    <Button icon={<Pencil className="size-4" aria-hidden />} onClick={() => setBearbeiten(true)}>
+    <Button icon={<Pencil className="size-4" aria-hidden />} onClick={bearbeitenStarten}>
       Bearbeiten
     </Button>
   )
@@ -127,6 +145,8 @@ export function AnfrageDetail({
         <AnfrageBearbeiten
           eingaben={eingaben}
           onAendern={(schluessel, neu) => setEingaben((alt) => ({ ...alt, [schluessel]: neu }))}
+          status={status}
+          onStatus={setStatus}
           laufend={laufend}
           fehler={fehler}
         />
@@ -138,6 +158,7 @@ export function AnfrageDetail({
           {fehler}
         </p>
       )}
+      <AnfrageAngebote angebote={angebote} anfrageStatus={anfrage.status} onFertig={() => onAenderungGespeichert?.()} />
       {besterMatch && <BesterTreffer besterMatch={besterMatch} veraltet={matchesVeraltet} />}
       <Verlauf verlauf={verlauf} />
     </Drawer>

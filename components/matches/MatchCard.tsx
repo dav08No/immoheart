@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/Button"
 import { StatusChip, type StatusTon } from "@/components/ui/StatusChip"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { KriteriumStatus } from "@/types"
+import { formatZeitpunkt } from "@/lib/format"
 
 function mapsLink(adresse: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`
@@ -62,6 +63,10 @@ export function MatchCard({
           <div className="mt-0.5 text-xs text-ink-2">
             sucht {match.anfrage.flaeche_min ?? "?"}–{match.anfrage.flaeche_max ?? "?"} m²
           </div>
+          {/* 'neu' mit Angebotsdatum: nach "wieder verfügbar" erneut anbietbar (Davide-Entscheid I5). */}
+          {match.angeboten_am && (
+            <div className="mt-0.5 text-xs text-ink-2">früher abgesagt am {formatZeitpunkt(new Date(match.angeboten_am))}</div>
+          )}
           {match.firma && (
             <a
               href={webLink(match.firma.name)} target="_blank" rel="noopener noreferrer"
@@ -85,7 +90,9 @@ export function MatchCard({
           ))}
         </span>
         <Button variante="primaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onSenden() }} disabled={laufend}>
-          {laufend ? "Wird bearbeitet…" : "Angebot entwerfen"}
+          {/* onSenden bleibt dieselbe Aktion: matchSenden liefert bei offenem Entwurf
+              dessen id zurück statt einen neuen anzulegen (Lücke Empfänger/Nachfass). */}
+          {laufend ? "Wird bearbeitet…" : match.hatEntwurf ? "Entwurf öffnen" : "Angebot entwerfen"}
         </Button>
         <Button variante="sekundaer" className="relative z-[1]" onClick={(e) => { e.stopPropagation(); onVerwerfen() }} disabled={laufend}>
           Verwerfen

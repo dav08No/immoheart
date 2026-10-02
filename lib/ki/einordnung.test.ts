@@ -2,14 +2,23 @@ import { describe, expect, it } from "vitest"
 import { baueEinordnungsPrompt, parseEinordnung } from "./einordnung"
 
 describe("baueEinordnungsPrompt", () => {
-  it("enthält Betreff, Text und alle vier Kategorien", () => {
+  it("enthält Betreff, Text und alle fünf Kategorien", () => {
     const prompt = baueEinordnungsPrompt("Lagerfläche gesucht", "Wir suchen 500 m² in Solothurn.")
     expect(prompt).toContain("Lagerfläche gesucht")
     expect(prompt).toContain("Wir suchen 500 m² in Solothurn.")
     expect(prompt).toContain("suchanfrage")
     expect(prompt).toContain("antwort")
     expect(prompt).toContain("objektangebot")
+    expect(prompt).toContain("objektmeldung")
     expect(prompt).toContain("sonstiges")
+  })
+  it("erklärt meldung und kein_interesse im Ausgabeformat", () => {
+    const prompt = baueEinordnungsPrompt("Betreff", "Text")
+    expect(prompt).toContain("meldung")
+    expect(prompt).toContain("kein_interesse")
+    expect(prompt).toContain("nicht_verfuegbar")
+    expect(prompt).toContain("wieder_verfuegbar")
+    expect(prompt).toContain("sonstige_aenderung")
   })
 })
 
@@ -52,5 +61,27 @@ describe("parseEinordnung", () => {
 
   it("wirft bei kaputtem JSON", () => {
     expect(() => parseEinordnung("{kaputt")).toThrow()
+  })
+
+  it("parst eine objektmeldung mit aenderung und zusammenfassung", () => {
+    const antwort = '{"kategorie":"objektmeldung","meldung":{"aenderung":"nicht_verfuegbar","zusammenfassung":"Fläche vermietet."}}'
+    const ergebnis = parseEinordnung(antwort)
+    expect(ergebnis.kategorie).toBe("objektmeldung")
+    expect(ergebnis.meldung).toEqual({ aenderung: "nicht_verfuegbar", zusammenfassung: "Fläche vermietet." })
+  })
+
+  it("setzt eine unbekannte aenderung auf sonstige_aenderung", () => {
+    const antwort = '{"kategorie":"objektmeldung","meldung":{"aenderung":"unbekannt","zusammenfassung":"Text"}}'
+    expect(parseEinordnung(antwort).meldung?.aenderung).toBe("sonstige_aenderung")
+  })
+
+  it("setzt meldung auf null, wenn sie fehlt", () => {
+    expect(parseEinordnung('{"kategorie":"suchanfrage"}').meldung).toBeNull()
+  })
+
+  it("setzt kein_interesse nur bei echtem boolean true", () => {
+    expect(parseEinordnung('{"kategorie":"antwort","kein_interesse":true}').kein_interesse).toBe(true)
+    expect(parseEinordnung('{"kategorie":"antwort","kein_interesse":"true"}').kein_interesse).toBe(false)
+    expect(parseEinordnung('{"kategorie":"antwort"}').kein_interesse).toBe(false)
   })
 })

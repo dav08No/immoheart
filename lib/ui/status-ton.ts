@@ -1,3 +1,5 @@
+import type { TrefferStatus } from "@/lib/abschluss/uebergaenge"
+
 // Eine Stelle für "welcher Status bekommt welche Farbe" -- sonst driften Objekt-,
 // Anfrage- und Konto-Chips auf den einzelnen Seiten auseinander.
 // Der Typ lebt hier (nicht im Chip), damit reine Logik nicht von Komponenten abhängt.
@@ -35,4 +37,18 @@ const KONTO: Record<"eingeladen" | "aktiv" | "deaktiviert", StatusTon> = {
 
 export function kontoStatusTon(s: keyof typeof KONTO): StatusTon {
   return KONTO[s]
+}
+
+const TREFFER: Record<TrefferStatus, StatusTon> = {
+  neu: "info",
+  gesendet: "info",
+  verworfen: "neutral",
+  reserviert: "warn",
+  vermittelt: "gut",
+  abgelehnt: "neutral",
+  erledigt: "neutral",
+}
+
+export function trefferStatusTon(s: TrefferStatus): StatusTon {
+  return TREFFER[s]
 }

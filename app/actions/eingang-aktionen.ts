@@ -2,8 +2,9 @@
 
 import { z } from "zod"
 import { holeEigenesProfil } from "@/lib/queries/profile"
-import { aktualisiereNachricht, holeNachricht } from "@/lib/queries/nachrichten"
+import { aktualisiereNachricht, holeNachricht, verknuepfeDankEntwurfMitObjekt } from "@/lib/queries/nachrichten"
 import { holeAnfrage } from "@/lib/queries/anfragen"
+import { holeObjekt } from "@/lib/queries/objekte"
 import { anfrageAktualisieren } from "@/app/actions/anfragen"
 import { feldUebernehmenAenderung, UEBERNEHMBARE_FELDER } from "@/lib/eingang/anfrage-aus-eingang"
 import type { ErkannteFelder } from "@/lib/ki/erkennung"
@@ -24,6 +25,29 @@ export async function anfrageZuordnen(nachrichtId: string, anfrageId: string): P
 
     await aktualisiereNachricht(nId, { anfrage_id: aId, kategorie: "antwort" })
     await anfrageAktualisieren(aId, { letzter_kontakt: new Date().toISOString() })
+    pfadeNeuLaden()
+    return { fehler: null }
+  } catch (e) {
+    if (e instanceof NutzerFehler) return { fehler: e.message }
+    throw e
+  }
+}
+
+// Wie anfrageZuordnen, für Objektmeldungen ohne eindeutige Zuordnung (weder Verlauf
+// noch genau ein aktives Objekt des Absenders). Setzt nur den Bezug (Meldung und offener
+// Dank-Entwurf), keinen Status.
+export async function objektZuordnen(nachrichtId: string, objektId: string): Promise<Ergebnis> {
+  await holeEigenesProfil()
+  try {
+    const nId = idSchema.parse(nachrichtId)
+    const oId = idSchema.parse(objektId)
+    const nachricht = await holeNachricht(nId)
+    if (!nachricht || nachricht.richtung !== "eingang") throw new NutzerFehler("Nachricht nicht gefunden.")
+    if (nachricht.kategorie !== "objektmeldung") throw new NutzerFehler("Nur Objektmeldungen lassen sich einem Objekt zuordnen.")
+    if (!(await holeObjekt(oId))) throw new NutzerFehler("Objekt nicht gefunden.")
+
+    await aktualisiereNachricht(nId, { objekt_id: oId })
+    await verknuepfeDankEntwurfMitObjekt(nId, oId)
     pfadeNeuLaden()
     return { fehler: null }
   } catch (e) {

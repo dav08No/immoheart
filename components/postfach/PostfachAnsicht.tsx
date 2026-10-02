@@ -24,9 +24,11 @@ type Props = {
   abrufStatus: AbrufStatus
   anfragen: AnfrageOption[]
   objekte: ObjektOption[]
+  // Treffer-IDs, die noch "Angeboten" sind -- für "Firma lehnt ab" in Antworten.
+  angeboteneTreffer: string[]
 }
 
-export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen, objekte }: Props) {
+export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen, objekte, angeboteneTreffer }: Props) {
   const router = useRouter()
   const [filter, setFilter] = useState<Filter>("alle")
   const [chip, setChip] = useState<KategorieChip | null>(null)
@@ -119,6 +121,7 @@ export function PostfachAnsicht({ nachrichten, entwuerfe, abrufStatus, anfragen,
                 entwuerfe={entwuerfe}
                 anfragen={anfragen}
                 objekte={objekte}
+                angeboteneTreffer={angeboteneTreffer}
                 onRueckfrageOeffnen={() => rueckfrageOeffnen(ausgewaehlt)}
               />
             )}

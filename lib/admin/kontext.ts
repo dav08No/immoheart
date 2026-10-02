@@ -9,8 +9,10 @@ function anzahl(n: number, einzahl: string, mehrzahl: string): string {
   return `${formatZahl(n)} ${n === 1 ? einzahl : mehrzahl}`
 }
 
-export function kontextMatches(neueTreffer: number, langeOhneKontakt: number): string {
+// reserviert = Objekte im Status reserviert: offene Abschlüsse, die noch einen Vertrag brauchen.
+export function kontextMatches(neueTreffer: number, langeOhneKontakt: number, reserviert = 0): string {
   const teile = [neueTreffer === 0 ? "Keine neuen Treffer" : anzahl(neueTreffer, "neuer Treffer", "neue Treffer")]
+  if (reserviert > 0) teile.push(`${formatZahl(reserviert)} reserviert`)
   if (langeOhneKontakt > 0) teile.push(`${formatZahl(langeOhneKontakt)} lange ohne Kontakt`)
   return teile.join(TRENNER)
 }

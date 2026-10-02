@@ -34,7 +34,8 @@ export async function mailAbrufen(): Promise<{ neu: number; fehler: string | nul
   }
 }
 
-const kategorieSchema = z.enum(["suchanfrage", "antwort", "objektangebot", "sonstiges"])
+// objektmeldung: falsch eingeordnete Eigentümer-Mails lassen sich so nachträglich melden.
+const kategorieSchema = z.enum(["suchanfrage", "antwort", "objektangebot", "objektmeldung", "sonstiges"])
 
 // Website-Einträge tragen strukturierte Formularfelder; eine KI-Einordnung würde sie
 // überschreiben und die Kategorie liesse sich nicht zurücksetzen (Final-Review I1).

@@ -87,7 +87,7 @@ export async function claimNachricht(id: string, erlaubt: "abgeschlossen" | "nic
 // Entwurf steht -- sonst könnte ein paralleles "erneut verarbeiten" einen zweiten anlegen.
 export async function speichereKiErgebnis(
   id: string,
-  felder: { kategorie?: Kategorie; erkannte_felder?: Json | null; anfrage_id?: string | null }
+  felder: { kategorie?: Kategorie; erkannte_felder?: Json | null; anfrage_id?: string | null; objekt_id?: string | null }
 ): Promise<void> {
   const supabase = await erstelleServerClient()
   const { error } = await supabase.from("nachrichten").update(felder).eq("id", id)
@@ -109,22 +109,46 @@ export async function setzeKiFehler(id: string, text: string): Promise<void> {
   if (error) throw error
 }
 
+export type GesendeteImVerlauf = {
+  message_id: string
+  anfrage_id: string | null
+  // Direkt oder über den beantworteten Eingang (Eigentümer-Antwort auf ein Objektangebot).
+  objekt_id: string | null
+  typ: Database["public"]["Enums"]["nachricht_typ_enum"]
+  match_id: string | null
+}
+
 // Nur die referenzierten Mails statt aller gesendeten: die Zuordnung braucht nie mehr,
 // und die Tabelle wächst unbegrenzt.
-export async function holeGesendeteMitAnfrage(
-  messageIds: string[]
-): Promise<{ message_id: string; anfrage_id: string | null }[]> {
+export async function holeGesendeteMitAnfrage(messageIds: string[]): Promise<GesendeteImVerlauf[]> {
   if (messageIds.length === 0) return []
   const supabase = await erstelleServerClient()
   const { data, error } = await supabase
     .from("nachrichten")
-    .select("message_id, anfrage_id")
+    .select("message_id, anfrage_id, objekt_id, typ, match_id, antwort_auf")
     .eq("richtung", "gesendet")
     .not("message_id", "is", null)
     .in("message_id", messageIds)
     .order("gesendet_am", { ascending: true })
   if (error) throw error
-  return data.flatMap((n) => (n.message_id ? [{ message_id: n.message_id, anfrage_id: n.anfrage_id }] : []))
+  const eingangIds = data.flatMap((n) => (!n.objekt_id && n.antwort_auf ? [n.antwort_auf] : []))
+  const objektNachEingang = new Map<string, string>()
+  if (eingangIds.length > 0) {
+    const { data: eingaenge, error: fehler } = await supabase.from("nachrichten").select("id, objekt_id").in("id", eingangIds)
+    if (fehler) throw fehler
+    for (const e of eingaenge) if (e.objekt_id) objektNachEingang.set(e.id, e.objekt_id)
+  }
+  return data.flatMap((n) =>
+    n.message_id
+      ? [{
+          message_id: n.message_id,
+          anfrage_id: n.anfrage_id,
+          objekt_id: n.objekt_id ?? (n.antwort_auf ? (objektNachEingang.get(n.antwort_auf) ?? null) : null),
+          typ: n.typ,
+          match_id: n.match_id,
+        }]
+      : []
+  )
 }
 
 export async function holeOffeneAnfragenNachAbsender(): Promise<Record<string, string[]>> {

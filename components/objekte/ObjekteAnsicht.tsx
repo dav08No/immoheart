@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { ObjektRaster, STATUS_LABEL } from "./ObjektRaster"
 import { ObjektFormular } from "./ObjektFormular"
+import { ObjektInteressenten } from "./ObjektInteressenten"
 import { Drawer } from "@/components/layout/Drawer"
 import { Seitenkopf, SEITEN_INHALT_KLASSE } from "@/components/layout/Seitenkopf"
 import { Button } from "@/components/ui/Button"
@@ -104,6 +105,10 @@ export function ObjekteAnsicht({
           dauerhaft gemountet bliebe. Mit key hier ist dieser interne Guard
           nur noch Defense-in-Depth, nicht mehr die einzige Absicherung.
         */}
+        {/* Status nur über Aktionen: Interessenten und Objekt-Aktionen vor dem Formular. */}
+        {bearbeitetesObjekt && (
+          <ObjektInteressenten key={bearbeitetesObjekt.id} objektId={bearbeitetesObjekt.id} titel={bearbeitetesObjekt.titel} />
+        )}
         <ObjektFormular
           key={bearbeitetesObjekt?.id ?? "neu"}
           objekt={bearbeitetesObjekt}

@@ -19,14 +19,15 @@ const web = { richtung: "eingang", quelle: "website", kategorie: "antwort" } as 
 const gesendet = { richtung: "gesendet", quelle: "mail", kategorie: null } as const
 const sonstig = { richtung: "eingang", quelle: "mail", kategorie: "sonstiges" } as const
 const objektanfrage = { richtung: "eingang", quelle: "website", kategorie: "objektanfrage" } as const
-const alle = [mail, web, gesendet, sonstig, objektanfrage]
+const meldung = { richtung: "eingang", quelle: "mail", kategorie: "objektmeldung" } as const
+const alle = [mail, web, gesendet, sonstig, objektanfrage, meldung]
 
 describe("filtereNachrichten", () => {
   it("Alle zeigt alles", () => {
-    expect(filtereNachrichten(alle, "alle", null)).toHaveLength(5)
+    expect(filtereNachrichten(alle, "alle", null)).toHaveLength(6)
   })
   it("Eingang zeigt nur Mails, Website nur Website-Eingänge", () => {
-    expect(filtereNachrichten(alle, "eingang", null)).toEqual([mail, sonstig])
+    expect(filtereNachrichten(alle, "eingang", null)).toEqual([mail, sonstig, meldung])
     expect(filtereNachrichten(alle, "website", null)).toEqual([web, objektanfrage])
   })
   it("Gesendet zeigt nur gesendete", () => {
@@ -37,12 +38,14 @@ describe("filtereNachrichten", () => {
     expect(filtereNachrichten(alle, "eingang", "antwort")).toEqual([])
     expect(filtereNachrichten(alle, "alle", "sonstiges")).toEqual([sonstig])
     expect(filtereNachrichten(alle, "website", "objektanfrage")).toEqual([objektanfrage])
+    expect(filtereNachrichten(alle, "eingang", "objektmeldung")).toEqual([meldung])
   })
 })
 
 describe("chipVon / zaehleChips", () => {
-  it("objektanfrage hat einen eigenen Chip, null ist keine Kategorie", () => {
+  it("objektanfrage und objektmeldung haben eigene Chips, null ist keine Kategorie", () => {
     expect(chipVon("objektanfrage")).toBe("objektanfrage")
+    expect(chipVon("objektmeldung")).toBe("objektmeldung")
     expect(chipVon("sonstiges")).toBe("sonstiges")
     expect(chipVon(null)).toBeNull()
   })
@@ -52,6 +55,7 @@ describe("chipVon / zaehleChips", () => {
       antwort: 1,
       objektangebot: 0,
       objektanfrage: 1,
+      objektmeldung: 1,
       sonstiges: 1,
     })
     expect(zaehleChips(alle, "website")).toEqual({
@@ -59,6 +63,7 @@ describe("chipVon / zaehleChips", () => {
       antwort: 1,
       objektangebot: 0,
       objektanfrage: 1,
+      objektmeldung: 0,
       sonstiges: 0,
     })
   })
@@ -94,6 +99,7 @@ describe("aktionsBlock", () => {
     expect(aktionsBlock({ ...basis, kategorie: "antwort" })).toBe("antwort")
     expect(aktionsBlock({ ...basis, kategorie: "objektangebot" })).toBe("objektangebot")
     expect(aktionsBlock({ ...basis, kategorie: "objektanfrage" })).toBe("objektanfrage")
+    expect(aktionsBlock({ ...basis, kategorie: "objektmeldung" })).toBe("objektmeldung")
     expect(aktionsBlock({ ...basis, kategorie: "sonstiges" })).toBeNull()
   })
   it("keine Aktionen, solange die KI noch arbeitet", () => {

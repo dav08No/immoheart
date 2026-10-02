@@ -22,7 +22,7 @@ export default async function ZahlenPage() {
   // Diagramme bekommen fertige Labels (keine Datumslogik im Client -> hydrationssicher).
   const jetzt = new Date()
   const [z, speicher] = await Promise.all([holeZahlen(jetzt), holeSpeicher()])
-  const { anfragen, erstangebot } = z
+  const { anfragen, erstangebot, abschluss } = z
   // Einheit steht in der Beschreibung: mit "m²" an jeder Klasse überlappten die Achsenbeschriftungen.
   const groessen = z.groessen.map((g) => ({ label: g.bereich === "unbekannt" ? "?" : g.bereich, anzahl: g.anzahl }))
   const nutzung = z.nutzung.map((n) => ({ label: n.label, anzahl: n.anzahl }))
@@ -32,7 +32,8 @@ export default async function ZahlenPage() {
     <>
       <Seitenkopf titel="Zahlen" kontext="Kacheln: gesamter Bestand · Diagramme: Zeitraum jeweils in der Beschreibung" />
       <main className={SEITEN_INHALT_KLASSE}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Fünf Kacheln: auf mittleren Breiten drei je Zeile, damit die Labels nicht umbrechen. */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
           <Kennzahl
             label="Anfragen gesamt"
             wert={anfragen.gesamt > 0 ? formatZahl(anfragen.gesamt) : null}
@@ -47,6 +48,11 @@ export default async function ZahlenPage() {
             label="Tage bis Erstangebot (Median)"
             wert={erstangebot.median !== null ? `${formatTage(erstangebot.median)} Tage` : null}
             zusatz={`aus ${formatZahl(erstangebot.anzahl)} ${erstangebot.anzahl === 1 ? "Anfrage" : "Anfragen"}`}
+          />
+          <Kennzahl
+            label="Tage bis Abschluss (Median)"
+            wert={abschluss.median !== null ? `${formatTage(abschluss.median)} Tage` : null}
+            zusatz={`aus ${formatZahl(abschluss.anzahl)} ${abschluss.anzahl === 1 ? "Vermittlung" : "Vermittlungen"}`}
           />
           <SpeicherKachel buckets={speicher} />
         </div>

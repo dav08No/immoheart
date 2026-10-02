@@ -6,11 +6,12 @@ import { AnfrageDetail } from "./AnfrageDetail"
 import { Panel } from "@/components/ui/Panel"
 import { Leerzustand } from "@/components/ui/Leerzustand"
 import type { AnfrageMitFirma, VerlaufEintrag } from "@/lib/queries/anfragen"
+import type { Angebot } from "@/lib/abschluss/angebote"
 import type { BesterMatch } from "./typen"
 
-type DetailDaten = { besterMatch: BesterMatch; verlauf: VerlaufEintrag[] }
+type DetailDaten = { besterMatch: BesterMatch; verlauf: VerlaufEintrag[]; angebote: Angebot[] }
 
-const DETAIL_LEER: DetailDaten = { besterMatch: null, verlauf: [] }
+const DETAIL_LEER: DetailDaten = { besterMatch: null, verlauf: [], angebote: [] }
 
 export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: AnfrageMitFirma[]; startId?: string | null }) {
   const [ausgewaehlteId, setAusgewaehlteId] = useState<string | null>(startId)
@@ -100,7 +101,7 @@ export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: Anfrag
           role="alert"
           className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-panel border border-crit/40 bg-crit-bg px-4 py-2.5 text-sm text-crit"
         >
-          <span>Bester Treffer und Verlauf konnten nicht geladen werden.</span>
+          <span>Angebote, bester Treffer und Verlauf konnten nicht geladen werden.</span>
           <button
             type="button"
             onClick={() => {
@@ -131,6 +132,7 @@ export function AnfragenAnsicht({ anfragen, startId = null }: { anfragen: Anfrag
           anfrage={letzteAnfrage}
           besterMatch={detailDaten.besterMatch}
           verlauf={detailDaten.verlauf}
+          angebote={detailDaten.angebote}
           offen={ausgewaehlteId !== null}
           sofortBearbeiten={sofortBearbeiten}
           onSchliessen={() => setAusgewaehlteId(null)}
