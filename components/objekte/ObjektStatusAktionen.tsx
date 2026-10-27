@@ -24,7 +24,8 @@ const AUSFUEHREN: Record<ObjektAktion, (objektId: string) => Promise<AbschlussEr
 type Props = {
   objektId: string
   titel: string
-  objektStatus: ObjektStatus
+  // null, solange die Interessenten laden: dann nur Archivieren, noch keine Statusaktionen.
+  objektStatus: ObjektStatus | null
   // Treffer, die bei "Nicht mehr verfügbar" einen Absage-Entwurf erhalten.
   absagen: number
   fehlendeEntwuerfe: number
@@ -50,9 +51,15 @@ export function ObjektStatusAktionen(p: Props) {
       <div className="flex flex-wrap justify-end gap-2">
         {/* Links und dezent: Archivieren ist selten und soll nicht mit den Statusaktionen konkurrieren. */}
         <div className="mr-auto">
-          <ArchivierenKnopf art="objekt" id={p.objektId} bezeichnung={p.titel} onArchiviert={p.onArchiviert} />
+          <ArchivierenKnopf
+            art="objekt"
+            id={p.objektId}
+            bezeichnung={p.titel}
+            gesperrt={lauf.laufend}
+            onArchiviert={p.onArchiviert}
+          />
         </div>
-        {objektAktionen(p.objektStatus).map((a) => (
+        {(p.objektStatus ? objektAktionen(p.objektStatus) : []).map((a) => (
           <Button
             key={a}
             aria-label={`${OBJEKT_AKTION_LABEL[a]}: ${p.titel}`}

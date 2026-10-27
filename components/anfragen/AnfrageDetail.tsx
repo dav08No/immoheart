@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Pencil } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Drawer } from "@/components/layout/Drawer"
 import { Button } from "@/components/ui/Button"
 import { StatusChip } from "@/components/ui/StatusChip"
@@ -41,6 +42,7 @@ export function AnfrageDetail({
 }) {
   // sofortBearbeiten kommt von einem Klick direkt auf eine ?-Lücke in der
   // Tabelle (README-Anforderung) — dann startet der Drawer im Bearbeiten-Modus.
+  const router = useRouter()
   const [bearbeiten, setBearbeiten] = useState(sofortBearbeiten)
   const [eingaben, setEingaben] = useState<Eingaben>(() => eingabenAus(anfrage))
   const [status, setStatus] = useState(anfrage.status)
@@ -115,6 +117,12 @@ export function AnfrageDetail({
     setBearbeiten(false)
   }
 
+  // onSchliessen lädt nichts neu; die archivierte Anfrage muss aber aus der Liste.
+  function archiviert() {
+    onSchliessen()
+    router.refresh()
+  }
+
   // Primäraktion rechts in der festen Leiste (Ruling R3).
   const fuss = bearbeiten ? (
     <>
@@ -129,7 +137,7 @@ export function AnfrageDetail({
     <>
       {/* Dezent links, Bearbeiten bleibt die Hauptaktion rechts. */}
       <div className="mr-auto">
-        <ArchivierenKnopf art="anfrage" id={id} bezeichnung={anfrage.firma?.name ?? "Anfrage"} onArchiviert={onSchliessen} />
+        <ArchivierenKnopf art="anfrage" id={id} bezeichnung={anfrage.firma?.name ?? "Anfrage"} onArchiviert={archiviert} />
       </div>
       <Button icon={<Pencil className="size-4" aria-hidden />} onClick={bearbeitenStarten}>
         Bearbeiten

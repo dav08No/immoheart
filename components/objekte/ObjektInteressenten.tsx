@@ -96,17 +96,19 @@ export function ObjektInteressenten({ objektId, titel, onStatus, onArchiviert }:
               ))}
             </ul>
           )}
-          <ObjektStatusAktionen
-            objektId={objektId}
-            titel={titel}
-            objektStatus={daten.objektStatus}
-            absagen={absageEmpfaenger(daten.interessenten)}
-            fehlendeEntwuerfe={daten.fehlendeEntwuerfe}
-            onFertig={nachAktion}
-            onArchiviert={onArchiviert}
-          />
         </>
       )}
+      {/* Ausserhalb von `daten`: Archivieren soll auch bei langsamem Laden oder Ladefehler
+          erreichbar sein (die DB prüft offene Angebote ohnehin). */}
+      <ObjektStatusAktionen
+        objektId={objektId}
+        titel={titel}
+        objektStatus={daten?.objektStatus ?? null}
+        absagen={daten ? absageEmpfaenger(daten.interessenten) : 0}
+        fehlendeEntwuerfe={daten?.fehlendeEntwuerfe ?? 0}
+        onFertig={nachAktion}
+        onArchiviert={onArchiviert}
+      />
     </section>
   )
 }

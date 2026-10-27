@@ -1,7 +1,6 @@
 "use client"
 
 import { useId, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Archive } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
 import { Button } from "@/components/ui/Button"
@@ -20,7 +19,7 @@ const TEXTE: Record<Art, { frage: string; folgen: string }> = {
   anfrage: {
     frage: "Anfrage archivieren?",
     folgen:
-      "Die Anfrage verschwindet aus Listen, Treffersuche und Website. Sie bleibt im Archiv und im Jahresrapport und kann dort wiederhergestellt werden. Offene Angebote werden ohne Absage erledigt.",
+      "Die Anfrage verschwindet aus Listen und Treffersuche. Sie bleibt im Archiv und im Jahresrapport und kann dort wiederhergestellt werden. Offene Angebote werden ohne Absage erledigt.",
   },
 }
 const AKTION = { objekt: objektArchivieren, anfrage: anfrageArchivieren }
@@ -29,13 +28,14 @@ type Props = {
   art: Art
   id: string
   bezeichnung: string
-  // Schliesst das Panel; die Seite lädt der Knopf selbst neu.
+  // Während einer anderen Aktion im selben Panel gesperrt.
+  gesperrt?: boolean
+  // Schliesst das Panel und lädt die Seite neu (Aufgabe des Aufrufers, damit nur einmal).
   onArchiviert: () => void
 }
 
 // Dezent, damit er nicht mit den Hauptaktionen des Panels konkurriert (Spec §1).
-export function ArchivierenKnopf({ art, id, bezeichnung, onArchiviert }: Props) {
-  const router = useRouter()
+export function ArchivierenKnopf({ art, id, bezeichnung, gesperrt = false, onArchiviert }: Props) {
   const feldId = useId()
   const [offen, setOffen] = useState(false)
   const [grund, setGrund] = useState("")
@@ -64,7 +64,6 @@ export function ArchivierenKnopf({ art, id, bezeichnung, onArchiviert }: Props) 
       erfolgRef.current = true
       setOffen(false)
       onArchiviert()
-      router.refresh()
     } catch {
       setFehler("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
@@ -74,7 +73,7 @@ export function ArchivierenKnopf({ art, id, bezeichnung, onArchiviert }: Props) 
 
   return (
     <>
-      <Button variante="dezent" icon={<Archive className="size-4" aria-hidden />} aria-label={`Archivieren: ${bezeichnung}`} onClick={oeffnen}>
+      <Button variante="dezent" icon={<Archive className="size-4" aria-hidden />} aria-label={`Archivieren: ${bezeichnung}`} disabled={gesperrt} onClick={oeffnen}>
         Archivieren
       </Button>
       <Dialog open={offen} onOpenChange={(auf) => !auf && !laufend && setOffen(false)}>
