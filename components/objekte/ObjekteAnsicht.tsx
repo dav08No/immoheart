@@ -122,6 +122,7 @@ export function ObjekteAnsicht({
             objektId={bearbeitetesObjekt.id}
             titel={bearbeitetesObjekt.titel}
             onStatus={statusMelden}
+            onArchiviert={schliessen}
           />
         )}
         <ObjektFormular

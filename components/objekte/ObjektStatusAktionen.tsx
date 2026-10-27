@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
+import { ArchivierenKnopf } from "@/components/archiv/ArchivierenKnopf"
 import { AbschlussDialog } from "@/components/abschluss/AbschlussDialog"
 import { AbschlussRueckmeldung } from "@/components/abschluss/AbschlussRueckmeldung"
 import { useAbschlussLauf, type AbschlussErgebnis } from "@/components/abschluss/useAbschlussLauf"
@@ -28,6 +29,8 @@ type Props = {
   absagen: number
   fehlendeEntwuerfe: number
   onFertig: () => void
+  // Schliesst den Drawer nach dem Archivieren (das Objekt verschwindet aus der Liste).
+  onArchiviert: () => void
 }
 
 // Status nur noch über Aktionen (Spec §3): Objekt schliessen oder wieder freigeben,
@@ -45,6 +48,10 @@ export function ObjektStatusAktionen(p: Props) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap justify-end gap-2">
+        {/* Links und dezent: Archivieren ist selten und soll nicht mit den Statusaktionen konkurrieren. */}
+        <div className="mr-auto">
+          <ArchivierenKnopf art="objekt" id={p.objektId} bezeichnung={p.titel} onArchiviert={p.onArchiviert} />
+        </div>
         {objektAktionen(p.objektStatus).map((a) => (
           <Button
             key={a}

@@ -14,6 +14,7 @@ import { AnfrageEckdaten } from "./AnfrageEckdaten"
 import { AnfrageBearbeiten, eingabenAus, type Eingaben } from "./AnfrageBearbeiten"
 import { BesterTreffer, Verlauf } from "./AnfrageTrefferVerlauf"
 import { AnfrageAngebote } from "./AnfrageAngebote"
+import { ArchivierenKnopf } from "@/components/archiv/ArchivierenKnopf"
 import { statusAenderung } from "@/lib/abschluss/status-wechsel"
 import { ANFRAGE_STATUS_LABEL, type BesterMatch } from "./typen"
 
@@ -125,9 +126,15 @@ export function AnfrageDetail({
       </Button>
     </>
   ) : (
-    <Button icon={<Pencil className="size-4" aria-hidden />} onClick={bearbeitenStarten}>
-      Bearbeiten
-    </Button>
+    <>
+      {/* Dezent links, Bearbeiten bleibt die Hauptaktion rechts. */}
+      <div className="mr-auto">
+        <ArchivierenKnopf art="anfrage" id={id} bezeichnung={anfrage.firma?.name ?? "Anfrage"} onArchiviert={onSchliessen} />
+      </div>
+      <Button icon={<Pencil className="size-4" aria-hidden />} onClick={bearbeitenStarten}>
+        Bearbeiten
+      </Button>
+    </>
   )
 
   return (

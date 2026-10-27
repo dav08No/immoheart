@@ -20,12 +20,13 @@ type Props = {
   // Meldet den frisch geladenen Objektstatus an den Drawer-Kopf (der Seiten-Refresh kann
   // nach einer Aktion hinterherhinken).
   onStatus?: (status: ObjektInteressentenDaten["objektStatus"]) => void
+  onArchiviert: () => void
 }
 
 // Treffer des Objekts ab "Angeboten" mit Abschluss-Aktionen je Firma, dazu die Aktionen
 // am Objekt selbst (Spec §3). Lädt per fetch nach wie das Anfrage-Panel; der Elternteil
 // setzt key={objektId}, ein Objektwechsel startet also mit leerem Zustand.
-export function ObjektInteressenten({ objektId, titel, onStatus }: Props) {
+export function ObjektInteressenten({ objektId, titel, onStatus, onArchiviert }: Props) {
   const router = useRouter()
   const [daten, setDaten] = useState<ObjektInteressentenDaten | null>(null)
   const [ladeFehler, setLadeFehler] = useState(false)
@@ -102,6 +103,7 @@ export function ObjektInteressenten({ objektId, titel, onStatus }: Props) {
             absagen={absageEmpfaenger(daten.interessenten)}
             fehlendeEntwuerfe={daten.fehlendeEntwuerfe}
             onFertig={nachAktion}
+            onArchiviert={onArchiviert}
           />
         </>
       )}
