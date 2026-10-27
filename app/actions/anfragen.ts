@@ -5,7 +5,7 @@ import { z } from "zod"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { legeAnfrageAn, aktualisiereAnfrage, holeAnfrage } from "@/lib/queries/anfragen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
-import { loescheNeueMatchesFuerAnfrage } from "@/lib/queries/angebote"
+import { entferneNeueMatchesFuerAnfrage } from "@/lib/queries/angebote"
 import { anfrageStatusFolge } from "@/lib/abschluss/status-wechsel"
 import type { Database } from "@/types/database"
 
@@ -51,9 +51,11 @@ export async function anfrageAktualisieren(id: string, aenderung: Partial<Anfrag
   if (!vorher) throw new Error("Anfrage nicht gefunden")
   await aktualisiereAnfrage(id, aenderung)
   const suchfelderGeaendert = MATCH_RELEVANTE_FELDER.some((feld) => feld in aenderung)
-  const folge = anfrageStatusFolge(vorher.status, aenderung.status ?? vorher.status, suchfelderGeaendert)
+  const neuerStatus = aenderung.status ?? vorher.status
+  const folge = anfrageStatusFolge(vorher.status, neuerStatus, suchfelderGeaendert)
   if (folge === "rematch") await berechneUndSpeichereMatchesFuerAnfrage(id)
-  if (folge === "neu_loeschen") await loescheNeueMatchesFuerAnfrage(id)
+  // neu_loeschen heisst: neuer Status ist ruhend oder vermittelt (nie offen).
+  if (folge === "neu_loeschen") await entferneNeueMatchesFuerAnfrage(id, neuerStatus === "vermittelt" ? "vermittelt" : "ruhend")
   revalidatePath("/admin/anfragen")
   revalidatePath("/admin")
 }

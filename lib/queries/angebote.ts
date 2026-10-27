@@ -4,6 +4,7 @@ import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import { ABSCHLUSS_TYPEN, zuFuellendePlatzhalter } from "@/lib/abschluss/entwuerfe-plan"
 import { baueAngebote, type Angebot } from "@/lib/abschluss/angebote"
+import { entferneNeueTreffer } from "@/lib/queries/treffer-entfernen"
 
 export type { Angebot }
 
@@ -63,8 +64,7 @@ export async function holeAngeboteFuerAnfrage(anfrageId: string): Promise<Angebo
 }
 
 // Manuell ruhend/vermittelt: noch nicht angebotene Treffer gehören nicht mehr zur Anfrage.
-export async function loescheNeueMatchesFuerAnfrage(anfrageId: string): Promise<void> {
-  const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("matches").delete().eq("anfrage_id", anfrageId).eq("status", "neu")
-  if (error) throw error
+// Über das Archiv, damit der Rapport sieht, warum sie verschwunden sind.
+export async function entferneNeueMatchesFuerAnfrage(anfrageId: string, status: "ruhend" | "vermittelt"): Promise<void> {
+  await entferneNeueTreffer("anfrage_id", anfrageId, status === "vermittelt" ? "Anfrage vermittelt" : "Anfrage ruhend")
 }

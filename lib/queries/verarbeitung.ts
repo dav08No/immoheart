@@ -153,7 +153,11 @@ export async function holeGesendeteMitAnfrage(messageIds: string[]): Promise<Ges
 
 export async function holeOffeneAnfragenNachAbsender(): Promise<Record<string, string[]>> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("anfragen").select("id, firmen(kontakt_email)").eq("status", "offen")
+  const { data, error } = await supabase
+    .from("anfragen")
+    .select("id, firmen(kontakt_email)")
+    .eq("status", "offen")
+    .is("archiviert_am", null)
   if (error) throw error
   const nachAbsender: Record<string, string[]> = {}
   for (const a of data) {

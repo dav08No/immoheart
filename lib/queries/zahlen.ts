@@ -47,11 +47,13 @@ export type ZahlenDaten = {
 // `jetzt` kommt vom Aufrufer, damit alle Zeitfenster denselben Stichtag haben.
 export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   const supabase = await erstelleServerClient()
-  const [anfragen, nachrichten, treffer] = await Promise.all([
+  // Die Zahlen-Seite zeigt nur aktive Daten; Archiviertes zählt erst der Rapport.
+  const [anfragen, nachrichten, treffer, archivierteObjekte] = await Promise.all([
     alleSeiten((von, bis) =>
       supabase
         .from("anfragen")
         .select("id, created_at, quelle, status, flaeche_min, flaeche_max, nutzung, letzter_kontakt")
+        .is("archiviert_am", null)
         .order("id")
         .range(von, bis)
     ),
@@ -71,6 +73,10 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
         .order("id")
         .range(von, bis)
     ),
+    // Nur die IDs: Direktanfragen zu archivierten Objekten fallen aus den Top-Objekten.
+    alleSeiten((von, bis) =>
+      supabase.from("objekte").select("id").not("archiviert_am", "is", null).order("id").range(von, bis)
+    ),
   ])
 
   const offene = anfragen.filter((a) => a.status === "offen")
@@ -78,7 +84,12 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   // und beim Versand (ein gesendetes Angebot bleibt gesendet, auch wenn es später aus
   // dem Postfach entfernt wird).
   const sichtbar = nachrichten.filter((n) => n.geloescht_am === null)
-  const direkt = sichtbar.filter((n) => n.kategorie === "objektanfrage" && n.richtung === "eingang")
+  const archiviert = new Set(archivierteObjekte.map((o) => o.id))
+  const direkt = sichtbar.filter(
+    (n) => n.kategorie === "objektanfrage" && n.richtung === "eingang" && !(n.objekt_id && archiviert.has(n.objekt_id))
+  )
+  // erstellt kennt nur aktive Anfragen; Treffer archivierter Anfragen fallen damit in
+  // erstesAngebotJeAnfrage/abschluesseJeAnfrage heraus.
   const erstellt = Object.fromEntries(anfragen.map((a) => [a.id, a.created_at]))
   // angeboten_am wird beim tatsächlichen Versand gesetzt (Spec §3) -- verlässlicher als
   // gesendete Angebots-Mails, die gelöscht oder von Hand verschickt sein können.

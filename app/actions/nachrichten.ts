@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import type { Nutzung } from "@/types"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeNachricht, setzeAnfrageIdFallsLeer, verknuepfeAntwortenMitAnfrage } from "@/lib/queries/nachrichten"
-import { legeAnfrageAn, loescheAnfrage } from "@/lib/queries/anfragen"
+import { legeAnfrageAn, rollbackAnfrage } from "@/lib/queries/anfragen"
 import { loescheFirmaFallsUnbenutzt } from "@/lib/queries/firmen"
 import { berechneUndSpeichereMatchesFuerAnfrage } from "@/lib/queries/matches"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
@@ -33,7 +33,7 @@ export async function alsAnfrageSpeichern(nachrichtId: string, nutzungUeberschre
     // erst angelegte Anfrage wieder verwerfen statt eine Dublette stehen zu lassen.
     const uebernommen = await setzeAnfrageIdFallsLeer(eingang.id, neue.id)
     if (!uebernommen) {
-      await loescheAnfrage(neue.id)
+      await rollbackAnfrage(neue.id)
       // Nur aufräumen, wenn WIR die Firma gerade erst angelegt haben (siehe
       // firmaFuer in anfrage-vorbereitung.ts) -- eine wiederverwendete, bereits
       // vorher existierende Firma wird nie gelöscht. loescheFirmaFallsUnbenutzt prüft zusätzlich selbst, ob der
