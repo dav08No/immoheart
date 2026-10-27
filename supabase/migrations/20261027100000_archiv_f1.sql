@@ -75,7 +75,10 @@ alter table anfragen
   add column if not exists archiv_grund text;
 create index if not exists objekte_archiviert_am on objekte (archiviert_am);
 create index if not exists anfragen_archiviert_am on anfragen (archiviert_am);
--- Die anon-Spaltenrechte auf objekte bleiben unverändert: die neuen Spalten sind intern.
+-- anon braucht Leserecht auf archiviert_am, weil View (security_invoker) und Foto-Policy die
+-- Spalte mit anon-Rechten auswerten; sonst "permission denied" auf der Website. Verrät
+-- nichts: die anon-Policy unten liefert nur Zeilen mit archiviert_am null. archiv_grund bleibt intern.
+grant select (archiviert_am) on table objekte to anon;
 
 -- Wie n5, nur zusätzlich ohne archivierte Objekte. Spalten unverändert (keine Umordnung).
 create or replace view objekte_oeffentlich with (security_invoker = true) as
@@ -83,6 +86,14 @@ create or replace view objekte_oeffentlich with (security_invoker = true) as
   from objekte
   where oeffentlich and status in ('verfuegbar', 'reserviert') and archiviert_am is null;
 grant select on objekte_oeffentlich to anon, authenticated;
+
+-- Archivierte Objekte und ihre Fotos auch bei direktem anon-Zugriff per id verbergen.
+drop policy "oeffentlich liest gelistete objekte" on objekte;
+create policy "oeffentlich liest gelistete objekte" on objekte for select to anon
+  using (oeffentlich and status in ('verfuegbar', 'reserviert') and archiviert_am is null);
+drop policy "oeffentlich liest fotos gelisteter objekte" on objekt_fotos;
+create policy "oeffentlich liest fotos gelisteter objekte" on objekt_fotos for select to anon
+  using (exists (select 1 from objekte o where o.id = objekt_fotos.objekt_id and o.archiviert_am is null));
 
 -- ---------------------------------------------------------------------------------------
 -- Treffer entfernen (App) und Abschluss-Funktionen mit Grund
