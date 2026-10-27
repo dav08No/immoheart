@@ -10,6 +10,7 @@ Vorgaben von Davide (2026-10-27):
 
 - Treffer, Objekte und Anfragen werden archiviert, nicht gelöscht.
 - Eine Archiv-Seite im Admin, auch für Nachfragen unter dem Jahr (Variante 2).
+- Archivierte Daten können im Archiv endgültig gelöscht werden, mit Bestätigung und Warnung (nicht mehr im Rapport, nicht wiederherstellbar).
 - Im Admin ein Knopf „Rapport erstellen“; er erfasst die Daten von genau einem Jahr zurück bis heute.
 - Allgemeiner Jahresrapport mit Diagrammen und Daten über alle Treffer, Angebote usw. Er soll visuell sein und aus genau **einer Datei** bestehen. Format nach meiner Empfehlung: Excel.
 - Die KI schreibt den Textteil, die Zahlen berechnet die App exakt.
@@ -54,6 +55,22 @@ Vorgaben von Davide (2026-10-27):
 - **Treffer:** Tabelle mit Firma, Objekt, Status beim Archivieren, Score, angeboten am, archiviert am und Grund. Nur lesbar.
 - **Objekte und Anfragen:** Tabelle mit den Eckdaten, Status, archiviert am und Grund, dazu der Knopf „Wiederherstellen“ mit Bestätigung.
 - Leerzustand, wenn es nichts gibt. Die Seite nutzt die Bausteine aus `components/ui/*` und ist ab 360 px Breite nutzbar.
+
+### Endgültig löschen (Davide, 2026-10-27)
+
+- Auf der Archiv-Seite hat jeder archivierte Eintrag einen gefährlichen Knopf **„Endgültig löschen“**. Das gilt für Treffer-Archiveinträge, Objekte und Anfragen. Nur archivierte Daten lassen sich so löschen, aktive nie.
+- Ein Bestätigungsdialog warnt deutlich: „Dieser Eintrag wird endgültig gelöscht. Er wird **nicht mehr in den Jahresrapport einbezogen** und kann **nicht wiederhergestellt** werden.“ Bei Objekten und Anfragen nennt er zusätzlich, was mitgelöscht wird, zum Beispiel „inkl. 3 archivierte Treffer und 4 Fotos“. Der Löschknopf ist erst aktiv, wenn das Kästchen „Ich habe verstanden“ angehakt ist.
+- Nur Konten mit `darf_nutzer_anlegen` (Administratoren) sehen und nutzen den Knopf. Das prüfen Server Action und Datenbankfunktion.
+- Was die Datenbankfunktionen `archiv_eintrag_loeschen(p_id)`, `objekt_endgueltig_loeschen(p_id)` und `anfrage_endgueltig_loeschen(p_id)` tun:
+  - Sie laufen atomar und brechen ab, wenn der Datensatz nicht archiviert ist.
+  - **Objekt:**
+    - Seine aktiven Treffer werden ohne Archivierung entfernt; dafür setzt die Funktion `immoheart.endgueltig = '1'`, damit der Archiv-Trigger überspringt.
+    - Seine `treffer_archiv`-Einträge und `objekt_fotos`-Zeilen werden gelöscht.
+    - Verweise in `anfragen.objekt_id` und `nachrichten.objekt_id` werden auf null gesetzt (bestehendes `on delete set null`).
+    - Die Fotodateien im Storage-Bucket löscht die App danach. Gelingt das nicht, wird es nur protokolliert.
+  - **Anfrage:** Wie beim Objekt mit ihren Treffern und Archiveinträgen. `nachrichten.anfrage_id` wird null. Die Firma bleibt bestehen.
+- Der Lösch-Sperr-Trigger auf `objekte` und `anfragen` lässt das nur zu, wenn `immoheart.endgueltig = '1'` gesetzt ist und der Datensatz archiviert ist.
+- Wer wann was endgültig gelöscht hat, wird bewusst nicht protokolliert, weil Davide es so will. Der Rapport zeigt auf dem Blatt „Hinweise“ den Satz „Endgültig gelöschte Einträge sind nicht enthalten.“
 
 ## 2 · Jahresrapport
 
@@ -123,4 +140,4 @@ Vorgaben von Davide (2026-10-27):
 
 ## Nicht im Umfang
 
-Rapport-Ablage oder -Versand, mehrere Rapportvorlagen, PDF-Export, Archivierung von Firmen und Nachrichten (diese werden schon weich gelöscht), automatisches Archivieren nach Fristen.
+Rapport-Ablage oder -Versand, Protokoll endgültiger Löschungen, mehrere Rapportvorlagen, PDF-Export, Archivierung von Firmen und Nachrichten (diese werden schon weich gelöscht), automatisches Archivieren nach Fristen.
