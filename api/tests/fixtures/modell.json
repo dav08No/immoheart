@@ -1,0 +1,621 @@
+{
+  "zeitraum": {
+    "label": "27.10.2025 – 27.10.2026",
+    "von": "2025-10-27",
+    "bis": "2026-10-27"
+  },
+  "kennzahlen": [
+    {
+      "schluessel": "neueAnfragen",
+      "titel": "Neue Anfragen",
+      "format": "zahl",
+      "wert": 3,
+      "text": "davon 1 per Mail, 1 über Website, 1 manuell"
+    },
+    {
+      "schluessel": "neueObjekte",
+      "titel": "Neue Objekte",
+      "format": "zahl",
+      "wert": 2,
+      "text": "davon 0 vermietet"
+    },
+    {
+      "schluessel": "treffer",
+      "titel": "Treffer",
+      "format": "zahl",
+      "wert": 4,
+      "text": "davon 1 archiviert"
+    },
+    {
+      "schluessel": "angebote",
+      "titel": "Gesendete Angebote",
+      "format": "zahl",
+      "wert": 3,
+      "text": "für 3 Anfragen"
+    },
+    {
+      "schluessel": "vermittlungen",
+      "titel": "Vermittlungen",
+      "format": "zahl",
+      "wert": 1,
+      "text": "Median 78 Tage bis Abschluss"
+    },
+    {
+      "schluessel": "vermittlungsquote",
+      "titel": "Vermittlungsquote",
+      "format": "prozent",
+      "wert": 0.3333333333333333,
+      "text": "Vermittlungen je neue Anfrage"
+    }
+  ],
+  "medianwerte": {
+    "tageBisErstangebot": 2.5,
+    "tageBisAbschluss": 78
+  },
+  "diagramme": {
+    "anfragenProMonat": [
+      {
+        "label": "Okt 25",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Nov 25",
+        "mail": 1,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Dez 25",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Jan 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Feb 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Mär 26",
+        "mail": 0,
+        "website": 1,
+        "manuell": 0
+      },
+      {
+        "label": "Apr 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Mai 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Jun 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Jul 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Aug 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Sep 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 0
+      },
+      {
+        "label": "Okt 26",
+        "mail": 0,
+        "website": 0,
+        "manuell": 1
+      }
+    ],
+    "angeboteUndVermittlungenProMonat": [
+      {
+        "label": "Okt 25",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Nov 25",
+        "angebote": 2,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Dez 25",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Jan 26",
+        "angebote": 0,
+        "vermittlungen": 1
+      },
+      {
+        "label": "Feb 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Mär 26",
+        "angebote": 1,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Apr 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Mai 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Jun 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Jul 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Aug 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Sep 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      },
+      {
+        "label": "Okt 26",
+        "angebote": 0,
+        "vermittlungen": 0
+      }
+    ],
+    "trefferNachErgebnis": [
+      {
+        "ergebnis": "Neu",
+        "anzahl": 1
+      },
+      {
+        "ergebnis": "Angeboten",
+        "anzahl": 1
+      },
+      {
+        "ergebnis": "Verworfen",
+        "anzahl": 0
+      },
+      {
+        "ergebnis": "Reserviert",
+        "anzahl": 0
+      },
+      {
+        "ergebnis": "Vermittelt",
+        "anzahl": 1
+      },
+      {
+        "ergebnis": "Abgelehnt",
+        "anzahl": 0
+      },
+      {
+        "ergebnis": "Erledigt",
+        "anzahl": 0
+      },
+      {
+        "ergebnis": "Archiviert",
+        "anzahl": 1
+      }
+    ],
+    "nutzungen": [
+      {
+        "label": "Büro",
+        "anzahl": 2
+      },
+      {
+        "label": "Lager",
+        "anzahl": 1
+      }
+    ]
+  },
+  "tabellen": {
+    "vermittlungen": {
+      "titel": "Vermittlungen",
+      "spalten": [
+        {
+          "schluessel": "datum",
+          "titel": "Datum",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "firma",
+          "titel": "Firma",
+          "typ": "text"
+        },
+        {
+          "schluessel": "objekt",
+          "titel": "Objekt",
+          "typ": "text"
+        },
+        {
+          "schluessel": "flaeche",
+          "titel": "Fläche m²",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "preisProM2",
+          "titel": "Preis/m²",
+          "typ": "chf"
+        },
+        {
+          "schluessel": "tageBisAbschluss",
+          "titel": "Tage bis Abschluss",
+          "typ": "zahl"
+        }
+      ],
+      "zeilen": [
+        {
+          "datum": "2026-01-20",
+          "firma": "Muster AG",
+          "objekt": "Büro am Bahnhof",
+          "flaeche": 300,
+          "preisProM2": 210,
+          "tageBisAbschluss": 78
+        }
+      ]
+    },
+    "angebote": {
+      "titel": "Angebote",
+      "spalten": [
+        {
+          "schluessel": "gesendet",
+          "titel": "Gesendet",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "firma",
+          "titel": "Firma",
+          "typ": "text"
+        },
+        {
+          "schluessel": "objekt",
+          "titel": "Objekt",
+          "typ": "text"
+        },
+        {
+          "schluessel": "ergebnis",
+          "titel": "Ergebnis",
+          "typ": "text"
+        }
+      ],
+      "zeilen": [
+        {
+          "gesendet": "2025-11-05",
+          "firma": "Muster AG",
+          "objekt": "Büro am Bahnhof",
+          "ergebnis": "vermittelt"
+        },
+        {
+          "gesendet": "2025-11-10",
+          "firma": "Alt & Partner",
+          "objekt": "Büro am Bahnhof",
+          "ergebnis": "archiviert"
+        },
+        {
+          "gesendet": "2026-03-18",
+          "firma": "Beispiel GmbH",
+          "objekt": "Lagerhalle West",
+          "ergebnis": "angeboten"
+        }
+      ]
+    },
+    "treffer": {
+      "titel": "Treffer",
+      "spalten": [
+        {
+          "schluessel": "firma",
+          "titel": "Firma",
+          "typ": "text"
+        },
+        {
+          "schluessel": "objekt",
+          "titel": "Objekt",
+          "typ": "text"
+        },
+        {
+          "schluessel": "score",
+          "titel": "Score",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "status",
+          "titel": "Status",
+          "typ": "text"
+        },
+        {
+          "schluessel": "erstellt",
+          "titel": "Erstellt",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "archiviertAm",
+          "titel": "Archiviert am",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "grund",
+          "titel": "Grund",
+          "typ": "text"
+        }
+      ],
+      "zeilen": [
+        {
+          "firma": "Alt & Partner",
+          "objekt": "Büro am Bahnhof",
+          "score": 55,
+          "status": "Angeboten",
+          "erstellt": "2025-07-01",
+          "archiviertAm": "2026-01-10",
+          "grund": "Anfrage archiviert"
+        },
+        {
+          "firma": "Muster AG",
+          "objekt": "Büro am Bahnhof",
+          "score": 92,
+          "status": "Vermittelt",
+          "erstellt": "2025-11-04",
+          "archiviertAm": null,
+          "grund": null
+        },
+        {
+          "firma": "Beispiel GmbH",
+          "objekt": "Lagerhalle West",
+          "score": 81,
+          "status": "Angeboten",
+          "erstellt": "2026-03-16",
+          "archiviertAm": null,
+          "grund": null
+        },
+        {
+          "firma": "Beispiel GmbH",
+          "objekt": "Büro am Bahnhof",
+          "score": 64,
+          "status": "Neu",
+          "erstellt": "2026-03-16",
+          "archiviertAm": null,
+          "grund": null
+        },
+        {
+          "firma": "Muster AG",
+          "objekt": "Werkstatt Süd",
+          "score": 70,
+          "status": "Neu",
+          "erstellt": "2026-05-06",
+          "archiviertAm": "2026-09-01",
+          "grund": "Objekt archiviert"
+        }
+      ]
+    },
+    "anfragen": {
+      "titel": "Anfragen",
+      "spalten": [
+        {
+          "schluessel": "eingang",
+          "titel": "Eingang",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "firma",
+          "titel": "Firma",
+          "typ": "text"
+        },
+        {
+          "schluessel": "nutzung",
+          "titel": "Nutzung",
+          "typ": "text"
+        },
+        {
+          "schluessel": "flaecheMin",
+          "titel": "Fläche min m²",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "flaecheMax",
+          "titel": "Fläche max m²",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "ort",
+          "titel": "Ort",
+          "typ": "text"
+        },
+        {
+          "schluessel": "budgetProM2",
+          "titel": "Budget/m²",
+          "typ": "chf"
+        },
+        {
+          "schluessel": "quelle",
+          "titel": "Quelle",
+          "typ": "text"
+        },
+        {
+          "schluessel": "status",
+          "titel": "Status",
+          "typ": "text"
+        },
+        {
+          "schluessel": "archiviert",
+          "titel": "Archiviert",
+          "typ": "datum"
+        }
+      ],
+      "zeilen": [
+        {
+          "eingang": "2025-06-01",
+          "firma": "Alt & Partner",
+          "nutzung": "Gewerbe",
+          "flaecheMin": 100,
+          "flaecheMax": 150,
+          "ort": "Biberist",
+          "budgetProM2": 150,
+          "quelle": "Mail",
+          "status": "Offen",
+          "archiviert": "2026-01-10"
+        },
+        {
+          "eingang": "2025-11-03",
+          "firma": "Muster AG",
+          "nutzung": "Büro",
+          "flaecheMin": 200,
+          "flaecheMax": 400,
+          "ort": "Solothurn",
+          "budgetProM2": 220,
+          "quelle": "Mail",
+          "status": "Vermittelt",
+          "archiviert": null
+        },
+        {
+          "eingang": "2026-03-15",
+          "firma": "Beispiel GmbH",
+          "nutzung": "Lager",
+          "flaecheMin": 800,
+          "flaecheMax": null,
+          "ort": "Grenchen",
+          "budgetProM2": null,
+          "quelle": "Website",
+          "status": "Offen",
+          "archiviert": null
+        },
+        {
+          "eingang": "2026-10-01",
+          "firma": null,
+          "nutzung": "Büro",
+          "flaecheMin": null,
+          "flaecheMax": null,
+          "ort": null,
+          "budgetProM2": null,
+          "quelle": "Manuell",
+          "status": "Ruhend",
+          "archiviert": "2026-10-20"
+        }
+      ]
+    },
+    "objekte": {
+      "titel": "Objekte",
+      "spalten": [
+        {
+          "schluessel": "erfasst",
+          "titel": "Erfasst",
+          "typ": "datum"
+        },
+        {
+          "schluessel": "titel",
+          "titel": "Titel",
+          "typ": "text"
+        },
+        {
+          "schluessel": "ort",
+          "titel": "Ort",
+          "typ": "text"
+        },
+        {
+          "schluessel": "flaeche",
+          "titel": "Fläche m²",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "preisProM2",
+          "titel": "Preis/m²",
+          "typ": "chf"
+        },
+        {
+          "schluessel": "nutzung",
+          "titel": "Nutzung",
+          "typ": "text"
+        },
+        {
+          "schluessel": "status",
+          "titel": "Status",
+          "typ": "text"
+        },
+        {
+          "schluessel": "angebote",
+          "titel": "Angebote",
+          "typ": "zahl"
+        },
+        {
+          "schluessel": "archiviert",
+          "titel": "Archiviert",
+          "typ": "datum"
+        }
+      ],
+      "zeilen": [
+        {
+          "erfasst": "2026-02-01",
+          "titel": "Lagerhalle West",
+          "ort": "Grenchen",
+          "flaeche": 900,
+          "preisProM2": 95,
+          "nutzung": "Lager",
+          "status": "Verfügbar",
+          "angebote": 1,
+          "archiviert": null
+        },
+        {
+          "erfasst": "2026-05-05",
+          "titel": "Werkstatt Süd",
+          "ort": "Zuchwil",
+          "flaeche": 250,
+          "preisProM2": null,
+          "nutzung": "Gewerbe",
+          "status": "Verfügbar",
+          "angebote": 0,
+          "archiviert": "2026-09-01"
+        }
+      ]
+    }
+  },
+  "hinweise": [
+    "Datenquelle: immoheart-Datenbank, einschliesslich archivierter Treffer, Objekte und Anfragen.",
+    "Zeitraum: 27.10.2025 – 27.10.2026, Schweizer Zeit, beide Tage eingeschlossen. Ein Ereignis zählt, wenn sein eigenes Datum im Zeitraum liegt.",
+    "Neue Anfragen: Anfragen mit Eingangsdatum im Zeitraum.",
+    "Neue Objekte: Objekte, die im Zeitraum erfasst wurden.",
+    "Treffer: im Zeitraum entstandene Treffer, aktive und archivierte, jeder Treffer einmal.",
+    "Gesendete Angebote: im Zeitraum gesendete Angebots-Mails, auch solche, die später aus dem Postfach gelöscht wurden.",
+    "Vermittlungen: Treffer mit Abschlussdatum (vermittelt) im Zeitraum.",
+    "Vermittlungsquote: Vermittlungen im Zeitraum geteilt durch neue Anfragen im Zeitraum.",
+    "Tage bis Erstangebot: Median vom Eingang einer neuen Anfrage bis zu ihrem ersten gesendeten Angebot.",
+    "Tage bis Abschluss: Median vom Eingang der Anfrage bis zur Vermittlung.",
+    "Treffer nach Ergebnis: aktueller Status der Treffer; archivierte Treffer erscheinen als «Archiviert».",
+    "Blätter Anfragen und Objekte: im Zeitraum erfasst oder archiviert. Blatt Treffer: aktive, im Zeitraum entstandene Treffer und jeder Archiveintrag, der im Zeitraum entstand oder archiviert wurde.",
+    "Endgültig gelöschte Einträge sind nicht enthalten."
+  ]
+}
