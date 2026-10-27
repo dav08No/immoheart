@@ -49,10 +49,17 @@ export const SUCHTEXTE = {
   anfragen: (a: { firma: string | null; eckdaten: string | null; grund: string | null }) => [a.firma, a.eckdaten, a.grund],
 }
 
-// Bei Objekten und Anfragen nennt der Lösch-Dialog, was mitgeht; null = nichts weiter.
-export function mitgeloeschtText(treffer: number, fotos: number | null): string | null {
+// Bei Objekten und Anfragen nennt der Lösch-Dialog alles, was die Kaskade mitnimmt
+// (Ruling R4): Archiveinträge, noch vorhandene Treffer (vermittelt, abgelehnt, …), Fotos.
+// null = nichts weiter.
+export function mitgeloeschtText(archiviert: number, abgeschlossen: number, fotos: number | null): string | null {
   const teile: string[] = []
-  if (treffer > 0) teile.push(`${formatZahl(treffer)} ${treffer === 1 ? "archivierter Treffer" : "archivierte Treffer"}`)
+  if (archiviert > 0) teile.push(`${formatZahl(archiviert)} ${archiviert === 1 ? "archivierter Treffer" : "archivierte Treffer"}`)
+  if (abgeschlossen > 0) {
+    teile.push(`${formatZahl(abgeschlossen)} ${abgeschlossen === 1 ? "abgeschlossener Treffer" : "abgeschlossene Treffer"}`)
+  }
   if (fotos !== null && fotos > 0) teile.push(`${formatZahl(fotos)} ${fotos === 1 ? "Foto" : "Fotos"}`)
-  return teile.length > 0 ? `Mitgelöscht werden: ${teile.join(" und ")}` : null
+  if (teile.length === 0) return null
+  const letzter = teile.pop()
+  return `Mitgelöscht werden: ${teile.length > 0 ? `${teile.join(", ")} und ${letzter}` : letzter}`
 }

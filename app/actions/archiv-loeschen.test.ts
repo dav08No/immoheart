@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
-vi.mock("@/lib/queries/profile", () => ({ holeBerechtigtesProfil: vi.fn() }))
+vi.mock("@/lib/queries/profile", () => ({ holeEigenesProfil: vi.fn() }))
 vi.mock("@/lib/queries/archiv", () => ({
   loescheArchivEintrag: vi.fn(),
   loescheObjektEndgueltig: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("@/lib/queries/archiv", () => ({
 
 import { revalidatePath } from "next/cache"
 import { anfrageEndgueltigLoeschen, archivEintragLoeschen, objektEndgueltigLoeschen } from "./archiv-loeschen"
-import { holeBerechtigtesProfil } from "@/lib/queries/profile"
+import { holeEigenesProfil } from "@/lib/queries/profile"
 import {
   entferneFotoDateien,
   loescheAnfrageEndgueltig,
@@ -28,14 +28,14 @@ const NUR_ADMIN = "Nur Administratoren dürfen endgültig löschen."
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(holeBerechtigtesProfil).mockResolvedValue({ id: "p1", darf_nutzer_anlegen: true } as never)
+  vi.mocked(holeEigenesProfil).mockResolvedValue({ id: "p1", darf_nutzer_anlegen: true } as never)
   vi.mocked(loescheObjektEndgueltig).mockResolvedValue(["o/a.jpg", "o/b.png"])
   vi.mocked(entferneFotoDateien).mockResolvedValue(true)
 })
 
 describe("Endgültig löschen", () => {
   it("ohne Admin-Recht: Fehler und keine RPC, auch bei ungültiger ID", async () => {
-    vi.mocked(holeBerechtigtesProfil).mockRejectedValue(new Error("Keine Berechtigung"))
+    vi.mocked(holeEigenesProfil).mockResolvedValue({ id: "p2", darf_nutzer_anlegen: false } as never)
     await expect(archivEintragLoeschen(ID)).resolves.toEqual({ fehler: NUR_ADMIN })
     await expect(objektEndgueltigLoeschen("kaputt")).resolves.toEqual({ fehler: NUR_ADMIN })
     await expect(anfrageEndgueltigLoeschen(ID)).resolves.toEqual({ fehler: NUR_ADMIN })
@@ -47,7 +47,7 @@ describe("Endgültig löschen", () => {
   })
 
   it("reicht einen Redirect (keine Sitzung) durch", async () => {
-    vi.mocked(holeBerechtigtesProfil).mockRejectedValue(new Error("NEXT_REDIRECT"))
+    vi.mocked(holeEigenesProfil).mockRejectedValue(new Error("NEXT_REDIRECT"))
     await expect(anfrageEndgueltigLoeschen(ID)).rejects.toThrow("NEXT_REDIRECT")
     expect(loescheAnfrageEndgueltig).not.toHaveBeenCalled()
   })

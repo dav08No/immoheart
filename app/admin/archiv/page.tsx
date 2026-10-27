@@ -6,8 +6,8 @@ import { kontextArchiv } from "@/lib/admin/kontext"
 
 // Kein try/catch: Ladefehler fängt app/admin/error.tsx (Error-Boundary des Segments).
 export default async function ArchivPage() {
-  const profil = await holeEigenesProfil()
-  const daten = await holeArchiv()
+  // Parallel: holeArchiv läuft mit RLS, ohne Sitzung leitet holeEigenesProfil ohnehin weiter.
+  const [profil, daten] = await Promise.all([holeEigenesProfil(), holeArchiv()])
   // Ein Stichtag für "letzte 12 Monate", gesetzt auf dem Server (hydrationssicher).
   const jetzt = new Date().toISOString()
 

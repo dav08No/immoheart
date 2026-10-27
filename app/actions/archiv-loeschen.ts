@@ -3,7 +3,7 @@
 // Endgültiges Löschen archivierter Daten (Spec §1). Getrennt von archiv.ts, weil hier
 // zusätzlich das Admin-Recht gilt; die DB-Funktionen prüfen es ein zweites Mal.
 import { revalidatePath } from "next/cache"
-import { holeBerechtigtesProfil } from "@/lib/queries/profile"
+import { holeEigenesProfil } from "@/lib/queries/profile"
 import { NutzerFehler } from "@/lib/nutzer-fehler"
 import {
   entferneFotoDateien,
@@ -24,15 +24,11 @@ function pruefeId(id: unknown): string {
   return geprueft.data
 }
 
-// Admin-Recht vor allem anderen. holeBerechtigtesProfil wirft bei fehlendem Recht
-// "Keine Berechtigung"; ein Redirect (keine Sitzung) muss dagegen durchgereicht werden.
+// Admin-Recht vor allem anderen (ohne Sitzung leitet holeEigenesProfil weiter);
+// das Flag direkt prüfen statt einen Fehlertext zu vergleichen.
 async function alsAdmin(schritt: () => Promise<LoeschErgebnis>): Promise<LoeschErgebnis> {
-  try {
-    await holeBerechtigtesProfil()
-  } catch (e) {
-    if (e instanceof Error && e.message === "Keine Berechtigung") return { fehler: NUR_ADMIN }
-    throw e
-  }
+  const profil = await holeEigenesProfil()
+  if (!profil.darf_nutzer_anlegen) return { fehler: NUR_ADMIN }
   try {
     const ergebnis = await schritt()
     revalidatePath("/admin/archiv")

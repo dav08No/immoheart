@@ -26,6 +26,8 @@ export type ArchivObjekt = {
   grund: string | null
   // Was "Endgültig löschen" mitnimmt; vorab gezählt, damit der Dialog nicht nachladen muss.
   trefferAnzahl: number
+  // Noch in matches (vermittelt, abgelehnt, …): die Kaskade löscht sie ohne Archiv (Ruling R4).
+  abgeschlossenAnzahl: number
   fotoAnzahl: number
 }
 
@@ -37,6 +39,7 @@ export type ArchivAnfrage = {
   archiviert_am: string
   grund: string | null
   trefferAnzahl: number
+  abgeschlossenAnzahl: number
 }
 
 export type ArchivDaten = { treffer: ArchivTreffer[]; objekte: ArchivObjekt[]; anfragen: ArchivAnfrage[] }

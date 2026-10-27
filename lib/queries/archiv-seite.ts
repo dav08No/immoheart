@@ -18,6 +18,22 @@ async function jePortion<T>(ids: string[], laden: (portion: string[]) => Promise
   return (await Promise.all(teile)).flat()
 }
 
+// Für Zähl-Listen (Fotos, Treffer je Datensatz): eine Portion kann über 1000 Zeilen haben,
+// darum innerhalb jeder Portion seitenweise, sonst würde still abgeschnitten.
+async function jePortionSeitenweise<T>(
+  ids: string[],
+  laden: (portion: string[], von: number, bis: number) => Promise<T[]>,
+): Promise<T[]> {
+  return jePortion(ids, async (portion) => {
+    const alle: T[] = []
+    for (let von = 0; ; von += SEITE) {
+      const seite = await laden(portion, von, von + SEITE - 1)
+      alle.push(...seite)
+      if (seite.length < SEITE) return alle
+    }
+  })
+}
+
 function zaehle(ids: string[]): Map<string, number> {
   const anzahl = new Map<string, number>()
   for (const id of ids) anzahl.set(id, (anzahl.get(id) ?? 0) + 1)
@@ -42,6 +58,8 @@ export async function holeArchiv(): Promise<ArchivDaten> {
     }
   }
 
+  // Archivierte Objekte/Anfragen ungeblättert: es werden deutlich unter 1000 erwartet
+  // (kleiner Bestand, Archivieren ist eine bewusste Einzelaktion); Treffer dagegen seitenweise.
   const [treffer, objekteErg, anfragenErg] = await Promise.all([
     holeTrefferArchiv(),
     supabase
@@ -66,7 +84,7 @@ export async function holeArchiv(): Promise<ArchivDaten> {
   const fehlendeObjekte = treffer.map((t) => t.objekt_id).filter((id) => !objektTitel.has(id))
   const fehlendeAnfragen = treffer.map((t) => t.anfrage_id).filter((id) => !anfrageFirma.has(id))
 
-  const [weitereObjekte, weitereAnfragen, fotos] = await Promise.all([
+  const [weitereObjekte, weitereAnfragen, fotos, objektMatches, anfrageMatches] = await Promise.all([
     jePortion(fehlendeObjekte, async (p) => {
       const { data, error } = await supabase.from("objekte").select("id, titel").in("id", p)
       if (error) throw error
@@ -77,9 +95,20 @@ export async function holeArchiv(): Promise<ArchivDaten> {
       if (error) throw error
       return data
     }),
-    // Eine gruppierbare Liste statt einer Zählung je Objekt (kein N+1).
-    jePortion(objekte.map((o) => o.id), async (p) => {
-      const { data, error } = await supabase.from("objekt_fotos").select("objekt_id").in("objekt_id", p)
+    // Gruppierbare Listen statt einer Zählung je Datensatz (kein N+1).
+    jePortionSeitenweise(objekte.map((o) => o.id), async (p, von, bis) => {
+      const { data, error } = await supabase.from("objekt_fotos").select("objekt_id").in("objekt_id", p).order("id").range(von, bis)
+      if (error) throw error
+      return data
+    }),
+    // Noch vorhandene Treffer (vermittelt, abgelehnt, …) löscht die Kaskade ohne Archiv mit (Ruling R4).
+    jePortionSeitenweise(objekte.map((o) => o.id), async (p, von, bis) => {
+      const { data, error } = await supabase.from("matches").select("objekt_id").in("objekt_id", p).order("id").range(von, bis)
+      if (error) throw error
+      return data
+    }),
+    jePortionSeitenweise(anfragen.map((a) => a.id), async (p, von, bis) => {
+      const { data, error } = await supabase.from("matches").select("anfrage_id").in("anfrage_id", p).order("id").range(von, bis)
       if (error) throw error
       return data
     }),
@@ -102,6 +131,8 @@ export async function holeArchiv(): Promise<ArchivDaten> {
   const trefferJeObjekt = zaehle(treffer.map((t) => t.objekt_id))
   const trefferJeAnfrage = zaehle(treffer.map((t) => t.anfrage_id))
   const fotosJeObjekt = zaehle(fotos.map((f) => f.objekt_id))
+  const matchesJeObjekt = zaehle(objektMatches.map((m) => m.objekt_id))
+  const matchesJeAnfrage = zaehle(anfrageMatches.map((m) => m.anfrage_id))
 
   return {
     treffer: treffer.map((t) => ({
@@ -125,6 +156,7 @@ export async function holeArchiv(): Promise<ArchivDaten> {
       archiviert_am: o.archiviert_am ?? "",
       grund: o.archiv_grund,
       trefferAnzahl: trefferJeObjekt.get(o.id) ?? 0,
+      abgeschlossenAnzahl: matchesJeObjekt.get(o.id) ?? 0,
       fotoAnzahl: fotosJeObjekt.get(o.id) ?? 0,
     })),
     anfragen: anfragen.map((a) => ({
@@ -135,6 +167,7 @@ export async function holeArchiv(): Promise<ArchivDaten> {
       archiviert_am: a.archiviert_am ?? "",
       grund: a.archiv_grund,
       trefferAnzahl: trefferJeAnfrage.get(a.id) ?? 0,
+      abgeschlossenAnzahl: matchesJeAnfrage.get(a.id) ?? 0,
     })),
   }
 }

@@ -45,7 +45,7 @@ export function ArchivTabelleObjekte({ objekte, ...zeile }: { objekte: ArchivObj
               <ArchivZeilenAktionen
                 {...zeile}
                 wiederherstellbar
-                ziel={{ typ: "objekt", id: o.id, bezeichnung: o.titel, mitgeloescht: mitgeloeschtText(o.trefferAnzahl, o.fotoAnzahl) }}
+                ziel={{ typ: "objekt", id: o.id, bezeichnung: o.titel, mitgeloescht: mitgeloeschtText(o.trefferAnzahl, o.abgeschlossenAnzahl, o.fotoAnzahl) }}
               />
             </td>
           </tr>

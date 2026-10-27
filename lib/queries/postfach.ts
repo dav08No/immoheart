@@ -9,7 +9,7 @@ export type PostfachNachricht = NachrichtRow & { anhangTypen: string[]; objektAr
 
 // Anhang-Typen direkt mitgeladen (eine Abfrage statt einer zweiten mit allen IDs im
 // URL-Filter, der bei vielen Nachrichten zu lang würde) -- für die Badges "2 Bilder"/"PDF".
-// Archivierte Objekt-IDs parallel: wenige Zeilen, ohne id-Liste in der URL.
+// Archivierte Objekt-IDs parallel: ungeblättert, weil deutlich unter 1000 erwartet; ohne id-Liste in der URL.
 export async function holePostfachNachrichten(): Promise<PostfachNachricht[]> {
   const supabase = await erstelleServerClient()
   const [nachrichten, archiviert] = await Promise.all([

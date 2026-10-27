@@ -52,10 +52,14 @@ describe("filtereArchiv", () => {
 
 describe("mitgeloeschtText", () => {
   it("Singular, Plural und Weglassen von Nullen", () => {
-    expect(mitgeloeschtText(3, 4)).toBe("Mitgelöscht werden: 3 archivierte Treffer und 4 Fotos")
-    expect(mitgeloeschtText(1, 1)).toBe("Mitgelöscht werden: 1 archivierter Treffer und 1 Foto")
-    expect(mitgeloeschtText(2, null)).toBe("Mitgelöscht werden: 2 archivierte Treffer")
-    expect(mitgeloeschtText(0, 2)).toBe("Mitgelöscht werden: 2 Fotos")
-    expect(mitgeloeschtText(0, 0)).toBeNull()
+    expect(mitgeloeschtText(3, 2, 4)).toBe("Mitgelöscht werden: 3 archivierte Treffer, 2 abgeschlossene Treffer und 4 Fotos")
+    expect(mitgeloeschtText(1, 1, 1)).toBe("Mitgelöscht werden: 1 archivierter Treffer, 1 abgeschlossener Treffer und 1 Foto")
+    expect(mitgeloeschtText(3, 0, 4)).toBe("Mitgelöscht werden: 3 archivierte Treffer und 4 Fotos")
+    expect(mitgeloeschtText(2, 0, null)).toBe("Mitgelöscht werden: 2 archivierte Treffer")
+    expect(mitgeloeschtText(0, 5, null)).toBe("Mitgelöscht werden: 5 abgeschlossene Treffer")
+    expect(mitgeloeschtText(0, 1, 2)).toBe("Mitgelöscht werden: 1 abgeschlossener Treffer und 2 Fotos")
+    expect(mitgeloeschtText(0, 0, 2)).toBe("Mitgelöscht werden: 2 Fotos")
+    expect(mitgeloeschtText(0, 0, 0)).toBeNull()
+    expect(mitgeloeschtText(0, 0, null)).toBeNull()
   })
 })

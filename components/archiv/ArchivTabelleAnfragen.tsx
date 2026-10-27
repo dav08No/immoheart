@@ -41,7 +41,7 @@ export function ArchivTabelleAnfragen({ anfragen, ...zeile }: { anfragen: Archiv
                 <ArchivZeilenAktionen
                   {...zeile}
                   wiederherstellbar
-                  ziel={{ typ: "anfrage", id: a.id, bezeichnung, mitgeloescht: mitgeloeschtText(a.trefferAnzahl, null) }}
+                  ziel={{ typ: "anfrage", id: a.id, bezeichnung, mitgeloescht: mitgeloeschtText(a.trefferAnzahl, a.abgeschlossenAnzahl, null) }}
                 />
               </td>
             </tr>
