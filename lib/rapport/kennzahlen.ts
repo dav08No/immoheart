@@ -1,6 +1,6 @@
 // Die 6 Kennzahl-Kacheln, die Medianwerte und der namensfreie Auszug für die KI.
 import { erstesAngebotJeAnfrage, formatTage } from "@/lib/zahlen/anzeige"
-import { abschluesseJeAnfrage, tageBisAbschluss, tageBisErstangebot } from "@/lib/zahlen/anfragen"
+import { abschluesseJeAnfrage, tageBisAbschluss, tageBisErstangebot, vermittlungsquote } from "@/lib/zahlen/anfragen"
 import type { RapportAuswahl } from "./auswahl"
 import type { RapportRohdaten } from "./roh"
 import type { Kachel, KennzahlenFuerKi, Medianwerte, RapportModell } from "./typen"
@@ -14,10 +14,12 @@ function zaehle<T>(liste: T[], passt: (x: T) => boolean): number {
 }
 
 export function berechneKennzahlen(a: RapportAuswahl, roh: RapportRohdaten): { kennzahlen: Kachel[]; medianwerte: Medianwerte } {
-  // Erstangebot nur für neue Anfragen: deren Angebote liegen alle im Zeitraum, das
-  // früheste ist also wirklich das erste.
+  // Erstangebot wie die Zahlen-Seite über angeboten_am (beim echten Versand gesetzt), hier
+  // aktive plus archivierte Treffer. Nur neue Anfragen: deren Angebote liegen alle im
+  // Zeitraum, das früheste ist also wirklich das erste.
   const neuErstellt = Object.fromEntries(a.neueAnfragen.map((x) => [x.id, x.created_at]))
-  const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(a.angebote, neuErstellt))
+  const angeboten = [...roh.treffer, ...roh.trefferArchiv].map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
+  const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(angeboten, neuErstellt))
   // Abschluss über alle Anfragen: vermittelt wird oft eine ältere Anfrage.
   const alleErstellt = Object.fromEntries(roh.anfragen.map((x) => [x.id, x.created_at]))
   const abschluss = tageBisAbschluss(
@@ -28,8 +30,8 @@ export function berechneKennzahlen(a: RapportAuswahl, roh: RapportRohdaten): { k
   const anfragen = a.neueAnfragen
   const quelle = (q: string) => zaehle(anfragen, (x) => x.quelle === q)
   const angefragt = new Set(a.angebote.flatMap((x) => (x.anfrage_id ? [x.anfrage_id] : []))).size
-  // Definition laut Controller: Vermittlungen im Zeitraum je neue Anfrage im Zeitraum.
-  const quote = anfragen.length > 0 ? a.vermittlungen.length / anfragen.length : null
+  // R5: Anteil der neuen Anfragen, die heute vermittelt sind -- höchstens 100 %.
+  const { quote } = vermittlungsquote(anfragen)
 
   const kennzahlen: Kachel[] = [
     {
@@ -51,7 +53,7 @@ export function berechneKennzahlen(a: RapportAuswahl, roh: RapportRohdaten): { k
     },
     {
       schluessel: "vermittlungsquote", titel: "Vermittlungsquote", format: "prozent", wert: quote,
-      text: quote === null ? "keine neuen Anfragen" : "Vermittlungen je neue Anfrage",
+      text: quote === null ? "keine neuen Anfragen" : "Anteil der neuen Anfragen, die vermittelt sind",
     },
   ]
   return { kennzahlen, medianwerte }

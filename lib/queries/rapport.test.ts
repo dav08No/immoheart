@@ -35,11 +35,17 @@ describe("holeRapportRohdaten", () => {
     )
   })
 
-  it("lädt keine Spalten mit Personendaten", async () => {
+  // Datenschutz: genau diese Spalten, jede neue muss hier bewusst ergänzt werden.
+  it("lädt genau die erlaubten Spalten je Tabelle", async () => {
     await holeRapportRohdaten({ abfrageAb: "2025-10-26" })
-    const spalten = [...protokoll.values()].flatMap((a) => a.filter(([n]) => n === "select").map(([, s]) => String(s)))
-    for (const verboten of ["email", "kontakt", "eigentuemer", "body", "betreff", "von", "an,"]) {
-      expect(spalten.join(" | ")).not.toMatch(new RegExp(`\\b${verboten}`))
-    }
+    const spalten = Object.fromEntries([...protokoll].map(([t, a]) => [t, a.filter(([n]) => n === "select").map(([, s]) => s)]))
+    expect(spalten).toEqual({
+      anfragen: ["id, firma_id, created_at, quelle, status, nutzung, flaeche_min, flaeche_max, ort, budget_pro_m2, archiviert_am"],
+      objekte: ["id, titel, ort, flaeche, preis_pro_m2, nutzung, status, created_at, archiviert_am"],
+      firmen: ["id, name"],
+      matches: ["id, anfrage_id, objekt_id, status, score, created_at, angeboten_am, abgeschlossen_am"],
+      treffer_archiv: ["id, match_id, anfrage_id, objekt_id, status, score, treffer_erstellt_am, angeboten_am, abgeschlossen_am, archiviert_am, grund"],
+      nachrichten: ["match_id, anfrage_id, objekt_id, gesendet_am"],
+    })
   })
 })

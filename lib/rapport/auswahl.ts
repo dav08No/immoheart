@@ -38,6 +38,25 @@ function nachZeit<T>(liste: T[], zeit: (x: T) => string): T[] {
   return [...liste].sort((a, b) => Date.parse(zeit(a)) - Date.parse(zeit(b)))
 }
 
+export const paarSchluessel = (anfrageId: string | null, objektId: string | null) => `${anfrageId ?? ""}|${objektId ?? ""}`
+
+// Archivieren löscht die Zeile, ein Rematching legt eine neue id an: derselbe Treffer
+// (Paar Anfrage/Objekt) hat also mehrere match_ids. Darum je Paar einmal (R7):
+// die aktive Zeile gewinnt, sonst der jüngste Archiveintrag.
+function jePaar(eintraege: TrefferEintrag[]): TrefferEintrag[] {
+  const gewaehlt = new Map<string, TrefferEintrag>()
+  for (const t of eintraege) {
+    const schluessel = paarSchluessel(t.anfrageId, t.objektId)
+    const bisher = gewaehlt.get(schluessel)
+    const besser =
+      !bisher ||
+      (bisher.quelle === "archiv" && t.quelle === "aktiv") ||
+      (bisher.quelle === "archiv" && t.quelle === "archiv" && Date.parse(t.archiviertAm ?? "") > Date.parse(bisher.archiviertAm ?? ""))
+    if (besser) gewaehlt.set(schluessel, t)
+  }
+  return [...gewaehlt.values()]
+}
+
 export function waehleAus(roh: RapportRohdaten, z: Zeitraum): RapportAuswahl {
   const erstelltOderArchiviert = (x: { created_at: string; archiviert_am: string | null }) =>
     imZeitraum(z, x.created_at) || imZeitraum(z, x.archiviert_am)
@@ -55,32 +74,26 @@ export function waehleAus(roh: RapportRohdaten, z: Zeitraum): RapportAuswahl {
       score: t.score, erstellt: t.treffer_erstellt_am, archiviertAm: t.archiviert_am, grund: t.grund,
     }))
 
-  // Kennzahl "Treffer": je match_id einmal. Aktiv gewinnt, sonst der jüngste Archiveintrag
-  // (ein Treffer kann mehrfach archiviert werden, die Tabelle zeigt trotzdem jeden Eintrag).
-  const aktiveIds = new Set(roh.treffer.map((t) => t.id))
-  const letzterArchiv = new Map<string, TrefferEintrag>()
-  for (const t of archiv) {
-    if (aktiveIds.has(t.matchId) || !imZeitraum(z, t.erstellt)) continue
-    const bisher = letzterArchiv.get(t.matchId)
-    if (!bisher || Date.parse(t.archiviertAm ?? "") > Date.parse(bisher.archiviertAm ?? "")) letzterArchiv.set(t.matchId, t)
-  }
+  const neueTreffer = jePaar([...aktiv, ...archiv].filter((t) => imZeitraum(z, t.erstellt)))
 
-  const vermittelt = new Map<string, Vermittlung>()
-  for (const t of [...roh.treffer.map((x) => ({ ...x, match_id: x.id })), ...roh.trefferArchiv]) {
-    if (t.status !== "vermittelt" || !t.abgeschlossen_am || !imZeitraum(z, t.abgeschlossen_am)) continue
-    if (vermittelt.has(t.match_id)) continue // aktive Zeile steht vorne und gewinnt
-    vermittelt.set(t.match_id, { matchId: t.match_id, anfrageId: t.anfrage_id, objektId: t.objekt_id, abgeschlossenAm: t.abgeschlossen_am })
-  }
+  // Vermittelte Treffer werden nicht archiviert; eine Archivzeile "vermittelt" ist eine eigene
+  // Episode (eigene match_id), darum kein Abgleich nötig.
+  const vermittlungen: Vermittlung[] = [...roh.treffer.map((x) => ({ ...x, match_id: x.id })), ...roh.trefferArchiv].flatMap((t) =>
+    t.status === "vermittelt" && t.abgeschlossen_am && imZeitraum(z, t.abgeschlossen_am)
+      ? [{ matchId: t.match_id, anfrageId: t.anfrage_id, objektId: t.objekt_id, abgeschlossenAm: t.abgeschlossen_am }]
+      : []
+  )
 
   return {
     neueAnfragen: nachZeit(roh.anfragen.filter((a) => imZeitraum(z, a.created_at)), (a) => a.created_at),
     anfragen: nachZeit(roh.anfragen.filter(erstelltOderArchiviert), (a) => a.created_at),
     neueObjekte: nachZeit(roh.objekte.filter((o) => imZeitraum(z, o.created_at)), (o) => o.created_at),
     objekte: nachZeit(roh.objekte.filter(erstelltOderArchiviert), (o) => o.created_at),
-    neueTreffer: nachZeit([...aktiv, ...letzterArchiv.values()], (t) => t.erstellt),
-    trefferZeilen: nachZeit([...aktiv, ...archiv], (t) => t.erstellt),
-    angebote: nachZeit(roh.angebote.filter((a) => imZeitraum(z, a.gesendet_am)), (a) => a.gesendet_am ?? ""),
-    vermittlungen: nachZeit([...vermittelt.values()], (v) => v.abgeschlossenAm),
+    neueTreffer: nachZeit(neueTreffer, (t) => t.erstellt),
+    trefferZeilen: nachZeit(jePaar([...aktiv, ...archiv]), (t) => t.erstellt),
+    // Ohne Anfrage = endgültig gelöscht (R6): zählt weder in Kachel, Diagramm noch Tabelle.
+    angebote: nachZeit(roh.angebote.filter((a) => a.anfrage_id !== null && imZeitraum(z, a.gesendet_am)), (a) => a.gesendet_am ?? ""),
+    vermittlungen: nachZeit(vermittlungen, (v) => v.abgeschlossenAm),
   }
 }
 

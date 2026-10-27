@@ -16,17 +16,29 @@ describe("ohneEmail", () => {
 })
 
 describe("angebotErgebnis", () => {
-  const roh = BEISPIEL_ROHDATEN
+  const ergebnis = angebotErgebnis(BEISPIEL_ROHDATEN)
+  const mail = (match_id: string | null, anfrage_id: string | null, objekt_id: string | null, gesendet_am: string) =>
+    ergebnis({ match_id, anfrage_id, objekt_id, gesendet_am })
+
   it("nimmt den aktuellen Trefferstatus über match_id", () => {
-    expect(angebotErgebnis({ match_id: "m1", anfrage_id: "a1", objekt_id: "o1", gesendet_am: null }, roh)).toBe("vermittelt")
-    expect(angebotErgebnis({ match_id: "m2", anfrage_id: "a2", objekt_id: "o2", gesendet_am: null }, roh)).toBe("angeboten")
+    expect(mail("m1", "a1", "o1", "2025-11-05T09:00:00Z")).toBe("vermittelt")
+    expect(mail("m2", "a2", "o2", "2026-03-18T09:00:00Z")).toBe("angeboten")
   })
   it("erkennt archivierte Treffer über Anfrage und Objekt, weil match_id dann null ist", () => {
-    expect(angebotErgebnis({ match_id: null, anfrage_id: "a4", objekt_id: "o1", gesendet_am: null }, roh)).toBe("archiviert")
+    expect(mail(null, "a4", "o1", "2025-11-10T09:00:00Z")).toBe("archiviert")
   })
   it("findet aktive Treffer auch ohne match_id, sonst bleibt es 'angeboten'", () => {
-    expect(angebotErgebnis({ match_id: null, anfrage_id: "a1", objekt_id: "o1", gesendet_am: null }, roh)).toBe("vermittelt")
-    expect(angebotErgebnis({ match_id: null, anfrage_id: null, objekt_id: null, gesendet_am: null }, roh)).toBe("angeboten")
+    expect(mail(null, "a1", "o1", "2025-11-06T09:00:00Z")).toBe("vermittelt")
+    expect(mail(null, "a3", "o2", "2026-10-02T09:00:00Z")).toBe("angeboten")
+  })
+  it("zeigt bei einem alten Angebot den Stand seiner eigenen Episode, nicht den des Rematchings", () => {
+    // Episode 1 (a1/o2) wurde nach dem Angebot archiviert, danach entstand Episode 2 und wurde vermittelt.
+    const e = angebotErgebnis({
+      treffer: [{ id: "neu", anfrage_id: "a1", objekt_id: "o2", status: "vermittelt", score: 90, created_at: "2026-06-01T09:00:00Z", angeboten_am: "2026-06-02T09:00:00Z", abgeschlossen_am: "2026-07-01T09:00:00Z" }],
+      trefferArchiv: [{ id: "t", match_id: "alt", anfrage_id: "a1", objekt_id: "o2", status: "gesendet", score: 70, treffer_erstellt_am: "2026-03-01T09:00:00Z", angeboten_am: "2026-03-02T09:00:00Z", abgeschlossen_am: null, archiviert_am: "2026-04-01T09:00:00Z", grund: "passt nicht mehr" }],
+    })
+    expect(e({ match_id: null, anfrage_id: "a1", objekt_id: "o2", gesendet_am: "2026-03-02T09:00:00Z" })).toBe("archiviert")
+    expect(e({ match_id: "neu", anfrage_id: "a1", objekt_id: "o2", gesendet_am: "2026-06-02T09:00:00Z" })).toBe("vermittelt")
   })
 })
 
@@ -38,6 +50,18 @@ describe("baueTabellen", () => {
       expect(tabelle.spalten.length).toBeGreaterThan(0)
       expect(tabelle.zeilen).toEqual([])
     }
+  })
+
+  // Datenschutz: jede neue Spalte muss hier bewusst ergänzt werden.
+  it("hat genau die erlaubten Spalten je Tabelle", () => {
+    const schluessel = Object.fromEntries(Object.entries(tabellen(LEERE_ROHDATEN)).map(([k, t]) => [k, t.spalten.map((s) => s.schluessel)]))
+    expect(schluessel).toEqual({
+      vermittlungen: ["datum", "firma", "objekt", "flaeche", "preisProM2", "tageBisAbschluss"],
+      angebote: ["gesendet", "firma", "objekt", "ergebnis"],
+      treffer: ["firma", "objekt", "score", "status", "erstellt", "archiviertAm", "grund"],
+      anfragen: ["eingang", "firma", "nutzung", "flaecheMin", "flaecheMax", "ort", "budgetProM2", "quelle", "status", "archiviert"],
+      objekte: ["erfasst", "titel", "ort", "flaeche", "preisProM2", "nutzung", "status", "angebote", "archiviert"],
+    })
   })
 
   it("hat in jeder Zeile genau die Spaltenschlüssel", () => {

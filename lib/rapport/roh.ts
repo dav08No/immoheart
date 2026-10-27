@@ -19,7 +19,7 @@ export type RohTreffer = Pick<
 >
 export type RohArchivTreffer = Pick<
   Zeile<"treffer_archiv">,
-  "id" | "match_id" | "anfrage_id" | "objekt_id" | "status" | "score" | "treffer_erstellt_am" | "abgeschlossen_am" | "archiviert_am" | "grund"
+  "id" | "match_id" | "anfrage_id" | "objekt_id" | "status" | "score" | "treffer_erstellt_am" | "angeboten_am" | "abgeschlossen_am" | "archiviert_am" | "grund"
 >
 // Gesendete Angebots-Mail (nachrichten typ angebot, richtung gesendet).
 export type RohAngebot = Pick<Zeile<"nachrichten">, "match_id" | "anfrage_id" | "objekt_id" | "gesendet_am">

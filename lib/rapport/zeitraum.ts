@@ -43,3 +43,9 @@ export function imZeitraum(zeitraum: Pick<RapportZeitraum, "von" | "bis">, zeitp
   const tag = zuercherDatum(new Date(zeitpunkt))
   return tag >= zeitraum.von && tag <= zeitraum.bis
 }
+
+// Spanne in Tagen, eine Nachkommastelle; negative Spannen sind Eingabefehler (wie lib/zahlen).
+export function tageZwischen(von: string, bis: string): number | null {
+  const tage = (Date.parse(bis) - Date.parse(von)) / 86_400_000
+  return tage < 0 ? null : Math.round(tage * 10) / 10
+}

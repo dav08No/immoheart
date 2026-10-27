@@ -11,7 +11,7 @@ import { alleSeiten } from "./seiten"
 const ANFRAGE = "id, firma_id, created_at, quelle, status, nutzung, flaeche_min, flaeche_max, ort, budget_pro_m2, archiviert_am"
 const OBJEKT = "id, titel, ort, flaeche, preis_pro_m2, nutzung, status, created_at, archiviert_am"
 const TREFFER = "id, anfrage_id, objekt_id, status, score, created_at, angeboten_am, abgeschlossen_am"
-const ARCHIV = "id, match_id, anfrage_id, objekt_id, status, score, treffer_erstellt_am, abgeschlossen_am, archiviert_am, grund"
+const ARCHIV = "id, match_id, anfrage_id, objekt_id, status, score, treffer_erstellt_am, angeboten_am, abgeschlossen_am, archiviert_am, grund"
 
 export async function holeRapportRohdaten(zeitraum: Pick<RapportZeitraum, "abfrageAb">): Promise<RapportRohdaten> {
   const supabase = await erstelleServerClient()

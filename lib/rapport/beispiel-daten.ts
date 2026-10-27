@@ -28,9 +28,9 @@ export const BEISPIEL_ROHDATEN: RapportRohdaten = {
     { id: "m3", anfrage_id: "a2", objekt_id: "o1", status: "neu", score: 64, created_at: "2026-03-16T09:00:00Z", angeboten_am: null, abgeschlossen_am: null },
   ],
   trefferArchiv: [
-    { id: "t1", match_id: "m9", anfrage_id: "a1", objekt_id: "o3", status: "neu", score: 70, treffer_erstellt_am: "2026-05-06T09:00:00Z", abgeschlossen_am: null, archiviert_am: "2026-09-01T09:00:00Z", grund: "Objekt archiviert" },
+    { id: "t1", match_id: "m9", anfrage_id: "a1", objekt_id: "o3", status: "neu", score: 70, treffer_erstellt_am: "2026-05-06T09:00:00Z", angeboten_am: null, abgeschlossen_am: null, archiviert_am: "2026-09-01T09:00:00Z", grund: "Objekt archiviert" },
     // Vor dem Zeitraum erstellt, im Zeitraum archiviert: Tabelle ja, Kennzahl "Treffer" nein.
-    { id: "t2", match_id: "m8", anfrage_id: "a4", objekt_id: "o1", status: "gesendet", score: 55, treffer_erstellt_am: "2025-07-01T09:00:00Z", abgeschlossen_am: null, archiviert_am: "2026-01-10T09:00:00Z", grund: "Anfrage archiviert" },
+    { id: "t2", match_id: "m8", anfrage_id: "a4", objekt_id: "o1", status: "gesendet", score: 55, treffer_erstellt_am: "2025-07-01T09:00:00Z", angeboten_am: "2025-11-10T09:00:00Z", abgeschlossen_am: null, archiviert_am: "2026-01-10T09:00:00Z", grund: "Anfrage archiviert" },
   ],
   angebote: [
     { match_id: "m1", anfrage_id: "a1", objekt_id: "o1", gesendet_am: "2025-11-05T09:00:00Z" },

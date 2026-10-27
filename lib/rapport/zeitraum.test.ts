@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { imZeitraum, rapportZeitraum } from "./zeitraum"
+import { imZeitraum, rapportZeitraum, tageZwischen } from "./zeitraum"
 
 describe("rapportZeitraum", () => {
   it("geht von heute minus 1 Jahr bis heute, mit 13 Monaten", () => {
@@ -33,6 +33,13 @@ describe("rapportZeitraum", () => {
     ])
   })
 
+  it("nimmt am Monatsletzten denselben Tag im Vorjahr", () => {
+    const z = rapportZeitraum(new Date("2026-03-31T10:00:00Z"))
+    expect(z.von).toBe("2025-03-31")
+    expect(z.monate[0]?.label).toBe("Mär 25")
+    expect(z.monate[12]?.label).toBe("Mär 26")
+  })
+
   it("geht über den Jahreswechsel", () => {
     const z = rapportZeitraum(new Date("2025-12-31T23:30:00Z"))
     expect(z.von).toBe("2025-01-01")
@@ -54,7 +61,23 @@ describe("imZeitraum", () => {
     expect(imZeitraum(z, "2026-10-27T23:00:00Z")).toBe(false)
   })
 
+  it("zieht die Grenze im Sommer bei 22:00 UTC (CEST)", () => {
+    const sommer = rapportZeitraum(new Date("2026-06-15T10:00:00Z"))
+    expect(imZeitraum(sommer, "2026-06-15T21:59:00Z")).toBe(true)
+    expect(imZeitraum(sommer, "2026-06-15T22:00:00Z")).toBe(false)
+  })
+
   it("ist für fehlende Daten falsch", () => {
     expect(imZeitraum(z, null)).toBe(false)
+  })
+})
+
+describe("tageZwischen", () => {
+  it("rechnet Tage auf eine Nachkommastelle", () => {
+    expect(tageZwischen("2025-11-03T09:00:00Z", "2026-01-20T09:00:00Z")).toBe(78)
+    expect(tageZwischen("2026-01-01T00:00:00Z", "2026-01-01T12:00:00Z")).toBe(0.5)
+  })
+  it("liefert null für negative Spannen (Eingabefehler)", () => {
+    expect(tageZwischen("2026-01-02T00:00:00Z", "2026-01-01T00:00:00Z")).toBeNull()
   })
 })

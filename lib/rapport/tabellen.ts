@@ -2,12 +2,15 @@
 // Eckdaten, keine E-Mails, Kontaktpersonen, Eigentümer oder Mailtexte (Spec Datenschutz).
 import { TREFFER_STATUS_LABEL } from "@/lib/abschluss/uebergaenge"
 import { nutzungLabel } from "@/lib/nutzung"
-import { tageBisAbschluss } from "@/lib/zahlen/anfragen"
 import { zuercherDatum } from "@/lib/zahlen/zeitraeume"
-import type { Nachschlagen, RapportAuswahl } from "./auswahl"
+import { paarSchluessel, type Nachschlagen, type RapportAuswahl } from "./auswahl"
 import { ANFRAGE_STATUS_LABEL, ANGEBOT_ERGEBNIS, OBJEKT_STATUS_LABEL, quelleLabel } from "./labels"
 import type { RapportRohdaten, RohAngebot } from "./roh"
 import type { RapportModell, Spalte, SpaltenTyp, Tabelle, Zelle } from "./typen"
+import { tageZwischen } from "./zeitraum"
+import type { Database } from "@/types/database"
+
+type TrefferStatus = Database["public"]["Enums"]["match_status_enum"]
 
 const EMAIL = /[^\s@]+@[^\s@]+/g
 
@@ -34,23 +37,34 @@ function tabelle<K extends string>(titel: string, spalten: [K, string, SpaltenTy
   }
 }
 
-const paar = (anfrageId: string | null, objektId: string | null) => `${anfrageId ?? ""}|${objektId ?? ""}`
+type Episode = { status: TrefferStatus; ab: string; bis: string | null; archiviert: boolean }
 
-// Archivierte Treffer verlieren ihre match_id in nachrichten (on delete set null), darum
-// zusätzlich über das Paar Anfrage/Objekt suchen.
-export function angebotErgebnis(angebot: RohAngebot, roh: Pick<RapportRohdaten, "treffer" | "trefferArchiv">): string {
-  const treffer =
-    roh.treffer.find((t) => t.id === angebot.match_id) ??
-    roh.treffer.find((t) => angebot.anfrage_id && paar(t.anfrage_id, t.objekt_id) === paar(angebot.anfrage_id, angebot.objekt_id))
-  if (treffer) return ANGEBOT_ERGEBNIS[treffer.status]
-  const archiviert = roh.trefferArchiv.some(
-    (t) => t.match_id === angebot.match_id || (angebot.anfrage_id && paar(t.anfrage_id, t.objekt_id) === paar(angebot.anfrage_id, angebot.objekt_id))
-  )
-  return archiviert ? "archiviert" : "angeboten"
+// Ergebnis eines Angebots aus der Treffer-Episode, zu der es gehört. Archivierte Treffer
+// verlieren ihre match_id in nachrichten (on delete set null); dann zählt die Episode
+// desselben Paars, die beim Versand bestand -- nicht ein späteres Rematching (R7).
+export function angebotErgebnis(roh: Pick<RapportRohdaten, "treffer" | "trefferArchiv">): (angebot: RohAngebot) => string {
+  const status = new Map(roh.treffer.map((t) => [t.id, t.status]))
+  const episoden = new Map<string, Episode[]>()
+  const merke = (schluessel: string, e: Episode) => episoden.set(schluessel, [...(episoden.get(schluessel) ?? []), e])
+  for (const t of roh.treffer) merke(paarSchluessel(t.anfrage_id, t.objekt_id), { status: t.status, ab: t.created_at, bis: null, archiviert: false })
+  for (const t of roh.trefferArchiv) {
+    merke(paarSchluessel(t.anfrage_id, t.objekt_id), { status: t.status, ab: t.treffer_erstellt_am, bis: t.archiviert_am, archiviert: true })
+  }
+  return (angebot) => {
+    const direkt = angebot.match_id ? status.get(angebot.match_id) : undefined
+    if (direkt) return ANGEBOT_ERGEBNIS[direkt]
+    const gesendet = Date.parse(angebot.gesendet_am ?? "")
+    const episode = (episoden.get(paarSchluessel(angebot.anfrage_id, angebot.objekt_id)) ?? []).find(
+      (e) => Date.parse(e.ab) <= gesendet && (e.bis === null || gesendet <= Date.parse(e.bis))
+    )
+    if (!episode) return "angeboten"
+    return episode.archiviert ? "archiviert" : ANGEBOT_ERGEBNIS[episode.status]
+  }
 }
 
 export function baueTabellen(a: RapportAuswahl, roh: RapportRohdaten, n: Nachschlagen): RapportModell["tabellen"] {
   const titel = (objektId: string | null) => n.objekt(objektId)?.titel ?? null
+  const ergebnis = angebotErgebnis(roh)
   const angeboteJeObjekt = new Map<string, number>()
   for (const x of a.angebote) if (x.objekt_id) angeboteJeObjekt.set(x.objekt_id, (angeboteJeObjekt.get(x.objekt_id) ?? 0) + 1)
 
@@ -61,18 +75,17 @@ export function baueTabellen(a: RapportAuswahl, roh: RapportRohdaten, n: Nachsch
       a.vermittlungen.map((v) => {
         const objekt = n.objekt(v.objektId)
         const erstellt = n.anfrage(v.anfrageId)?.created_at
-        const tage = erstellt ? tageBisAbschluss([{ anfrage_erstellt: erstellt, abgeschlossen_am: v.abgeschlossenAm }]).median : null
         return {
           datum: datum(v.abgeschlossenAm), firma: n.firma(v.anfrageId), objekt: objekt?.titel ?? null,
           flaeche: objekt?.flaeche ?? null, preisProM2: objekt?.preis_pro_m2 ?? null,
-          tageBisAbschluss: tage === null ? null : Math.round(tage * 10) / 10,
+          tageBisAbschluss: erstellt ? tageZwischen(erstellt, v.abgeschlossenAm) : null,
         }
       })
     ),
     angebote: tabelle(
       "Angebote",
       [["gesendet", "Gesendet", "datum"], ["firma", "Firma", "text"], ["objekt", "Objekt", "text"], ["ergebnis", "Ergebnis", "text"]],
-      a.angebote.map((x) => ({ gesendet: datum(x.gesendet_am), firma: n.firma(x.anfrage_id), objekt: titel(x.objekt_id), ergebnis: angebotErgebnis(x, roh) }))
+      a.angebote.map((x) => ({ gesendet: datum(x.gesendet_am), firma: n.firma(x.anfrage_id), objekt: titel(x.objekt_id), ergebnis: ergebnis(x) }))
     ),
     treffer: tabelle(
       "Treffer",
