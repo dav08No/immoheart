@@ -111,7 +111,7 @@ def test_zeilenumbruch_im_ki_text_erlaubt() -> None:
     pruefe_modell(m)
 
 
-@pytest.mark.parametrize("wert", ["27.10.2026", "2026-13-01", "2026-02-30", "2026-1-5", "20261027", 20261027])
+@pytest.mark.parametrize("wert", ["27.10.2026", "1899-12-31", "0001-01-01", "2026-13-01", "2026-02-30", "2026-1-5", "20261027", 20261027])
 def test_falsches_datum(wert: Any) -> None:
     m = modell()
     m["tabellen"]["vermittlungen"]["zeilen"][0]["datum"] = wert
@@ -129,6 +129,27 @@ def test_doppelte_spaltentitel() -> None:
     m = modell()
     m["tabellen"]["angebote"]["spalten"][2]["titel"] = "firma"
     assert _fehler(m).startswith("tabellen.angebote.spalten[2].titel")
+
+
+@pytest.mark.parametrize("wert", ["1900-01-01", "9999-12-31"])
+def test_datum_grenzen_gueltig(wert: str) -> None:
+    m = modell()
+    m["tabellen"]["vermittlungen"]["zeilen"][0]["datum"] = wert
+    pruefe_modell(m)
+
+
+@pytest.mark.parametrize("titel", [" Firma", "Firma ", "   "])
+def test_spaltentitel_mit_rand_leerzeichen(titel: str) -> None:
+    m = modell()
+    m["tabellen"]["angebote"]["spalten"][1]["titel"] = titel
+    assert _fehler(m).startswith("tabellen.angebote.spalten[1].titel")
+
+
+@pytest.mark.parametrize("anzahl", [0, 5])
+def test_nicht_genau_6_kacheln(anzahl: int) -> None:
+    m = modell()
+    m["kennzahlen"] = m["kennzahlen"][:anzahl]
+    assert _fehler(m).startswith("kennzahlen")
 
 
 def test_doppelte_kachel() -> None:

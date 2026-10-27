@@ -10,7 +10,8 @@ STEUERZEICHEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 # Einzeilige Texte (Titel, Beschriftungen) dürfen auch keine Umbrüche enthalten,
 # sonst bricht z. B. der Spaltenname einer Excel-Tabelle.
 ZEILENUMBRUCH = re.compile(r"[\t\n\r]")
-ISO_DATUM = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Excel kennt keine Datumswerte vor 1900; ältere Jahre wären Eingabefehler.
+ISO_DATUM = re.compile(r"^(19|[2-9]\d)\d{2}-\d{2}-\d{2}$")
 # Grösser braucht kein Rapport; schützt vor Überlauf und absurden Werten.
 MAX_BETRAG = 1e12
 

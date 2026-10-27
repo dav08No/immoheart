@@ -36,7 +36,9 @@ def modell() -> dict[str, Any]:
 
 def leeres_modell() -> dict[str, Any]:
     m = modell()
-    m["kennzahlen"] = []
+    # Das TS-Modell liefert immer 6 Kacheln, ohne Daten mit 0 bzw. null bei der Quote.
+    for k in m["kennzahlen"]:
+        k["wert"] = None if k["format"] == "prozent" else 0
     m["medianwerte"] = {"tageBisErstangebot": None, "tageBisAbschluss": None}
     m["diagramme"] = {k: [] for k in m["diagramme"]}
     for t in m["tabellen"].values():

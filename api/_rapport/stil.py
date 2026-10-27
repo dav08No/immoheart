@@ -15,8 +15,10 @@ WEISS = "FFFFFF"
 
 SCHRIFT = "Calibri"
 
-FORMAT_ZAHL = "#'##0"
-FORMAT_CHF = "\"CHF \"#'##0"
+# "," ist Excels Tausender-Platzhalter; Excel setzt das Trennzeichen der Ländereinstellung
+# (Schweiz: '). Ein wörtliches Apostroph würde ab 1 Mio. falsch gruppieren.
+FORMAT_ZAHL = "#,##0"
+FORMAT_CHF = '"CHF "#,##0'
 FORMAT_DATUM = "dd.mm.yyyy"
 FORMAT_PROZENT = "0%"
 FORMAT_TAGE = "0.0"

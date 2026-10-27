@@ -37,7 +37,7 @@ def test_uebersicht_kopf_kacheln_und_diagramme() -> None:
     assert len(ws._charts) == 4
     # 6 Kacheln à zwei Spalten: Titel in Zeile 5, Zahl in Zeile 6.
     assert [ws.cell(5, 2 * i + 1).value for i in range(6)][0] == "Neue Anfragen"
-    assert ws["A6"].value == 3 and ws["A6"].number_format == "#'##0"
+    assert ws["A6"].value == 3 and ws["A6"].number_format == "#,##0"
     assert ws["K6"].value == pytest.approx(1 / 3) and ws["K6"].number_format == "0%"
     assert not ws.sheet_view.showGridLines
 
@@ -53,6 +53,14 @@ def test_diagrammarten() -> None:
     assert charts[0].grouping == "stacked"
     assert charts[2].type == "bar" and charts[3].type == "bar"
     assert all(c.legend.position == "b" for c in charts)
+
+
+def test_kategorien_als_strref() -> None:
+    # numRef würde Textbeschriftungen in manchen Betrachtern als 1, 2, 3 zeigen.
+    serien = [s for c in mappe(modell())["Übersicht"]._charts for p in c._charts for s in p.series]
+    assert len(serien) == 3 + 2 + 1 + 1
+    assert all(s.cat.strRef is not None and s.cat.numRef is None for s in serien)
+    assert serien[0].cat.strRef.f == "'_daten'!$A$2:$A$14"
 
 
 def test_seitenlayout_quer_eine_seite() -> None:
@@ -89,8 +97,8 @@ def test_datum_und_zahlenformate() -> None:
     ws = mappe(modell())["Vermittlungen"]
     assert ws["A2"].is_date and ws["A2"].value == datetime(2026, 1, 20)
     assert ws["A2"].number_format == "dd.mm.yyyy"
-    assert ws["D2"].value == 300 and ws["D2"].number_format == "#'##0"
-    assert ws["E2"].value == 210 and ws["E2"].number_format == '"CHF "#\'##0'
+    assert ws["D2"].value == 300 and ws["D2"].number_format == "#,##0"
+    assert ws["E2"].value == 210 and ws["E2"].number_format == '"CHF "#,##0'
 
 
 def test_null_zelle_bleibt_leer() -> None:

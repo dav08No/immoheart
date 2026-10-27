@@ -6,6 +6,7 @@ from typing import Any
 from openpyxl import Workbook
 from openpyxl.chart import BarChart, LineChart, Reference
 from openpyxl.chart._chart import ChartBase
+from openpyxl.chart.data_source import AxDataSource, StrRef
 from openpyxl.chart.shapes import GraphicalProperties
 
 from .modell import QUELLEN
@@ -54,6 +55,13 @@ def _faerbe(d: ChartBase, farben: list[str]) -> None:
         serie.graphicalProperties.line.solidFill = farbe
 
 
+def _kategorien(d: ChartBase, kategorien: Reference) -> None:
+    # set_categories schreibt numRef; Textbeschriftungen erscheinen dann in
+    # LibreOffice und manchen Betrachtern als 1, 2, 3. strRef ist korrekt.
+    for serie in d.series:
+        serie.cat = AxDataSource(strRef=StrRef(f=str(kategorien)))
+
+
 def _daten_bezug(ws: Any, spalte: int, anzahl: int, letzte: int) -> tuple[Reference, Reference]:
     werte = Reference(ws, min_col=spalte + 1, max_col=spalte + anzahl, min_row=1, max_row=letzte)
     kategorien = Reference(ws, min_col=spalte, min_row=2, max_row=letzte)
@@ -70,7 +78,7 @@ def _anfragen(ws: Any, monate: list[dict[str, Any]]) -> BarChart:
     d.overlap = 100
     werte, kategorien = _daten_bezug(ws, 1, len(QUELLEN), letzte)
     d.add_data(werte, titles_from_data=True)
-    d.set_categories(kategorien)
+    _kategorien(d, kategorien)
     _grundform(d, "Anfragen pro Monat nach Quelle")
     _faerbe(d, [PETROL, NAVY, HELLBLAU])
     return d
@@ -82,12 +90,12 @@ def _angebote(ws: Any, monate: list[dict[str, Any]]) -> BarChart:
     saeulen = BarChart()
     saeulen.type = "col"
     saeulen.add_data(Reference(ws, min_col=7, min_row=1, max_row=letzte), titles_from_data=True)
-    saeulen.set_categories(kategorien)
+    _kategorien(saeulen, kategorien)
     _faerbe(saeulen, [PETROL])
     # Vermittlungen als Linie in Koralle: das Ergebnis soll auf einen Blick herausstechen.
     linie = LineChart()
     linie.add_data(Reference(ws, min_col=8, min_row=1, max_row=letzte), titles_from_data=True)
-    linie.set_categories(kategorien)
+    _kategorien(linie, kategorien)
     serie = linie.series[0]
     serie.graphicalProperties.line.solidFill = KORALLE
     serie.graphicalProperties.line.width = 28575  # 2.25 pt in EMU
@@ -107,7 +115,7 @@ def _horizontal(ws: Any, spalte: int, kopf: list[str], zeilen: list[dict[str, An
     d.type = "bar"
     werte, kategorien = _daten_bezug(ws, spalte, 1, letzte)
     d.add_data(werte, titles_from_data=True)
-    d.set_categories(kategorien)
+    _kategorien(d, kategorien)
     # Excel zeichnet Balken sonst von unten nach oben, also in umgekehrter Reihenfolge.
     d.x_axis.scaling.orientation = "maxMin"
     # Sonst wandert die Werteachse durch die Umkehr nach oben.

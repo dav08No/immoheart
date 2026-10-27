@@ -58,6 +58,9 @@ def _kennzahlen(roh: Any) -> list[dict[str, Any]]:
             "wert": p.zahl_oder_null(k["wert"], f"{pfad}.wert"),
             "text": p.text(k["text"], f"{pfad}.text", MAX_ZELLE),
         })
+    # Das TS-Modell liefert immer alle 6 Kacheln; weniger hiesse ein Vertragsbruch.
+    if len(kacheln) != len(KACHELN):
+        raise ModellFehler("kennzahlen: genau 6 Kacheln erwartet")
     return kacheln
 
 
@@ -111,9 +114,10 @@ def _spalten(roh: Any, pfad: str) -> list[dict[str, str]]:
         if not isinstance(name, str) or not SPALTEN_SCHLUESSEL.match(name) or name in namen:
             raise ModellFehler(f"{sp}.schluessel: ungültig oder doppelt")
         t = p.text(s["titel"], f"{sp}.titel", MAX_TITEL, einzeilig=True)
-        # Excel-Tabellen verlangen eindeutige, nicht leere Spaltennamen (ohne Gross/Klein).
-        if not t.strip() or t.casefold() in titel:
-            raise ModellFehler(f"{sp}.titel: leer oder doppelt")
+        # Excel-Tabellen verlangen eindeutige, nicht leere Spaltennamen (ohne Gross/Klein);
+        # Rand-Leerzeichen würden Duplikate wie "Firma" und "Firma " verstecken.
+        if not t.strip() or t != t.strip() or t.casefold() in titel:
+            raise ModellFehler(f"{sp}.titel: leer, mit Rand-Leerzeichen oder doppelt")
         if s["typ"] not in SPALTEN_TYPEN:
             raise ModellFehler(f"{sp}.typ: unbekannt")
         namen.add(name)
