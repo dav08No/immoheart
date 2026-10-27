@@ -21,7 +21,7 @@ import { POST } from "./route"
 
 const XLSX = new Uint8Array([0x50, 0x4b, 3, 4])
 const TEXT = { rueckblick: "R", trends: "T", auffaelligkeiten: "A", ausblick: "O" }
-const aufruf = () => POST(new Request("https://immoheart.test/api/rapport", { method: "POST" }))
+const aufruf = () => POST()
 const gesendet = () => fetchMock.mock.calls[0] as [string, RequestInit]
 const gesendetesModell = (): RapportModell => JSON.parse(String(gesendet()[1].body)) as RapportModell
 
@@ -33,6 +33,7 @@ describe("POST /api/rapport", () => {
     vi.stubGlobal("fetch", fetchMock)
     vi.stubEnv("RAPPORT_SCHLUESSEL", "geheim")
     vi.stubEnv("RAPPORT_EXCEL_URL", undefined)
+    vi.stubEnv("VERCEL_URL", undefined)
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", undefined)
     vi.spyOn(console, "error").mockImplementation(() => {})
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } })
@@ -51,12 +52,14 @@ describe("POST /api/rapport", () => {
     entwurf.mockReset()
   })
 
-  it("antwortet ohne Sitzung mit 401 und lädt nichts", async () => {
+  it("antwortet ohne Sitzung mit 401 und ruft weder DB, KI noch Python auf", async () => {
     getUser.mockResolvedValue({ data: { user: null } })
     const res = await aufruf()
     expect(res.status).toBe(401)
     expect(await res.json()).toEqual({ fehler: "Nicht angemeldet." })
     expect(holeRohdaten).not.toHaveBeenCalled()
+    expect(entwurf).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("antwortet mit deaktiviertem Konto mit 401", async () => {
@@ -86,7 +89,8 @@ describe("POST /api/rapport", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = gesendet()
-    expect(url).toBe("https://immoheart.test/api/rapport_excel")
+    // Ausserhalb von Produktion ohne Konfiguration: lokale Python-Funktion.
+    expect(url).toBe("http://127.0.0.1:8001")
     expect(init.headers).toEqual({ "content-type": "application/json", "x-rapport-schluessel": "geheim" })
     const modell = gesendetesModell()
     expect(modell.zeitraum).toEqual({ label: "27.10.2025 – 27.10.2026", von: "2025-10-27", bis: "2026-10-27" })
@@ -95,11 +99,12 @@ describe("POST /api/rapport", () => {
   })
 
   it("nutzt RAPPORT_EXCEL_URL und sendet den Bypass, wenn gesetzt", async () => {
-    vi.stubEnv("RAPPORT_EXCEL_URL", "http://127.0.0.1:8001")
+    vi.stubEnv("RAPPORT_EXCEL_URL", "https://excel.example/api/rapport_excel")
+    vi.stubEnv("VERCEL_URL", "immoheart-abc.vercel.app")
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "bypass")
     expect((await aufruf()).status).toBe(200)
     const [url, init] = gesendet()
-    expect(url).toBe("http://127.0.0.1:8001")
+    expect(url).toBe("https://excel.example/api/rapport_excel")
     expect(init.headers).toMatchObject({ "x-vercel-protection-bypass": "bypass" })
   })
 

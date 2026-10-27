@@ -91,7 +91,7 @@ export function RapportKnopf({ mobil = false }: { mobil?: boolean }) {
           </p>
           {laufend && (
             <p role="status" className="text-sm text-ink-2">
-              Rapport wird erstellt… (bis 1 Minute)
+              Rapport wird erstellt… (bis 2 Minuten)
             </p>
           )}
           {fehler && (

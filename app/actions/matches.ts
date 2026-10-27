@@ -73,6 +73,8 @@ export async function matchSenden(matchId: string): Promise<{ entwurfId: string 
     typ: "angebot",
     anfrage_id: anfrage.id,
     match_id: matchId,
+    // Objekt mitspeichern: archivieren setzt match_id auf null, der Rapport braucht das Objekt trotzdem.
+    objekt_id: matchRow.objekt_id,
     von: process.env.GMAIL_USER ?? "",
     an: empfaenger,
     betreff,

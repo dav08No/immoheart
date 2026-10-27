@@ -2,8 +2,15 @@
 // Getrennt von der Route, damit diese dünn und der Aufruf einzeln testbar bleibt.
 import type { RapportModell } from "./typen"
 
-// 90 s: unter maxDuration (120 s) der Route, damit sie noch sauber mit 502 antworten kann.
-const ZEITLIMIT_MS = 90_000
+// Ziel nur aus der Umgebung, nie aus request.url: sonst ginge der Schlüssel an einen Host,
+// den der Aufrufer über den Host-Header wählt. null = nicht konfiguriert.
+export function excelUrl(): string | null {
+  if (process.env.RAPPORT_EXCEL_URL) return process.env.RAPPORT_EXCEL_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/rapport_excel`
+  // Lokal läuft die Python-Funktion separat (python api/rapport_excel.py, Port 8001).
+  if (process.env.NODE_ENV !== "production") return "http://127.0.0.1:8001"
+  return null
+}
 
 export class ExcelFehler extends Error {
   // Nur Status und Kurzgrund, nie Modelldaten: die Meldung landet im Log.
@@ -21,7 +28,8 @@ function kopfzeilen(schluessel: string): Record<string, string> {
   return kopf
 }
 
-export async function erzeugeExcel(modell: RapportModell, url: string): Promise<Uint8Array> {
+// zeitlimitMs: Restzeit der Route (maxDuration), damit sie noch sauber mit 502 antworten kann.
+export async function erzeugeExcel(modell: RapportModell, url: string, zeitlimitMs: number): Promise<Uint8Array> {
   const schluessel = process.env.RAPPORT_SCHLUESSEL
   // Die Route prüft das schon vorher (500); hier nur als Absicherung, ohne Aufruf.
   if (!schluessel) throw new ExcelFehler("RAPPORT_SCHLUESSEL fehlt")
@@ -32,7 +40,7 @@ export async function erzeugeExcel(modell: RapportModell, url: string): Promise<
       method: "POST",
       headers: kopfzeilen(schluessel),
       body: JSON.stringify(modell),
-      signal: AbortSignal.timeout(ZEITLIMIT_MS),
+      signal: AbortSignal.timeout(zeitlimitMs),
       cache: "no-store",
     })
   } catch (e) {

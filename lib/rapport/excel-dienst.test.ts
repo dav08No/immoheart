@@ -21,7 +21,7 @@ describe("erzeugeExcel", () => {
 
   it("sendet das Modell als JSON mit Schlüssel und Zeitlimit und liefert die Bytes", async () => {
     fetchMock.mockResolvedValue(new Response(new Uint8Array([1, 2, 3]), { status: 200 }))
-    expect(await erzeugeExcel(MODELL, URL_PY)).toEqual(new Uint8Array([1, 2, 3]))
+    expect(await erzeugeExcel(MODELL, URL_PY, 1000)).toEqual(new Uint8Array([1, 2, 3]))
     const [url, init] = aufrufArgs()
     expect(url).toBe(URL_PY)
     expect(init.method).toBe("POST")
@@ -33,19 +33,19 @@ describe("erzeugeExcel", () => {
   it("sendet den Vercel-Bypass nur, wenn er gesetzt ist", async () => {
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "b")
     fetchMock.mockResolvedValue(new Response(new Uint8Array([1]), { status: 200 }))
-    await erzeugeExcel(MODELL, URL_PY)
+    await erzeugeExcel(MODELL, URL_PY, 1000)
     expect(aufrufArgs()[1].headers).toMatchObject({ "x-vercel-protection-bypass": "b" })
   })
 
   it("wirft ohne Schlüssel, ohne Aufruf", async () => {
     vi.stubEnv("RAPPORT_SCHLUESSEL", "")
-    await expect(erzeugeExcel(MODELL, URL_PY)).rejects.toBeInstanceOf(ExcelFehler)
+    await expect(erzeugeExcel(MODELL, URL_PY, 1000)).rejects.toBeInstanceOf(ExcelFehler)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("wirft bei Status ungleich 200 mit Status und gekürztem Text", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ fehler: "x".repeat(500) }), { status: 413 }))
-    const fehler: unknown = await erzeugeExcel(MODELL, URL_PY).catch((e: unknown) => e)
+    const fehler: unknown = await erzeugeExcel(MODELL, URL_PY, 1000).catch((e: unknown) => e)
     expect(fehler).toBeInstanceOf(ExcelFehler)
     const grund = (fehler as ExcelFehler).grund
     expect(grund.startsWith("Status 413")).toBe(true)
@@ -54,8 +54,8 @@ describe("erzeugeExcel", () => {
 
   it("wirft bei Netzwerkfehler oder Zeitüberschreitung", async () => {
     fetchMock.mockRejectedValue(new DOMException("abgelaufen", "TimeoutError"))
-    await expect(erzeugeExcel(MODELL, URL_PY)).rejects.toThrow(/TimeoutError/)
+    await expect(erzeugeExcel(MODELL, URL_PY, 1000)).rejects.toThrow(/TimeoutError/)
     fetchMock.mockRejectedValue(new TypeError("fetch failed"))
-    await expect(erzeugeExcel(MODELL, URL_PY)).rejects.toThrow(/TypeError/)
+    await expect(erzeugeExcel(MODELL, URL_PY, 1000)).rejects.toThrow(/TypeError/)
   })
 })

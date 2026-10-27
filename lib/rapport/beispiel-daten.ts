@@ -37,5 +37,7 @@ export const BEISPIEL_ROHDATEN: RapportRohdaten = {
     { match_id: "m2", anfrage_id: "a2", objekt_id: "o2", gesendet_am: "2026-03-18T09:00:00Z" },
     // match_id ist null, weil der Treffer archiviert wurde (on delete set null).
     { match_id: null, anfrage_id: "a4", objekt_id: "o1", gesendet_am: "2025-11-10T09:00:00Z" },
+    // objekt_id null: das Objekt wurde endgültig gelöscht (on delete set null) -> zählt nicht (R9).
+    { match_id: null, anfrage_id: "a2", objekt_id: null, gesendet_am: "2026-04-02T09:00:00Z" },
   ],
 }

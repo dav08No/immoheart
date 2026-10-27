@@ -91,8 +91,12 @@ export function waehleAus(roh: RapportRohdaten, z: Zeitraum): RapportAuswahl {
     objekte: nachZeit(roh.objekte.filter(erstelltOderArchiviert), (o) => o.created_at),
     neueTreffer: nachZeit(neueTreffer, (t) => t.erstellt),
     trefferZeilen: nachZeit(jePaar([...aktiv, ...archiv]), (t) => t.erstellt),
-    // Ohne Anfrage = endgültig gelöscht (R6): zählt weder in Kachel, Diagramm noch Tabelle.
-    angebote: nachZeit(roh.angebote.filter((a) => a.anfrage_id !== null && imZeitraum(z, a.gesendet_am)), (a) => a.gesendet_am ?? ""),
+    // Ohne Anfrage oder Objekt = endgültig gelöscht (R6/R9; nur das Löschen setzt sie null):
+    // zählt weder in Kachel, Diagramm noch Tabelle.
+    angebote: nachZeit(
+      roh.angebote.filter((a) => a.anfrage_id !== null && a.objekt_id !== null && imZeitraum(z, a.gesendet_am)),
+      (a) => a.gesendet_am ?? ""
+    ),
     vermittlungen: nachZeit(vermittlungen, (v) => v.abgeschlossenAm),
   }
 }

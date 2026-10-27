@@ -4,6 +4,7 @@ import { TREFFER_STATUS_LABEL } from "@/lib/abschluss/uebergaenge"
 import { nutzungLabel } from "@/lib/nutzung"
 import { zuercherDatum } from "@/lib/zahlen/zeitraeume"
 import { paarSchluessel, type Nachschlagen, type RapportAuswahl } from "./auswahl"
+import { bereinigeText, MAX_ZELLE } from "./bereinigen"
 import { ANFRAGE_STATUS_LABEL, ANGEBOT_ERGEBNIS, OBJEKT_STATUS_LABEL, quelleLabel } from "./labels"
 import type { RapportRohdaten, RohAngebot } from "./roh"
 import type { RapportModell, Spalte, SpaltenTyp, Tabelle, Zelle } from "./typen"
@@ -27,11 +28,12 @@ function tabelle<K extends string>(titel: string, spalten: [K, string, SpaltenTy
   return {
     titel,
     spalten: spalten.map(([schluessel, t, typ]): Spalte => ({ schluessel, titel: t, typ })),
-    // Feste Schlüsselreihenfolge wie die Spalten; jeder Text läuft durch ohneEmail().
+    // Feste Schlüsselreihenfolge wie die Spalten; jeder Text läuft durch ohneEmail() und
+    // wird danach bereinigt (Ersetzung kann verlängern, darum erst danach kürzen).
     zeilen: zeilen.map((z) =>
       Object.fromEntries(spalten.map(([s]) => {
         const wert = z[s]
-        return [s, typeof wert === "string" ? ohneEmail(wert) : wert]
+        return [s, typeof wert === "string" ? bereinigeText(ohneEmail(wert), MAX_ZELLE) : wert]
       }))
     ),
   }

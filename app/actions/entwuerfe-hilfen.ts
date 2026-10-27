@@ -12,6 +12,13 @@ import { NutzerFehler } from "@/lib/nutzer-fehler"
 // die das strikte RFC-Format von z.uuid() abweist.
 export const idSchema = z.guid()
 
+// Einheitliche Prüfung für Server Actions: ungültige IDs als NutzerFehler (lesbare Meldung).
+export function pruefeId(id: unknown): string {
+  const geprueft = idSchema.safeParse(id)
+  if (!geprueft.success) throw new NutzerFehler("Ungültige ID.")
+  return geprueft.data
+}
+
 export type Ergebnis = { fehler: string | null }
 
 export function pfadeNeuLaden() {

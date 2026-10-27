@@ -7,6 +7,7 @@ import {
   abschluesseJeAnfrage,
   anfragenProMonat,
   tageBisAbschluss,
+  ohneArchivierteObjekte,
   tageBisErstangebot,
   topObjekte,
   vermittlungsquote,
@@ -53,12 +54,12 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
     alleSeiten((von, bis) =>
       supabase
         .from("matches")
-        .select("anfrage_id, status, angeboten_am, abgeschlossen_am")
+        .select("anfrage_id, objekt_id, status, angeboten_am, abgeschlossen_am")
         .not("angeboten_am", "is", null)
         .order("id")
         .range(von, bis)
     ),
-    // Nur die IDs: Direktanfragen zu archivierten Objekten fallen aus den Top-Objekten.
+    // Nur die IDs: Direktanfragen und Treffer archivierter Objekte fallen heraus.
     alleSeiten((von, bis) =>
       supabase.from("objekte").select("id").not("archiviert_am", "is", null).order("id").range(von, bis)
     ),
@@ -78,9 +79,10 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   const erstellt = Object.fromEntries(anfragen.map((a) => [a.id, a.created_at]))
   // angeboten_am wird beim tatsächlichen Versand gesetzt (Spec §3) -- verlässlicher als
   // gesendete Angebots-Mails, die gelöscht oder von Hand verschickt sein können.
-  const angebote = treffer.map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
+  const aktiveTreffer = ohneArchivierteObjekte(treffer, archiviert)
+  const angebote = aktiveTreffer.map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
   const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(angebote, erstellt))
-  const abschluss = tageBisAbschluss(abschluesseJeAnfrage(treffer, erstellt))
+  const abschluss = tageBisAbschluss(abschluesseJeAnfrage(aktiveTreffer, erstellt))
   const { quote, vermittelt, gesamt } = vermittlungsquote(anfragen)
 
   return {

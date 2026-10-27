@@ -75,18 +75,19 @@ describe("waehleAus", () => {
     expect(a.vermittlungen.map((v) => v.matchId)).toEqual(["m1", "m4"])
   })
 
-  it("lässt Angebote ohne Anfrage weg (endgültig gelöscht, R6)", () => {
+  it("lässt Angebote ohne Anfrage oder ohne Objekt weg (endgültig gelöscht, R6/R9)", () => {
     const a = waehleAus(
       {
         ...LEERE_ROHDATEN,
         angebote: [
           { match_id: null, anfrage_id: null, objekt_id: "o1", gesendet_am: "2026-05-01T09:00:00Z" },
           { match_id: null, anfrage_id: "a1", objekt_id: null, gesendet_am: "2026-05-02T09:00:00Z" },
+          { match_id: null, anfrage_id: "a1", objekt_id: "o1", gesendet_am: "2026-05-03T09:00:00Z" },
         ],
       },
       z
     )
-    expect(a.angebote.map((x) => x.anfrage_id)).toEqual(["a1"])
+    expect(a.angebote.map((x) => x.gesendet_am)).toEqual(["2026-05-03T09:00:00Z"])
   })
 
   it("nimmt Angebote nach gesendet_am im Zeitraum", () => {
@@ -94,9 +95,9 @@ describe("waehleAus", () => {
       {
         ...LEERE_ROHDATEN,
         angebote: [
-          { match_id: null, anfrage_id: "a1", objekt_id: null, gesendet_am: "2025-10-20T09:00:00Z" },
-          { match_id: null, anfrage_id: "a1", objekt_id: null, gesendet_am: "2026-10-27T09:00:00Z" },
-          { match_id: null, anfrage_id: "a1", objekt_id: null, gesendet_am: null },
+          { match_id: null, anfrage_id: "a1", objekt_id: "o1", gesendet_am: "2025-10-20T09:00:00Z" },
+          { match_id: null, anfrage_id: "a1", objekt_id: "o1", gesendet_am: "2026-10-27T09:00:00Z" },
+          { match_id: null, anfrage_id: "a1", objekt_id: "o1", gesendet_am: null },
         ],
       },
       z

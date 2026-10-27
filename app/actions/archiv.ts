@@ -9,17 +9,11 @@ import { NutzerFehler } from "@/lib/nutzer-fehler"
 import { archiviereAnfrage, archiviereObjekt, stelleAnfrageWiederHer, stelleObjektWiederHer } from "@/lib/queries/archiv"
 import { berechneUndSpeichereMatchesFuerAnfrage, berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { pruefeGrund } from "@/lib/archiv/grund"
-import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
+import { pruefeId, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
 type ArchivErgebnis = Ergebnis & { hinweise?: string[] }
 
 const REMATCH_HINWEIS = "Treffer werden im Hintergrund neu berechnet."
-
-function pruefeId(id: unknown): string {
-  const geprueft = idSchema.safeParse(id)
-  if (!geprueft.success) throw new NutzerFehler("Ungültige ID.")
-  return geprueft.data
-}
 
 function archivPfadeNeuLaden() {
   for (const pfad of ["/admin", "/admin/objekte", "/admin/anfragen", "/admin/archiv", "/objekte"]) {

@@ -11,7 +11,9 @@ STEUERZEICHEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 # sonst bricht z. B. der Spaltenname einer Excel-Tabelle.
 ZEILENUMBRUCH = re.compile(r"[\t\n\r]")
 # Excel kennt keine Datumswerte vor 1900; ältere Jahre wären Eingabefehler.
-ISO_DATUM = re.compile(r"^(19|[2-9]\d)\d{2}-\d{2}-\d{2}$")
+# re.ASCII: \d sonst auch für andere Ziffern (z. B. arabisch-indisch); \Z statt $,
+# weil $ ein abschliessendes \n durchlässt.
+ISO_DATUM = re.compile(r"(19|[2-9]\d)\d{2}-\d{2}-\d{2}\Z", re.ASCII)
 # Grösser braucht kein Rapport; schützt vor Überlauf und absurden Werten.
 MAX_BETRAG = 1e12
 

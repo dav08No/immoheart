@@ -11,18 +11,12 @@ import {
   loescheArchivEintrag,
   loescheObjektEndgueltig,
 } from "@/lib/queries/archiv"
-import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
+import { pruefeId, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
 type LoeschErgebnis = Ergebnis & { hinweise?: string[] }
 
 const NUR_ADMIN = "Nur Administratoren dürfen endgültig löschen."
 const FOTO_HINWEIS = "Fotos konnten nicht vollständig gelöscht werden."
-
-function pruefeId(id: unknown): string {
-  const geprueft = idSchema.safeParse(id)
-  if (!geprueft.success) throw new NutzerFehler("Ungültige ID.")
-  return geprueft.data
-}
 
 // Admin-Recht vor allem anderen (ohne Sitzung leitet holeEigenesProfil weiter);
 // das Flag direkt prüfen statt einen Fehlertext zu vergleichen.

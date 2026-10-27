@@ -13,8 +13,11 @@ const ABSCHNITTE = ["rueckblick", "trends", "auffaelligkeiten", "ausblick"] as c
 function nurZahlen(e: KennzahlenFuerKi): KennzahlenFuerKi {
   return {
     zeitraum: e.zeitraum,
-    kennzahlen: { ...e.kennzahlen },
-    medianwerte: { ...e.medianwerte },
+    kennzahlen: {
+      neueAnfragen: e.kennzahlen.neueAnfragen, neueObjekte: e.kennzahlen.neueObjekte, treffer: e.kennzahlen.treffer,
+      angebote: e.kennzahlen.angebote, vermittlungen: e.kennzahlen.vermittlungen, vermittlungsquote: e.kennzahlen.vermittlungsquote,
+    },
+    medianwerte: { tageBisErstangebot: e.medianwerte.tageBisErstangebot, tageBisAbschluss: e.medianwerte.tageBisAbschluss },
     anfragenProMonat: e.anfragenProMonat.map((m) => ({ label: m.label, mail: m.mail, website: m.website, manuell: m.manuell })),
     angeboteUndVermittlungenProMonat: e.angeboteUndVermittlungenProMonat.map((m) => ({
       label: m.label, angebote: m.angebote, vermittlungen: m.vermittlungen,
@@ -43,7 +46,10 @@ Antworte ausschliesslich mit einem JSON-Objekt, ohne weitere Erklärung: {"rueck
 
 // Wirft bei ungültigem JSON oder fehlendem/leerem Abschnitt; entwurfRapportText fängt das ab.
 export function parseRapportAntwort(antwort: string): RapportTexte {
-  const daten = JSON.parse(entferneCodeZaeune(antwort)) as Record<string, unknown>
+  const roh: unknown = JSON.parse(entferneCodeZaeune(antwort))
+  // null, Zahl oder Liste sind gültiges JSON, aber keine Antwort: wie ungültiges JSON behandeln.
+  if (typeof roh !== "object" || roh === null || Array.isArray(roh)) throw new SyntaxError("Kein JSON-Objekt")
+  const daten = roh as Record<string, unknown>
   const text = {} as RapportTexte
   for (const schluessel of ABSCHNITTE) {
     const wert = daten[schluessel]

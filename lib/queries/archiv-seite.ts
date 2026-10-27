@@ -5,6 +5,7 @@ import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
 import { anfrageKurz } from "@/lib/eingang/zuordnung"
 import type { ArchivDaten } from "@/lib/archiv/typen"
+import { alleSeiten } from "./seiten"
 
 // Kurze id-Listen je Anfrage, damit der in-Filter in der URL nicht zu lang wird.
 const PORTION = 50
@@ -43,20 +44,15 @@ function zaehle(ids: string[]): Map<string, number> {
 export async function holeArchiv(): Promise<ArchivDaten> {
   const supabase = await erstelleServerClient()
 
-  async function holeTrefferArchiv() {
-    const zeilen = []
-    for (let von = 0; ; von += SEITE) {
-      const { data, error } = await supabase
+  const holeTrefferArchiv = () =>
+    alleSeiten((von, bis) =>
+      supabase
         .from("treffer_archiv")
         .select("id, anfrage_id, objekt_id, status, score, angeboten_am, archiviert_am, grund")
         .order("archiviert_am", { ascending: false })
         .order("id")
-        .range(von, von + SEITE - 1)
-      if (error) throw error
-      zeilen.push(...data)
-      if (data.length < SEITE) return zeilen
-    }
-  }
+        .range(von, bis)
+    )
 
   // Archivierte Objekte/Anfragen ungeblättert: es werden deutlich unter 1000 erwartet
   // (kleiner Bestand, Archivieren ist eine bewusste Einzelaktion); Treffer dagegen seitenweise.

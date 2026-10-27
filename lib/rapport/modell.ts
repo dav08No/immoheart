@@ -18,14 +18,15 @@ function hinweise(z: RapportZeitraum): string[] {
     "Neue Anfragen: Anfragen mit Eingangsdatum im Zeitraum.",
     "Neue Objekte: Objekte, die im Zeitraum erfasst wurden.",
     "Treffer: im Zeitraum entstandene Treffer, aktive und archivierte, je Paar aus Anfrage und Objekt einmal (ein entfernter und neu gefundener Treffer zählt nicht doppelt).",
-    "Gesendete Angebote: im Zeitraum gesendete Angebots-Mails, auch solche, die später aus dem Postfach gelöscht wurden; ohne Mails zu endgültig gelöschten Anfragen.",
+    "Gesendete Angebote: im Zeitraum gesendete Angebots-Mails, auch solche, die später aus dem Postfach gelöscht wurden; ohne Mails, deren Anfrage oder Objekt endgültig gelöscht wurde.",
     "Vermittlungen: Treffer mit Abschlussdatum (vermittelt) im Zeitraum.",
     "Vermittlungsquote: Anteil der neuen Anfragen im Zeitraum, die heute den Status «vermittelt» haben (höchstens 100 %).",
     "Tage bis Erstangebot: Median vom Eingang einer neuen Anfrage bis zum ersten Angebot (Versanddatum des Treffers, aktiv oder archiviert), wie auf der Seite «Zahlen».",
     "Tage bis Abschluss: Median vom Eingang der Anfrage bis zur Vermittlung.",
     "Treffer nach Ergebnis: aktueller Status der Treffer; archivierte Treffer erscheinen als «Archiviert».",
-    "Blätter Anfragen und Objekte: im Zeitraum erfasst oder archiviert. Blatt Treffer: je Paar aus Anfrage und Objekt eine Zeile, die im Zeitraum entstand oder archiviert wurde; der aktive Treffer hat Vorrang, sonst der jüngste Archiveintrag.",
+    "Blätter Anfragen und Objekte: im Zeitraum erfasst oder archiviert. Blatt Treffer: je Paar aus Anfrage und Objekt eine Zeile, die im Zeitraum entstand oder archiviert wurde; ist der aktive Treffer im Zeitraum entstanden, hat er Vorrang, sonst zählt der jüngste Archiveintrag.",
     "Endgültig gelöschte Einträge sind nicht enthalten.",
+    "Abweichung zur Seite «Zahlen»: Der Rapport umfasst 12 Monate, schliesst Archiviertes ein und zählt Angebote nach gesendeten Mails; die Seite «Zahlen» zeigt den ganzen aktiven Bestand.",
   ]
 }
 

@@ -62,7 +62,7 @@ def test_fehlender_pflichtschluessel() -> None:
         (lambda m: m["tabellen"]["treffer"]["zeilen"][0].update(score="hoch"), "tabellen.treffer.zeilen[0].score"),
         (lambda m: m["tabellen"]["treffer"]["zeilen"][0].update(firma=7), "tabellen.treffer.zeilen[0].firma"),
         (lambda m: m["tabellen"]["treffer"]["spalten"][0].update(typ="formel"), "tabellen.treffer.spalten[0].typ"),
-        (lambda m: m["hinweise"].append(3), "hinweise[13]"),
+        (lambda m: m["hinweise"].append(3), "hinweise[14]"),
         (lambda m: m.update(zusammenfassung={"text": "frei"}), "zusammenfassung.text"),
         (lambda m: m.update(zusammenfassung={"fehler": "x", "text": {}}), "zusammenfassung"),
     ],
@@ -111,7 +111,7 @@ def test_zeilenumbruch_im_ki_text_erlaubt() -> None:
     pruefe_modell(m)
 
 
-@pytest.mark.parametrize("wert", ["27.10.2026", "1899-12-31", "0001-01-01", "2026-13-01", "2026-02-30", "2026-1-5", "20261027", 20261027])
+@pytest.mark.parametrize("wert", ["27.10.2026", "1899-12-31", "0001-01-01", "2026-13-01", "2026-02-30", "2026-1-5", "20261027", 20261027, "2026-01-01\n", "２０２６-01-01", "2026-٠١-01"])
 def test_falsches_datum(wert: Any) -> None:
     m = modell()
     m["tabellen"]["vermittlungen"]["zeilen"][0]["datum"] = wert

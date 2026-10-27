@@ -64,4 +64,16 @@ describe("entwurfRapportText", () => {
     expect(r).toEqual({ fehler: "Unerwartete Antwort der KI." })
     expect(mock).toHaveBeenCalledTimes(1)
   })
+  it.each(["null", "42", "[]", '"text"'])("meldet JSON %s als unerwartete Antwort", async (antwort) => {
+    mock.mockResolvedValue(antwort)
+    expect(await entwurfRapportText(eingabe)).toEqual({ fehler: "Unerwartete Antwort der KI." })
+  })
+  it("übernimmt keine Zusatzfelder aus kennzahlen oder medianwerte", () => {
+    const mehr = {
+      ...eingabe,
+      kennzahlen: { ...eingabe.kennzahlen, firma: "Muster AG" },
+      medianwerte: { ...eingabe.medianwerte, kontakt: "Frau Muster" },
+    }
+    expect(baueRapportPrompt(mehr)).not.toMatch(/Muster|firma|kontakt/)
+  })
 })

@@ -61,12 +61,15 @@ export async function suchanfrageVorbereiten(
 }
 
 // Das Objekt wird erst jetzt gelesen: es kann seit der Website-Anfrage geändert oder
-// gelöscht worden sein (objekt_id wird beim Löschen null).
+// gelöscht oder archiviert worden sein (objekt_id wird beim Löschen null).
 export async function objektanfrageVorbereiten(eingang: NachrichtRow): Promise<VorbereiteteAnfrage> {
   const felder = objektanfrageFelder(eingang.erkannte_felder)
   if (!felder) throw new NutzerFehler("Diese Nachricht hat keine erkannten Felder.")
   const objekt = eingang.objekt_id ? await holeObjekt(eingang.objekt_id) : null
   if (!objekt) throw new NutzerFehler("Das angefragte Objekt existiert nicht mehr.")
+  // Serverseitig, nicht nur in der UI: aus einem archivierten Objekt entsteht keine neue
+  // Anfrage (Matching und Rapport schliessen Archiviertes aus).
+  if (objekt.archiviert_am) throw new NutzerFehler("Das angefragte Objekt ist archiviert.")
 
   const neueFirma = objektanfrageFirma(felder)
   const firma = await firmaFuer(felder.email, () => neueFirma)
