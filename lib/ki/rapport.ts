@@ -59,10 +59,14 @@ export function parseRapportAntwort(antwort: string): RapportTexte {
   return text
 }
 
+// Der längere Prompt braucht mehr Zeit als eine Mail; 60 s lassen in der Route (maxDuration 120,
+// Python bekommt die Restzeit bis 110 s) genug Platz für DB und Excel.
+const KI_OPTIONEN = { gesamtBudgetMs: 60_000, anfrageTimeoutMs: 25_000 }
+
 // Nie werfen: ein KI-Fehler darf den Rapport nicht abbrechen. Genau ein Aufruf.
 export async function entwurfRapportText(eingabe: KennzahlenFuerKi): Promise<RapportTextErgebnis> {
   try {
-    return { text: parseRapportAntwort(await generiereText(baueRapportPrompt(eingabe))) }
+    return { text: parseRapportAntwort(await generiereText(baueRapportPrompt(eingabe), KI_OPTIONEN)) }
   } catch (e) {
     return { fehler: kiFehlerText(e) }
   }

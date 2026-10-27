@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { generiereText, istModellNichtVerfuegbar, istVoruebergehend } from "./gemini"
+import { KiZeitueberschreitung, generiereText, istModellNichtVerfuegbar, istVoruebergehend } from "./gemini"
 
 function fehlerMitStatus(status: number): Error {
   return Object.assign(new Error(`HTTP ${status}`), { status })
@@ -136,5 +136,42 @@ describe("generiereText", () => {
 
     // 0 s: 20 s Limit; 8,5 s: Rest 13,5 s; 16,5 s (Modellwechsel, ohne Warten): Rest 5,5 s; danach 24,5 s > Budget.
     expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(2))).toEqual([20_000, 13_500, 5_500])
+  })
+
+  it("wechselt nach einem Timeout sofort zum nächsten Modell", async () => {
+    const warte = vi.fn().mockResolvedValue(undefined)
+    const erzeuge = vi.fn().mockRejectedValueOnce(new KiZeitueberschreitung()).mockResolvedValueOnce("Antwort")
+
+    expect(await generiereText("Prompt", { erzeuge, warte })).toBe("Antwort")
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(0))).toEqual(["gemini-3.8-flash", "gemini-3.1-flash-lite"])
+    expect(warte).not.toHaveBeenCalled()
+  })
+
+  it("wirft die Timeout-Meldung, wenn das Budget aufgebraucht ist", async () => {
+    let uhr = 0
+    const erzeuge = vi.fn(async () => {
+      uhr += 20_000
+      throw new KiZeitueberschreitung()
+    })
+
+    await expect(generiereText("Prompt", { erzeuge, jetzt: () => uhr })).rejects.toThrow("Zeitüberschreitung bei der KI-Anfrage.")
+    // Nach 20 s bleiben 2 s Rest für einen letzten Versuch, danach ist das Budget weg.
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(2))).toEqual([20_000, 2_000])
+  })
+
+  it("nutzt ohne Optionen 22 s Budget und 20 s Timeout, mit Optionen die übergebenen Werte", async () => {
+    const erzeuge = vi.fn().mockResolvedValue("Antwort")
+    await generiereText("Prompt", { erzeuge, jetzt: () => 0 })
+    await generiereText("Prompt", { erzeuge, jetzt: () => 0, gesamtBudgetMs: 60_000, anfrageTimeoutMs: 25_000 })
+    expect(erzeuge.mock.calls.map((aufruf) => aufruf.at(2))).toEqual([20_000, 25_000])
+
+    let uhr = 0
+    const langsam = vi.fn(async () => {
+      uhr += 21_000
+      throw new KiZeitueberschreitung()
+    })
+    await expect(generiereText("Prompt", { erzeuge: langsam, jetzt: () => uhr })).rejects.toThrow()
+    // Standardbudget 22 s: nach 21 s bleibt weniger als MIN_RESTZEIT, also kein zweiter Aufruf.
+    expect(langsam).toHaveBeenCalledTimes(1)
   })
 })

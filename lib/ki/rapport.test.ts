@@ -53,6 +53,7 @@ describe("entwurfRapportText", () => {
     mock.mockResolvedValue(JSON.stringify(gut))
     expect(await entwurfRapportText(eingabe)).toEqual({ text: gut })
     expect(mock).toHaveBeenCalledTimes(1)
+    expect(mock).toHaveBeenCalledWith(expect.any(String), { gesamtBudgetMs: 60_000, anfrageTimeoutMs: 25_000 })
   })
   it("gibt fehler bei Ablehnung zurück", async () => {
     mock.mockRejectedValue(new Error("boom"))
