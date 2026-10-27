@@ -34,6 +34,11 @@ export type RapportDiagramme = {
 
 export type Medianwerte = { tageBisErstangebot: number | null; tageBisAbschluss: number | null }
 
+export type RapportTexte = { rueckblick: string; trends: string; auffaelligkeiten: string; ausblick: string }
+
+// Ergebnis der KI-Zusammenfassung (Task 7); null/fehlend = nicht angefragt.
+export type RapportZusammenfassung = { text: RapportTexte } | { fehler: string }
+
 export type RapportModell = {
   zeitraum: { label: string; von: string; bis: string }
   kennzahlen: Kachel[]
@@ -47,6 +52,7 @@ export type RapportModell = {
     objekte: Tabelle
   }
   hinweise: string[]
+  zusammenfassung?: RapportZusammenfassung | null
 }
 
 // Nur für die KI (Task 7): Zahlen und feste Beschriftungen, nie Namen oder Texte.
