@@ -5,10 +5,17 @@ import type { RapportModell } from "./typen"
 // Ziel nur aus der Umgebung, nie aus request.url: sonst ginge der Schlüssel an einen Host,
 // den der Aufrufer über den Host-Header wählt. null = nicht konfiguriert.
 export function excelUrl(): string | null {
-  if (process.env.RAPPORT_EXCEL_URL) return process.env.RAPPORT_EXCEL_URL
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/rapport_excel`
+  const env = process.env
+  if (env.RAPPORT_EXCEL_URL) return env.RAPPORT_EXCEL_URL
+  // Produktion über die Produktions-Domain (wie oeffentlicheBasisUrl): die
+  // deploymentspezifische VERCEL_URL steht hinter der Deployment Protection (401).
+  if (env.VERCEL_ENV === "production" && env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${env.VERCEL_PROJECT_PRODUCTION_URL}/api/rapport_excel`
+  }
+  // Previews: geschützt, der Bypass-Header (VERCEL_AUTOMATION_BYPASS_SECRET) lässt durch.
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}/api/rapport_excel`
   // Lokal läuft die Python-Funktion separat (python api/rapport_excel.py, Port 8001).
-  if (process.env.NODE_ENV !== "production") return "http://127.0.0.1:8001"
+  if (env.NODE_ENV !== "production") return "http://127.0.0.1:8001"
   return null
 }
 

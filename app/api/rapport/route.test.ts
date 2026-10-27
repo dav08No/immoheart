@@ -34,6 +34,8 @@ describe("POST /api/rapport", () => {
     vi.stubEnv("RAPPORT_SCHLUESSEL", "geheim")
     vi.stubEnv("RAPPORT_EXCEL_URL", undefined)
     vi.stubEnv("VERCEL_URL", undefined)
+    vi.stubEnv("VERCEL_ENV", undefined)
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", undefined)
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", undefined)
     vi.spyOn(console, "error").mockImplementation(() => {})
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } })

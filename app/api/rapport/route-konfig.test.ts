@@ -30,6 +30,8 @@ describe("POST /api/rapport: Konfiguration und Fehler", () => {
     vi.stubEnv("RAPPORT_SCHLUESSEL", "geheim")
     vi.stubEnv("RAPPORT_EXCEL_URL", undefined)
     vi.stubEnv("VERCEL_URL", undefined)
+    vi.stubEnv("VERCEL_ENV", undefined)
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", undefined)
     vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", undefined)
     vi.spyOn(console, "error").mockImplementation(() => {})
     getUser.mockResolvedValue({ data: { user: { id: "u1" } } })
@@ -54,20 +56,39 @@ describe("POST /api/rapport: Konfiguration und Fehler", () => {
     expect(gesendet()[0]).toBe("https://excel.example/x")
   })
 
-  it("2. sonst die eigene Vercel-Deployment-URL", async () => {
+  it("2. in Produktion die Produktions-Domain statt der geschützten Deployment-URL", async () => {
+    vi.stubEnv("VERCEL_ENV", "production")
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "immoheart.vercel.app")
+    vi.stubEnv("VERCEL_URL", "immoheart-abc.vercel.app")
+    vi.stubEnv("NODE_ENV", "production")
+    expect((await POST()).status).toBe(200)
+    expect(gesendet()[0]).toBe("https://immoheart.vercel.app/api/rapport_excel")
+  })
+
+  it("3. auf Previews die eigene Deployment-URL, auch wenn die Produktions-Domain bekannt ist", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview")
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "immoheart.vercel.app")
     vi.stubEnv("VERCEL_URL", "immoheart-abc.vercel.app")
     vi.stubEnv("NODE_ENV", "production")
     expect((await POST()).status).toBe(200)
     expect(gesendet()[0]).toBe("https://immoheart-abc.vercel.app/api/rapport_excel")
   })
 
-  it("3. sonst ausserhalb von Produktion die lokale Python-Funktion", async () => {
+  it("3b. in Produktion ohne Produktions-Domain die Deployment-URL", async () => {
+    vi.stubEnv("VERCEL_ENV", "production")
+    vi.stubEnv("VERCEL_URL", "immoheart-abc.vercel.app")
+    vi.stubEnv("NODE_ENV", "production")
+    expect((await POST()).status).toBe(200)
+    expect(gesendet()[0]).toBe("https://immoheart-abc.vercel.app/api/rapport_excel")
+  })
+
+  it("4. sonst ausserhalb von Produktion die lokale Python-Funktion", async () => {
     vi.stubEnv("NODE_ENV", "development")
     expect((await POST()).status).toBe(200)
     expect(gesendet()[0]).toBe("http://127.0.0.1:8001")
   })
 
-  it("4. sonst in Produktion 500, ohne DB, KI oder Python", async () => {
+  it("5. sonst in Produktion 500, ohne DB, KI oder Python", async () => {
     vi.stubEnv("NODE_ENV", "production")
     const res = await POST()
     expect(res.status).toBe(500)
