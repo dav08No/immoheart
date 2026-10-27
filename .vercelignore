@@ -1,0 +1,5 @@
+# Nur lokal nötig: Python-Tests und Dev-Abhängigkeiten. Ohne diesen Ausschluss
+# würde Vercel api/tests/test_*.py als eigene Funktion deployen.
+api/tests
+requirements-dev.txt
+.venv

@@ -14,7 +14,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "types": "supabase gen types typescript --project-id rvxlvrrpltmuzuomdwdf > types/database.ts"
+    "types": "supabase gen types typescript --project-id rvxlvrrpltmuzuomdwdf > types/database.ts",
+    "test:py": ".venv\\Scripts\\python -m pytest api/tests"
   },
   "dependencies": {
     "@google/genai": "1.30.0",
