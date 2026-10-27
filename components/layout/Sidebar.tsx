@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Building2, ExternalLink, Heart, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
+import { Archive, BarChart3, Building2, ExternalLink, Heart, HeartHandshake, Inbox, LogOut, PenLine, Search, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { initialen } from "@/lib/ui/initialen"
 import { useAdminNav } from "./AdminNavKontext"
@@ -14,6 +14,7 @@ const EINTRAEGE = [
   { pfad: "/admin/anfragen", label: "Anfragen", Icon: Search },
   { pfad: "/admin/objekte", label: "Objekte", Icon: Building2 },
   { pfad: "/admin/zahlen", label: "Zahlen", Icon: BarChart3 },
+  { pfad: "/admin/archiv", label: "Archiv", Icon: Archive },
 ]
 
 // Gemeinsame Klassen aller Leisten-Einträge: heller Fokusring, weil der

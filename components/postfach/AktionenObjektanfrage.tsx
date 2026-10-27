@@ -51,6 +51,14 @@ export function AktionenObjektanfrage({ nachricht, objekte, entwurf, laufend, au
           <Link href={`/admin/objekte?id=${objekt.id}`} className={`${LINK} text-brand`}>
             Objekt: {objekt.label} · öffnen
           </Link>
+        ) : nachricht.objektArchiviert ? (
+          // Archiviert ist nicht weg: wiederherstellen geht im Archiv.
+          <p className="text-xs text-ink-2">
+            Das angefragte Objekt ist archiviert.{" "}
+            <Link href="/admin/archiv" className="text-brand hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+              Zum Archiv
+            </Link>
+          </p>
         ) : (
           <p className="text-xs text-crit">Das angefragte Objekt existiert nicht mehr.</p>
         )}

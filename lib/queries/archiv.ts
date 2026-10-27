@@ -2,6 +2,8 @@
 // Server-Client: die Funktionen laufen als security invoker, RLS greift also auch hier.
 import "server-only"
 import { erstelleServerClient } from "@/lib/supabase/server"
+import { erstelleAdminClient } from "@/lib/supabase/admin"
+import { FOTO_BUCKET } from "@/lib/objekt-fotos"
 import { pruefeRpcFehler } from "@/lib/queries/rpc-fehler"
 import type { Database } from "@/types/database"
 
@@ -41,4 +43,39 @@ export async function stelleAnfrageWiederHer(id: string): Promise<AnfrageStatus 
   if (!lesefehler) return data.status
   console.error("Status nach dem Wiederherstellen nicht lesbar", id, lesefehler)
   return null
+}
+
+// Endgültiges Löschen: die DB-Funktionen prüfen ist_admin() selbst (zweite Sperre neben der Action).
+export async function loescheArchivEintrag(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase.rpc("archiv_eintrag_loeschen", { p_id: id })
+  pruefeRpcFehler(error)
+}
+
+// Liefert die Storage-Pfade der Fotos; die Zeilen sind dann schon weg, die Dateien löscht der Aufrufer.
+export async function loescheObjektEndgueltig(id: string): Promise<string[]> {
+  const supabase = await erstelleServerClient()
+  const { data, error } = await supabase.rpc("objekt_endgueltig_loeschen", { p_id: id })
+  pruefeRpcFehler(error)
+  return data?.[0]?.foto_pfade ?? []
+}
+
+export async function loescheAnfrageEndgueltig(id: string): Promise<void> {
+  const supabase = await erstelleServerClient()
+  const { error } = await supabase.rpc("anfrage_endgueltig_loeschen", { p_id: id })
+  pruefeRpcFehler(error)
+}
+
+// Wie entferneDatei in fotos.ts über den Admin-Client (der Bucket hat keine Nutzer-Policies).
+// false statt Fehler: der Datensatz ist schon gelöscht, liegen bleibt nur verwaister Speicher.
+export async function entferneFotoDateien(pfade: string[]): Promise<boolean> {
+  if (pfade.length === 0) return true
+  try {
+    const { error } = await erstelleAdminClient().storage.from(FOTO_BUCKET).remove(pfade)
+    if (!error) return true
+    console.error("Fotos nach endgültigem Löschen nicht entfernt", pfade, error)
+  } catch (fehler) {
+    console.error("Fotos nach endgültigem Löschen nicht entfernt", pfade, fehler)
+  }
+  return false
 }
