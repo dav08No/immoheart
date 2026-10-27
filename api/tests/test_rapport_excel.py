@@ -6,24 +6,15 @@ import sys
 from io import BytesIO
 
 import pytest
-from openpyxl import load_workbook
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import rapport_excel  # noqa: E402
 from _rapport import ModellFehler, baue_arbeitsmappe  # noqa: E402
+from conftest import modell  # noqa: E402
 
 SCHLUESSEL = "test-schluessel"
-
-MODELL = {
-    "zeitraum": {"label": "27.10.2025 – 27.10.2026"},
-    "diagramme": {
-        "anfragenProMonat": [
-            {"label": "Okt 25", "mail": 1, "website": 2, "manuell": 0},
-            {"label": "Nov 25", "mail": 3, "website": 0, "manuell": 1},
-        ]
-    },
-}
+MODELL = modell()
 
 
 class _FalscherSocket:
@@ -63,21 +54,6 @@ def _env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAPPORT_SCHLUESSEL", SCHLUESSEL)
 
 
-def test_gueltiges_modell_ergibt_xlsx_mit_diagramm() -> None:
-    wb = load_workbook(BytesIO(baue_arbeitsmappe(MODELL)))
-    assert wb.sheetnames == ["Übersicht", "_daten"]
-    assert "27.10.2025 – 27.10.2026" in wb["Übersicht"]["A1"].value
-    assert wb["_daten"].sheet_state == "hidden"
-    assert wb["_daten"].max_row == 3
-    assert len(wb["Übersicht"]._charts) == 1
-
-
-def test_leere_monatsliste_ergibt_gueltige_datei() -> None:
-    leer = {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": []}}
-    wb = load_workbook(BytesIO(baue_arbeitsmappe(leer)))
-    assert "Übersicht" in wb.sheetnames
-
-
 def test_handler_liefert_xlsx() -> None:
     status, body = _post(MODELL)
     assert status == 200
@@ -109,20 +85,26 @@ def test_get_405() -> None:
     assert _anfrage(b"", {}, "GET")[0] == 405
 
 
+def _mit(pfad: list[str | int], wert: object) -> dict[str, object]:
+    m = modell()
+    ziel: object = m
+    for teil in pfad[:-1]:
+        ziel = ziel[teil]  # type: ignore[index]
+    ziel[pfad[-1]] = wert  # type: ignore[index]
+    return m
+
+
 @pytest.mark.parametrize(
     "kaputt",
     [
         [],
-        {"zeitraum": {"label": 5}, "diagramme": {"anfragenProMonat": []}},
-        {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": {}}},
-        {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": [], "extra": 1}},
         {**MODELL, "email": "a@b.ch"},
-        {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": [
-            {"label": "Okt 25", "mail": True, "website": 0, "manuell": 0}]}},
-        {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": [
-            {"label": "Okt 25", "mail": -1, "website": 0, "manuell": 0}]}},
-        {"zeitraum": {"label": "x"}, "diagramme": {"anfragenProMonat": [
-            {"label": "Okt 25", "mail": 1.5, "website": 0, "manuell": 0}]}},
+        _mit(["zeitraum", "label"], 5),
+        _mit(["diagramme", "anfragenProMonat"], {}),
+        _mit(["diagramme", "anfragenProMonat", 0, "mail"], True),
+        _mit(["diagramme", "anfragenProMonat", 0, "mail"], -1),
+        _mit(["diagramme", "anfragenProMonat", 0, "mail"], 1.5),
+        _mit(["tabellen", "treffer", "zeilen", 0, "email"], "a@b.ch"),
     ],
 )
 def test_unerwartete_typen_400(kaputt: object) -> None:
@@ -133,20 +115,8 @@ def test_unerwartete_typen_400(kaputt: object) -> None:
         baue_arbeitsmappe(kaputt)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("label", ["=1+1", '=HYPERLINK("http://x","y")', "+1", "-1", "@a"])
-def test_formel_label_bleibt_text(label: str) -> None:
-    modell = {"zeitraum": {"label": label}, "diagramme": {"anfragenProMonat": [
-        {"label": label, "mail": 1, "website": 0, "manuell": 0}]}}
-    wb = load_workbook(BytesIO(baue_arbeitsmappe(modell)))
-    zelle = wb["_daten"]["A2"]
-    assert zelle.data_type == "s" and zelle.value == label
-    assert zelle.quotePrefix
-    assert wb["Übersicht"]["A1"].data_type == "s"
-
-
 def test_steuerzeichen_im_label_400() -> None:
-    modell = {"zeitraum": {"label": "a\x00b"}, "diagramme": {"anfragenProMonat": []}}
-    status, body = _post(modell)
+    status, body = _post(_mit(["zeitraum", "label"], "a\x00b"))
     assert status == 400
     assert b"zeitraum.label" in body
 

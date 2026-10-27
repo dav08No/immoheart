@@ -19,8 +19,8 @@ def schreibe_text(ws: Any, zeile: int, spalte: int, wert: str) -> Cell:
     return zelle
 
 
-def schreibe_zahl(ws: Any, zeile: int, spalte: int, wert: int) -> Cell:
-    """Zahlen getrennt halten, damit nur geprüfte ints als Zahl landen."""
+def schreibe_zahl(ws: Any, zeile: int, spalte: int, wert: int | float) -> Cell:
+    """Zahlen getrennt halten, damit nur geprüfte Zahlen als Zahl landen."""
     zelle = ws.cell(row=zeile, column=spalte)
     zelle.value = wert
     return zelle

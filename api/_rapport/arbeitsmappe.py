@@ -1,65 +1,43 @@
-"""Baut die Excel-Arbeitsmappe aus dem geprüften Modell (Spike)."""
+"""Baut die Excel-Arbeitsmappe aus dem geprüften Modell."""
 
+from datetime import date, datetime, timezone
 from io import BytesIO
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from openpyxl import Workbook
-from openpyxl.chart import BarChart, Reference
-from openpyxl.styles import Font
 
-from .modell import QUELLEN, pruefe_modell
-from .zellen import schreibe_text, schreibe_zahl
-
-QUELLEN_TITEL = {"mail": "Mail", "website": "Website", "manuell": "Manuell"}
-
-
-def _schreibe_daten(wb: Workbook, monate: list[dict[str, Any]]) -> Any:
-    # Diagrammdaten liegen auf einem versteckten Blatt, damit "Übersicht"
-    # druckfertig bleibt und die Diagramme trotzdem echte Zellbezüge haben.
-    daten = wb.create_sheet("_daten")
-    daten.sheet_state = "hidden"
-    # Zellweise über die Helfer schreiben, damit kein Text als Formel landet.
-    schreibe_text(daten, 1, 1, "Monat")
-    for s, q in enumerate(QUELLEN, start=2):
-        schreibe_text(daten, 1, s, QUELLEN_TITEL[q])
-    for z, m in enumerate(monate, start=2):
-        schreibe_text(daten, z, 1, m["label"])
-        for s, q in enumerate(QUELLEN, start=2):
-            schreibe_zahl(daten, z, s, m[q])
-    return daten
+from .diagramme import baue_diagramme
+from .modell import TABELLEN, pruefe_modell
+from .tabellen import baue_tabellenblatt
+from .uebersicht import baue_uebersicht
+from .zusammenfassung import baue_hinweise, baue_zusammenfassung
 
 
-def _anfragen_diagramm(daten: Any, anzahl_monate: int) -> BarChart:
-    diagramm = BarChart()
-    diagramm.type = "col"
-    diagramm.grouping = "stacked"
-    # Ohne overlap=100 zeichnet Excel gestapelte Säulen versetzt.
-    diagramm.overlap = 100
-    diagramm.title = "Anfragen pro Monat nach Quelle"
-    diagramm.y_axis.title = "Anfragen"
-    letzte_zeile = max(anzahl_monate + 1, 2)
-    werte = Reference(daten, min_col=2, max_col=1 + len(QUELLEN), min_row=1, max_row=letzte_zeile)
-    kategorien = Reference(daten, min_col=1, min_row=2, max_row=letzte_zeile)
-    diagramm.add_data(werte, titles_from_data=True)
-    diagramm.set_categories(kategorien)
-    diagramm.width = 24
-    diagramm.height = 10
-    return diagramm
+def _heute_zuerich() -> date:
+    # Der Rapport nennt Schweizer Tage; fehlen die Zeitzonendaten, ist UTC nah genug.
+    try:
+        return datetime.now(ZoneInfo("Europe/Zurich")).date()
+    except ZoneInfoNotFoundError:
+        return datetime.now(timezone.utc).date()
 
 
-def baue_arbeitsmappe(modell: dict[str, Any]) -> bytes:
+def baue_arbeitsmappe(modell: dict[str, Any], heute: date | None = None) -> bytes:
     """Reine Funktion: Modell rein, .xlsx-Bytes raus. Prüft selbst nochmals."""
     sauber = pruefe_modell(modell)
-    monate = sauber["diagramme"]["anfragenProMonat"]
 
     wb = Workbook()
+    wb.properties.creator = "immoheart"
+    wb.properties.title = f"immoheart Jahresrapport {sauber['zeitraum']['label']}"
     uebersicht = wb.active
-    uebersicht.title = "Übersicht"
-    titel = f"immoheart Jahresrapport · {sauber['zeitraum']['label']}"
-    schreibe_text(uebersicht, 1, 1, titel).font = Font(size=16, bold=True, color="1F4E5F")
-
-    daten = _schreibe_daten(wb, monate)
-    uebersicht.add_chart(_anfragen_diagramm(daten, len(monate)), "A3")
+    # Reihenfolge der Blätter = Reihenfolge des Anlegens; "_daten" kommt zuletzt.
+    baue_zusammenfassung(wb, sauber)
+    for name in TABELLEN:
+        baue_tabellenblatt(wb, name, sauber["tabellen"][name])
+    baue_hinweise(wb, sauber["hinweise"])
+    diagramme = baue_diagramme(wb, sauber["diagramme"])
+    baue_uebersicht(uebersicht, sauber, diagramme, heute or _heute_zuerich())
+    wb.active = 0
 
     puffer = BytesIO()
     wb.save(puffer)
