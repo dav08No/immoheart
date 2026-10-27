@@ -1,11 +1,14 @@
 """Prüfung des eingehenden JSON-Modells (Spike-Umfang, Ruling R1)."""
 
+import re
 from typing import Any
 
 # Obergrenzen schützen vor übergrossen Eingaben innerhalb der 5 MB.
 MAX_LABEL = 200
 MAX_MONATE = 24
 QUELLEN = ("mail", "website", "manuell")
+# Steuerzeichen sind in XLSX unzulässig (openpyxl wirft IllegalCharacterError).
+STEUERZEICHEN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
 class ModellFehler(ValueError):
@@ -27,6 +30,8 @@ def _dict(wert: Any, pfad: str) -> dict[str, Any]:
 def _text(wert: Any, pfad: str) -> str:
     if not isinstance(wert, str) or len(wert) > MAX_LABEL:
         raise ModellFehler(f"{pfad}: Text erwartet")
+    if STEUERZEICHEN.search(wert):
+        raise ModellFehler(f"{pfad}: unzulässige Steuerzeichen")
     return wert
 
 

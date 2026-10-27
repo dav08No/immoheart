@@ -131,3 +131,47 @@ def test_unerwartete_typen_400(kaputt: object) -> None:
     assert b"a@b.ch" not in body  # keine Datenteile in der Fehlerantwort
     with pytest.raises(ModellFehler):
         baue_arbeitsmappe(kaputt)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("label", ["=1+1", '=HYPERLINK("http://x","y")', "+1", "-1", "@a"])
+def test_formel_label_bleibt_text(label: str) -> None:
+    modell = {"zeitraum": {"label": label}, "diagramme": {"anfragenProMonat": [
+        {"label": label, "mail": 1, "website": 0, "manuell": 0}]}}
+    wb = load_workbook(BytesIO(baue_arbeitsmappe(modell)))
+    zelle = wb["_daten"]["A2"]
+    assert zelle.data_type == "s" and zelle.value == label
+    assert zelle.quotePrefix
+    assert wb["Übersicht"]["A1"].data_type == "s"
+
+
+def test_steuerzeichen_im_label_400() -> None:
+    modell = {"zeitraum": {"label": "a\x00b"}, "diagramme": {"anfragenProMonat": []}}
+    status, body = _post(modell)
+    assert status == 400
+    assert b"zeitraum.label" in body
+
+
+def test_nicht_ascii_schluessel_401() -> None:
+    assert _post(MODELL, "schlüssel-ä")[0] == 401
+
+
+def test_tiefe_verschachtelung_400() -> None:
+    body = b"[" * 100_000 + b"]" * 100_000
+    headers = {"Content-Length": str(len(body)), "x-rapport-schluessel": SCHLUESSEL}
+    assert _anfrage(body, headers)[0] == 400
+
+
+@pytest.mark.parametrize("laenge", ["+5", "5 5", "1_0", "²", "-1"])
+def test_ungueltige_content_length_411(laenge: str) -> None:
+    headers = {"Content-Length": laenge, "x-rapport-schluessel": SCHLUESSEL}
+    assert _anfrage(b"", headers)[0] == 411
+
+
+def test_unerwarteter_fehler_500_ohne_daten(monkeypatch: pytest.MonkeyPatch) -> None:
+    def kaputt(_modell: object) -> bytes:
+        raise RuntimeError("geheim")
+
+    monkeypatch.setattr(rapport_excel, "baue_arbeitsmappe", kaputt)
+    status, body = _post(MODELL)
+    assert status == 500
+    assert json.loads(body) == {"fehler": "Interner Fehler"}

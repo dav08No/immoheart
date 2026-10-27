@@ -39,6 +39,15 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 – Name von Vercel vorgege
         return hmac.compare_digest(erhalten.encode("utf-8"), erwartet.encode("utf-8"))
 
     def do_POST(self) -> None:  # noqa: N802
+        try:
+            self._verarbeite()
+        except Exception as e:  # noqa: BLE001
+            # Letztes Netz: feste Antwort statt abgebrochener Verbindung.
+            # Geloggt wird nur der Typ, damit keine Daten in die Logs gelangen.
+            print(f"rapport_excel: interner Fehler {type(e).__name__}", file=sys.stderr)
+            self._fehler(500, "Interner Fehler")
+
+    def _verarbeite(self) -> None:
         ok = self._schluessel_ok()
         if ok is None:
             self._fehler(500, "Server nicht konfiguriert")
@@ -47,22 +56,21 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 – Name von Vercel vorgege
             self._fehler(401, "Nicht berechtigt")
             return
 
-        try:
-            laenge = int(self.headers.get("Content-Length", ""))
-        except ValueError:
+        roh_laenge = self.headers.get("Content-Length", "")
+        # Nur ASCII-Ziffern; int() akzeptierte sonst auch "+5", " 5" oder "1_0".
+        if not (roh_laenge.isascii() and roh_laenge.isdigit()):
             self._fehler(411, "Content-Length fehlt")
             return
+        laenge = int(roh_laenge)
         # Grösse vor dem Lesen prüfen, damit nichts Übergrosses in den Speicher kommt.
         if laenge > MAX_BYTES:
             self._fehler(413, "Eingabe zu gross")
             return
-        if laenge < 0:
-            self._fehler(400, "Ungültige Länge")
-            return
 
         try:
             modell = json.loads(self.rfile.read(laenge).decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        except (ValueError, RecursionError):
+            # ValueError deckt auch JSONDecodeError und UnicodeDecodeError ab.
             self._fehler(400, "Ungültiges JSON")
             return
 

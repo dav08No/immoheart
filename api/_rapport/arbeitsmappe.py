@@ -8,6 +8,7 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Font
 
 from .modell import QUELLEN, pruefe_modell
+from .zellen import schreibe_text, schreibe_zahl
 
 QUELLEN_TITEL = {"mail": "Mail", "website": "Website", "manuell": "Manuell"}
 
@@ -17,9 +18,14 @@ def _schreibe_daten(wb: Workbook, monate: list[dict[str, Any]]) -> Any:
     # druckfertig bleibt und die Diagramme trotzdem echte Zellbezüge haben.
     daten = wb.create_sheet("_daten")
     daten.sheet_state = "hidden"
-    daten.append(["Monat", *(QUELLEN_TITEL[q] for q in QUELLEN)])
-    for m in monate:
-        daten.append([m["label"], *(m[q] for q in QUELLEN)])
+    # Zellweise über die Helfer schreiben, damit kein Text als Formel landet.
+    schreibe_text(daten, 1, 1, "Monat")
+    for s, q in enumerate(QUELLEN, start=2):
+        schreibe_text(daten, 1, s, QUELLEN_TITEL[q])
+    for z, m in enumerate(monate, start=2):
+        schreibe_text(daten, z, 1, m["label"])
+        for s, q in enumerate(QUELLEN, start=2):
+            schreibe_zahl(daten, z, s, m[q])
     return daten
 
 
@@ -49,8 +55,8 @@ def baue_arbeitsmappe(modell: dict[str, Any]) -> bytes:
     wb = Workbook()
     uebersicht = wb.active
     uebersicht.title = "Übersicht"
-    uebersicht["A1"] = f"immoheart Jahresrapport · {sauber['zeitraum']['label']}"
-    uebersicht["A1"].font = Font(size=16, bold=True, color="1F4E5F")
+    titel = f"immoheart Jahresrapport · {sauber['zeitraum']['label']}"
+    schreibe_text(uebersicht, 1, 1, titel).font = Font(size=16, bold=True, color="1F4E5F")
 
     daten = _schreibe_daten(wb, monate)
     uebersicht.add_chart(_anfragen_diagramm(daten, len(monate)), "A3")
