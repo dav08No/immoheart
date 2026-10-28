@@ -57,7 +57,7 @@ export default function StadtSzene({ onBereit, onFehler }: Props) {
       >
         <ambientLight intensity={1.1} color={farben.hell} />
         <directionalLight position={[6, 12, 8]} intensity={2.2} color={farben.hell} />
-        <directionalLight position={[-8, 4, -6]} intensity={0.5} color={farben.brand2} />
+        <directionalLight position={[-8, 4, -6]} intensity={0.5} color={farben.bau2} />
         <StadtBauten farben={farben} />
       </Canvas>
     </div>

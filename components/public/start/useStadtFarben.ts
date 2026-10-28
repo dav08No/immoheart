@@ -3,26 +3,30 @@
 import { useEffect, useState } from "react"
 
 export type StadtFarben = {
-  brand: string
-  brand2: string
+  bau: string
+  bau2: string
   herz: string
   hell: string
 }
 
-// Hellmodus-Werte aus app/globals.css, falls eine Variable (noch) fehlt.
+// Hellmodus-Werte der Website-Tokens aus app/globals.css (.website), falls eine
+// Variable (noch) fehlt.
 const STANDARD: StadtFarben = {
-  brand: "#065A82",
-  brand2: "#1C7293",
-  herz: "#E24B5B",
+  bau: "#4A4541",
+  bau2: "#5E5853",
+  herz: "#FF1C38",
   hell: "#FFFFFF",
 }
 
 function lesen(): StadtFarben {
-  const stil = getComputedStyle(document.documentElement)
+  // Die Website-Farben hängen am .website-Wrapper, nicht an <html> (dort liegen
+  // die Admin-Tokens).
+  const quelle = document.querySelector(".website") ?? document.documentElement
+  const stil = getComputedStyle(quelle)
   const wert = (name: string, ersatz: string) => stil.getPropertyValue(name).trim() || ersatz
   return {
-    brand: wert("--brand", STANDARD.brand),
-    brand2: wert("--brand-2", STANDARD.brand2),
+    bau: wert("--stadt-a", STANDARD.bau),
+    bau2: wert("--stadt-b", STANDARD.bau2),
     herz: wert("--heart", STANDARD.herz),
     hell: wert("--on-hero", STANDARD.hell),
   }

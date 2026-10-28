@@ -71,6 +71,74 @@
   --eingabe-rand: #7580A6;
 }
 
+/* ── Öffentliche Website: Farben und Schrift von espaceSOLOTHURN ──────────────────
+   Nur innerhalb von app/(public) (Wrapper mit Klasse "website"). Zusätzlich auf dem
+   body, solange eine .website-Seite offen ist: Radix-Portale (Sheet, Dialog) und der
+   Toaster hängen direkt am body und sollen dieselben Tokens bekommen. Admin und Login
+   bleiben bei den :root-Werten oben.
+   Kontraste (WCAG): Text >= 4.5:1, Flächen/Grafik >= 3:1, in beiden Modi; Werte siehe
+   Kommentare. Signalrot #FF1C38 nur als Grafik (Herz, EKG, Puls), für Text und
+   gefüllte Knöpfe mit weisser Schrift die tieferen Rottöne. */
+.website,
+body:has(.website) {
+  --bg: #F4F0EE; --surface: #FFFFFF; --surface-2: #FAF9F5; --surface-3: #EDE7E1;
+  /* ink-2 6.2:1, ink-3 5.3:1 auf bg (espace-Grau #928781 hätte nur 3.1:1). */
+  --ink: #282828; --ink-2: #5F5752; --ink-3: #6B625D;
+  --line: #E8E1D8; --line-2: #D5CBC1;
+  /* brand: Text 5.2:1 auf bg, weisse Schrift darauf 5.9:1; brand-2 (Fokusring) 4.2:1. */
+  --brand: #C8102E; --brand-2: #E4132F; --on-brand: #FFFFFF; --brand-soft: #FCEBEC;
+  --navy: #1A1817;
+  --heart: #FF1C38; --heart-soft: #FCEBEC;
+  /* Hero: einfarbiges, warmes Anthrazit statt Verlauf. CTA-Rot: weisse Schrift
+     4.7:1, Fläche gegen den Hero 3.3:1. */
+  --hero-bg: #252321; --on-hero: #FFFFFF; --on-hero-2: #D9D2CC;
+  --hero-cta-bg: #E4132F; --hero-cta-bg-hover: #C8102E; --hero-cta-fg: #FFFFFF;
+  /* Bauten des Stadtmodells: warme Grautöne auf dem dunklen Hero. */
+  --stadt-a: #4A4541; --stadt-b: #5E5853;
+  --panel-schatten: 0 1px 2px rgb(40 36 33 / 0.04), 0 4px 16px rgb(40 36 33 / 0.05);
+  --eingabe-rand: #857A73;
+
+  /* shadcn-Namen hier neu ablegen: in :root sind sie schon zu den alten Werten aufgelöst. */
+  --background: var(--bg); --foreground: var(--ink);
+  --card: var(--surface); --card-foreground: var(--ink);
+  --popover: var(--surface); --popover-foreground: var(--ink);
+  --primary: var(--brand); --primary-foreground: var(--on-brand);
+  --secondary: var(--surface-3); --secondary-foreground: var(--ink);
+  --muted: var(--surface-2); --muted-foreground: var(--ink-2);
+  --accent: var(--brand-soft); --accent-foreground: var(--brand);
+  --destructive: var(--crit);
+  --border: var(--line); --input: var(--line-2); --ring: var(--brand-2);
+
+  /* Hanken Grotesk (freie Halyard-Verwandte) für Text und Überschriften. */
+  --schrift-text: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+  --schrift-display: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--schrift-text);
+  --font-display: var(--schrift-display);
+}
+
+[data-theme="dark"] .website,
+[data-theme="dark"] body:has(.website) {
+  --bg: #1E1C1B; --surface: #282624; --surface-2: #2F2C2A; --surface-3: #37332F;
+  /* ink-2 8.8:1, ink-3 6.8:1 auf bg; >= 5.5:1 auf surface-2. */
+  --ink: #EEEBE8; --ink-2: #C2B9B2; --ink-3: #ABA29B;
+  --line: #3A3633; --line-2: #4D4743;
+  /* brand 6.3:1 auf bg, 4.7:1 auf surface-3; dunkle Schrift darauf 6.6:1. */
+  --brand: #FF6E80; --brand-2: #FF8291; --on-brand: #1A1817; --brand-soft: #45272B;
+  --navy: #0E0D0C;
+  --heart: #FF4D63; --heart-soft: #3D2427;
+  --hero-bg: #141312; --on-hero: #EEEBE8; --on-hero-2: #C9C1BA;
+  --hero-cta-bg: #E4132F; --hero-cta-bg-hover: #C8102E; --hero-cta-fg: #FFFFFF;
+  --stadt-a: #3A3633; --stadt-b: #4D4743;
+  --panel-schatten: 0 1px 2px rgb(0 0 0 / 0.25), 0 4px 16px rgb(0 0 0 / 0.20);
+  --eingabe-rand: #8A807A;
+}
+
+/* Halyard Display ist Medium, nicht Bold: Überschriften der Website in 600. Bewusst
+   ausserhalb der Layer, damit es die font-bold-Utility übersteuert. */
+:is(.website, body:has(.website)) :is(.font-display, .text-inhalt h2) {
+  font-weight: 600;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -94,6 +162,9 @@
   --color-crit-bg: var(--crit-bg);
   --color-heart: var(--heart);
   --color-heart-soft: var(--heart-soft);
+  --color-hero: var(--hero-bg);
+  --color-stadt-a: var(--stadt-a);
+  --color-stadt-b: var(--stadt-b);
   --color-hero-von: var(--hero-von);
   --color-hero-bis: var(--hero-bis);
   --color-on-hero: var(--on-hero);
@@ -135,8 +206,10 @@
 
   --radius-card: 10px;
   --radius-panel: 14px;
-  --font-sans: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-fraunces, Georgia), serif;
+  /* Über --schrift-* statt direkt: "inline" schreibt den Wert in die Utility, so
+     lässt sich die Schrift in .website umschalten (siehe oben). */
+  --font-sans: var(--schrift-text);
+  --font-display: var(--schrift-display);
 }
 
 @layer base {
@@ -145,7 +218,11 @@
   *, ::after, ::before, ::backdrop, ::file-selector-button {
     border-color: var(--line);
   }
+  /* Standard-Schriften (Admin, Login) hier statt in :root: next/font setzt
+     --font-outfit/--font-fraunces erst auf dem body. */
   body {
+    --schrift-text: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
+    --schrift-display: var(--font-fraunces, Georgia), serif;
     background: var(--bg);
     color: var(--ink);
   }
@@ -205,7 +282,7 @@
   }
   .text-inhalt :where(h2) {
     margin-top: 2rem;
-    font-family: var(--font-display);
+    font-family: var(--schrift-display);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--ink);

@@ -14,7 +14,7 @@ export function HeroText() {
           {WOERTER.map((wort, i) => (
             <span key={`${wort}-${i}`}>
               <span
-                // Koralle als Unterstrich statt Schriftfarbe: Koralle auf Petrol hätte zu wenig Kontrast.
+                // Rot als Unterstrich statt Schriftfarbe: so bleibt der Titel selbst hell und gut lesbar.
                 className={`inline-block animate-wort-ein ${wort.startsWith("Herzschlag") ? "underline decoration-heart decoration-4 underline-offset-8" : ""}`}
                 style={{ animationDelay: `${120 + i * 110}ms` }}
               >
