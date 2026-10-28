@@ -6,3 +6,8 @@ node_modules
 *.tsbuildinfo
 .vercel
 supabase/.temp
+
+# Python (Rapport-Funktion)
+.venv
+__pycache__
+.pytest_cache

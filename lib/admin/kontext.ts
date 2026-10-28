@@ -36,3 +36,10 @@ export function kontextNutzer(aktiv: number, eingeladen: number): string {
   if (eingeladen > 0) teile.push(`${formatZahl(eingeladen)} eingeladen`)
   return teile.join(TRENNER)
 }
+
+export function kontextArchiv(treffer: number, objekte: number, anfragen: number): string {
+  if (treffer === 0 && objekte === 0 && anfragen === 0) return "Nichts archiviert"
+  // "Treffer" ist in Ein- und Mehrzahl gleich.
+  const teile = [anzahl(treffer, "Treffer", "Treffer"), anzahl(objekte, "Objekt", "Objekte"), anzahl(anfragen, "Anfrage", "Anfragen")]
+  return `${teile.join(TRENNER)} archiviert`
+}

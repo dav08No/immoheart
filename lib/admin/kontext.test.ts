@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { kontextAnfragen, kontextEntwuerfe, kontextMatches, kontextNutzer, kontextObjekte } from "./kontext"
+import { kontextAnfragen, kontextArchiv, kontextEntwuerfe, kontextMatches, kontextNutzer, kontextObjekte } from "./kontext"
 
 describe("kontextMatches", () => {
   it("nennt neue Treffer und lange ohne Kontakt", () => {
@@ -62,5 +62,17 @@ describe("kontextNutzer", () => {
   it("0 aktiv", () => {
     expect(kontextNutzer(0, 1)).toBe("Keine aktiven Konten · 1 eingeladen")
     expect(kontextNutzer(0, 0)).toBe("Keine aktiven Konten")
+  })
+})
+
+describe("kontextArchiv", () => {
+  it("nennt alle drei Mengen mit Singular und Plural", () => {
+    expect(kontextArchiv(12, 3, 2)).toBe("12 Treffer · 3 Objekte · 2 Anfragen archiviert")
+    expect(kontextArchiv(1, 1, 1)).toBe("1 Treffer · 1 Objekt · 1 Anfrage archiviert")
+    expect(kontextArchiv(0, 1, 0)).toBe("0 Treffer · 1 Objekt · 0 Anfragen archiviert")
+    expect(kontextArchiv(1500, 0, 0)).toBe("1’500 Treffer · 0 Objekte · 0 Anfragen archiviert")
+  })
+  it("nichts archiviert", () => {
+    expect(kontextArchiv(0, 0, 0)).toBe("Nichts archiviert")
   })
 })

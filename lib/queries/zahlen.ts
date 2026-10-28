@@ -7,6 +7,7 @@ import {
   abschluesseJeAnfrage,
   anfragenProMonat,
   tageBisAbschluss,
+  ohneArchivierteObjekte,
   tageBisErstangebot,
   topObjekte,
   vermittlungsquote,
@@ -14,22 +15,7 @@ import {
 import { entwuerfeVerlauf, mailsProWoche } from "@/lib/zahlen/nachrichten"
 import { groessenVerteilung, nutzungVerteilung, pulsVerteilung } from "@/lib/zahlen/verteilungen"
 import { erstesAngebotJeAnfrage } from "@/lib/zahlen/anzeige"
-
-// PostgREST liefert höchstens 1000 Zeilen je Anfrage -- darüber hinaus seitenweise.
-const SEITE = 1000
-
-async function alleSeiten<T>(
-  hole: (von: number, bis: number) => PromiseLike<{ data: T[] | null; error: unknown }>
-): Promise<T[]> {
-  const alle: T[] = []
-  for (let von = 0; ; von += SEITE) {
-    const { data, error } = await hole(von, von + SEITE - 1)
-    if (error) throw error
-    const seite = data ?? []
-    alle.push(...seite)
-    if (seite.length < SEITE) return alle
-  }
-}
+import { alleSeiten } from "./seiten"
 
 export type ZahlenDaten = {
   anfragen: { gesamt: number; offen: number; quote: number | null; vermittelt: number }
@@ -47,11 +33,13 @@ export type ZahlenDaten = {
 // `jetzt` kommt vom Aufrufer, damit alle Zeitfenster denselben Stichtag haben.
 export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   const supabase = await erstelleServerClient()
-  const [anfragen, nachrichten, treffer] = await Promise.all([
+  // Die Zahlen-Seite zeigt nur aktive Daten; Archiviertes zählt erst der Rapport.
+  const [anfragen, nachrichten, treffer, archivierteObjekte] = await Promise.all([
     alleSeiten((von, bis) =>
       supabase
         .from("anfragen")
         .select("id, created_at, quelle, status, flaeche_min, flaeche_max, nutzung, letzter_kontakt")
+        .is("archiviert_am", null)
         .order("id")
         .range(von, bis)
     ),
@@ -66,10 +54,14 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
     alleSeiten((von, bis) =>
       supabase
         .from("matches")
-        .select("anfrage_id, status, angeboten_am, abgeschlossen_am")
+        .select("anfrage_id, objekt_id, status, angeboten_am, abgeschlossen_am")
         .not("angeboten_am", "is", null)
         .order("id")
         .range(von, bis)
+    ),
+    // Nur die IDs: Direktanfragen und Treffer archivierter Objekte fallen heraus.
+    alleSeiten((von, bis) =>
+      supabase.from("objekte").select("id").not("archiviert_am", "is", null).order("id").range(von, bis)
     ),
   ])
 
@@ -78,13 +70,19 @@ export async function holeZahlen(jetzt: Date): Promise<ZahlenDaten> {
   // und beim Versand (ein gesendetes Angebot bleibt gesendet, auch wenn es später aus
   // dem Postfach entfernt wird).
   const sichtbar = nachrichten.filter((n) => n.geloescht_am === null)
-  const direkt = sichtbar.filter((n) => n.kategorie === "objektanfrage" && n.richtung === "eingang")
+  const archiviert = new Set(archivierteObjekte.map((o) => o.id))
+  const direkt = sichtbar.filter(
+    (n) => n.kategorie === "objektanfrage" && n.richtung === "eingang" && !(n.objekt_id && archiviert.has(n.objekt_id))
+  )
+  // erstellt kennt nur aktive Anfragen; Treffer archivierter Anfragen fallen damit in
+  // erstesAngebotJeAnfrage/abschluesseJeAnfrage heraus.
   const erstellt = Object.fromEntries(anfragen.map((a) => [a.id, a.created_at]))
   // angeboten_am wird beim tatsächlichen Versand gesetzt (Spec §3) -- verlässlicher als
   // gesendete Angebots-Mails, die gelöscht oder von Hand verschickt sein können.
-  const angebote = treffer.map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
+  const aktiveTreffer = ohneArchivierteObjekte(treffer, archiviert)
+  const angebote = aktiveTreffer.map((t) => ({ anfrage_id: t.anfrage_id, gesendet_am: t.angeboten_am }))
   const erstangebot = tageBisErstangebot(erstesAngebotJeAnfrage(angebote, erstellt))
-  const abschluss = tageBisAbschluss(abschluesseJeAnfrage(treffer, erstellt))
+  const abschluss = tageBisAbschluss(abschluesseJeAnfrage(aktiveTreffer, erstellt))
   const { quote, vermittelt, gesamt } = vermittlungsquote(anfragen)
 
   return {

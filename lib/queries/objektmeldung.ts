@@ -10,6 +10,7 @@ export async function holeAktiveObjekteNachEigentuemer(status: ObjektStatus[]): 
     .from("objekte")
     .select("id, eigentuemer_email")
     .in("status", status)
+    .is("archiviert_am", null)
     .not("eigentuemer_email", "is", null)
   if (error) throw error
   const nachEigentuemer: Record<string, string[]> = {}

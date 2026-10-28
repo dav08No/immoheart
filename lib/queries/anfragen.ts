@@ -17,7 +17,7 @@ export async function legeAnfrageAn(anfrage: AnfrageEinfuegen): Promise<AnfrageR
 export async function holeAnfragen(): Promise<AnfrageMitFirma[]> {
   const supabase = await erstelleServerClient()
   const [{ data: anfragenData, error: anfragenError }, { data: firmenData, error: firmenError }] = await Promise.all([
-    supabase.from("anfragen").select("*").order("letzter_kontakt", { ascending: true }),
+    supabase.from("anfragen").select("*").is("archiviert_am", null).order("letzter_kontakt", { ascending: true }),
     supabase.from("firmen").select("id, name, website"),
   ])
   if (anfragenError) throw anfragenError
@@ -45,22 +45,27 @@ export async function aktualisiereAnfrage(id: string, aenderung: Partial<Anfrage
 // Rollback-Pfad für alsAnfrageSpeichern: verliert der Aufruf den Doppelklick-Schutz
 // (anfrage_id war beim bedingten Update bereits gesetzt), muss die soeben angelegte,
 // nun verwaiste Anfrage wieder entfernt werden statt als Dublette stehen zu bleiben.
-export async function loescheAnfrage(id: string): Promise<void> {
+// Über anfrage_rollback, weil Anfragen sonst nur archiviert, nie gelöscht werden.
+export async function rollbackAnfrage(id: string): Promise<void> {
   const supabase = await erstelleServerClient()
-  const { error } = await supabase.from("anfragen").delete().eq("id", id)
+  const { error } = await supabase.rpc("anfrage_rollback", { p_id: id })
   if (error) throw error
 }
 
 export async function holeOffeneAnfragen(): Promise<AnfrageRow[]> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("anfragen").select("*").eq("status", "offen")
+  const { data, error } = await supabase.from("anfragen").select("*").eq("status", "offen").is("archiviert_am", null)
   if (error) throw error
   return data
 }
 
 export async function holeOffenePulsWerte(): Promise<Date[]> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("anfragen").select("letzter_kontakt").eq("status", "offen")
+  const { data, error } = await supabase
+    .from("anfragen")
+    .select("letzter_kontakt")
+    .eq("status", "offen")
+    .is("archiviert_am", null)
   if (error) throw error
   return data.map((row) => new Date(row.letzter_kontakt))
 }

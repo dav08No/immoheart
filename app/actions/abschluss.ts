@@ -19,17 +19,11 @@ import {
 import { berechneUndSpeichereMatchesFuerObjekt } from "@/lib/queries/matches"
 import { verknuepfeObjektMitEingang } from "@/lib/queries/nachrichten"
 import { erzeugeAbschlussEntwuerfe, holeAbschlussEntwuerfeNach } from "@/lib/abschluss/entwuerfe-erzeugen"
-import { idSchema, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
+import { pruefeId, type Ergebnis } from "@/app/actions/entwuerfe-hilfen"
 
 // hintergrund: fehlend zählt Platzhalter, deren KI-Text gerade nach der Antwort entsteht.
 type AbschlussErgebnis = Ergebnis & { hinweise?: string[]; fehlend?: number; hintergrund?: boolean }
 type Folgen = { hinweise?: string[]; fehlend?: number; hintergrund?: boolean; nachher?: (() => Promise<void>)[] }
-
-function pruefeId(id: unknown): string {
-  const geprueft = idSchema.safeParse(id)
-  if (!geprueft.success) throw new NutzerFehler("Ungültige ID.")
-  return geprueft.data
-}
 
 function abschlussPfadeNeuLaden() {
   for (const pfad of ["/admin", "/admin/anfragen", "/admin/objekte", "/admin/entwuerfe", "/admin/postfach", "/objekte"]) {

@@ -85,3 +85,9 @@ export function topObjekte(anfragen: { objekt_id: string | null }[], titel: Reco
     .slice(0, Math.max(0, max))
     .map(([objektId, anzahl]) => ({ titel: titel[objektId] ?? "Gelöschtes Objekt", anzahl })) // kein Titel -> Objekt existiert nicht mehr
 }
+
+// Die Zahlen-Seite zeigt nur den aktiven Bestand: Treffer zu archivierten Objekten fallen
+// aus den Medianen, wie Treffer archivierter Anfragen (Final-Review M1).
+export function ohneArchivierteObjekte<T extends { objekt_id: string }>(treffer: T[], archiviert: ReadonlySet<string>): T[] {
+  return treffer.filter((t) => !archiviert.has(t.objekt_id))
+}

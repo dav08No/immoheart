@@ -10,13 +10,15 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
       anfragen: {
         Row: {
           anforderungen: Json
+          archiv_grund: string | null
+          archiviert_am: string | null
           bezug: string | null
           budget_pro_m2: number | null
           created_at: string
@@ -33,6 +35,8 @@ export type Database = {
         }
         Insert: {
           anforderungen?: Json
+          archiv_grund?: string | null
+          archiviert_am?: string | null
           bezug?: string | null
           budget_pro_m2?: number | null
           created_at?: string
@@ -49,6 +53,8 @@ export type Database = {
         }
         Update: {
           anforderungen?: Json
+          archiv_grund?: string | null
+          archiviert_am?: string | null
           bezug?: string | null
           budget_pro_m2?: number | null
           created_at?: string
@@ -435,6 +441,8 @@ export type Database = {
       objekte: {
         Row: {
           adresse: string
+          archiv_grund: string | null
+          archiviert_am: string | null
           beschreibung: string | null
           created_at: string
           eigenschaften: Json
@@ -453,6 +461,8 @@ export type Database = {
         }
         Insert: {
           adresse: string
+          archiv_grund?: string | null
+          archiviert_am?: string | null
           beschreibung?: string | null
           created_at?: string
           eigenschaften?: Json
@@ -471,6 +481,8 @@ export type Database = {
         }
         Update: {
           adresse?: string
+          archiv_grund?: string | null
+          archiviert_am?: string | null
           beschreibung?: string | null
           created_at?: string
           eigenschaften?: Json
@@ -513,6 +525,57 @@ export type Database = {
           id?: string
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      treffer_archiv: {
+        Row: {
+          abgeschlossen_am: string | null
+          anfrage_id: string
+          angeboten_am: string | null
+          archiviert_am: string
+          grund: string
+          hinweis: string
+          id: string
+          kriterien: Json
+          match_id: string
+          objekt_id: string
+          reserviert_am: string | null
+          score: number
+          status: Database["public"]["Enums"]["match_status_enum"]
+          treffer_erstellt_am: string
+        }
+        Insert: {
+          abgeschlossen_am?: string | null
+          anfrage_id: string
+          angeboten_am?: string | null
+          archiviert_am?: string
+          grund: string
+          hinweis: string
+          id?: string
+          kriterien: Json
+          match_id: string
+          objekt_id: string
+          reserviert_am?: string | null
+          score: number
+          status: Database["public"]["Enums"]["match_status_enum"]
+          treffer_erstellt_am: string
+        }
+        Update: {
+          abgeschlossen_am?: string | null
+          anfrage_id?: string
+          angeboten_am?: string | null
+          archiviert_am?: string
+          grund?: string
+          hinweis?: string
+          id?: string
+          kriterien?: Json
+          match_id?: string
+          objekt_id?: string
+          reserviert_am?: string | null
+          score?: number
+          status?: Database["public"]["Enums"]["match_status_enum"]
+          treffer_erstellt_am?: string
         }
         Relationships: []
       }
@@ -562,11 +625,33 @@ export type Database = {
       }
     }
     Functions: {
+      anfrage_archivieren: {
+        Args: { p_grund: string; p_id: string }
+        Returns: undefined
+      }
+      anfrage_endgueltig_loeschen: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      anfrage_rollback: { Args: { p_id: string }; Returns: undefined }
+      anfrage_wiederherstellen: { Args: { p_id: string }; Returns: undefined }
+      archiv_eintrag_loeschen: { Args: { p_id: string }; Returns: undefined }
       formular_zaehlen: {
         Args: { p_fenster: string; p_ip_hash: string }
         Returns: number
       }
+      ist_admin: { Args: never; Returns: boolean }
       ist_aktives_konto: { Args: never; Returns: boolean }
+      objekt_archivieren: {
+        Args: { p_grund: string; p_id: string }
+        Returns: undefined
+      }
+      objekt_endgueltig_loeschen: {
+        Args: { p_id: string }
+        Returns: {
+          foto_pfade: string[]
+        }[]
+      }
       objekt_nicht_verfuegbar: {
         Args: { p_objekt: string }
         Returns: {
@@ -579,6 +664,7 @@ export type Database = {
         Args: { p_objekt: string }
         Returns: undefined
       }
+      objekt_wiederherstellen: { Args: { p_id: string }; Returns: undefined }
       reservierung_aufheben: {
         Args: { p_match: string }
         Returns: {
@@ -595,6 +681,10 @@ export type Database = {
         }[]
       }
       treffer_ablehnen: { Args: { p_match: string }; Returns: undefined }
+      treffer_entfernen: {
+        Args: { p_grund: string; p_ids: string[] }
+        Returns: undefined
+      }
       treffer_reservieren: {
         Args: { p_match: string }
         Returns: {

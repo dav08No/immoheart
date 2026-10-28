@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/rapport_excel.py": {
+      "excludeFiles": "{.next,.git,node_modules,app,components,lib,public,supabase,docs,types,.superpowers}/**"
+    }
+  }
+}

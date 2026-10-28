@@ -3,20 +3,32 @@ import { erstelleServerClient } from "@/lib/supabase/server"
 import { erstelleAdminClient } from "@/lib/supabase/admin"
 import type { NachrichtRow } from "@/lib/queries/nachrichten"
 
-export type PostfachNachricht = NachrichtRow & { anhangTypen: string[] }
+// objektArchiviert: das verknüpfte Objekt ist archiviert (nicht gelöscht), damit die
+// Objektanfrage "archiviert" statt "existiert nicht mehr" sagen und ins Archiv verlinken kann.
+export type PostfachNachricht = NachrichtRow & { anhangTypen: string[]; objektArchiviert: boolean }
 
 // Anhang-Typen direkt mitgeladen (eine Abfrage statt einer zweiten mit allen IDs im
 // URL-Filter, der bei vielen Nachrichten zu lang würde) -- für die Badges "2 Bilder"/"PDF".
+// Archivierte Objekt-IDs parallel: ungeblättert, weil deutlich unter 1000 erwartet; ohne id-Liste in der URL.
 export async function holePostfachNachrichten(): Promise<PostfachNachricht[]> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase
-    .from("nachrichten")
-    .select("*, nachricht_anhaenge(mime_type)")
-    .is("geloescht_am", null)
-    .neq("richtung", "entwurf")
-    .order("created_at", { ascending: false })
-  if (error) throw error
-  return data.map(({ nachricht_anhaenge, ...n }) => ({ ...n, anhangTypen: nachricht_anhaenge.map((a) => a.mime_type) }))
+  const [nachrichten, archiviert] = await Promise.all([
+    supabase
+      .from("nachrichten")
+      .select("*, nachricht_anhaenge(mime_type)")
+      .is("geloescht_am", null)
+      .neq("richtung", "entwurf")
+      .order("created_at", { ascending: false }),
+    supabase.from("objekte").select("id").not("archiviert_am", "is", null),
+  ])
+  if (nachrichten.error) throw nachrichten.error
+  if (archiviert.error) throw archiviert.error
+  const archivierteIds = new Set(archiviert.data.map((o) => o.id))
+  return nachrichten.data.map(({ nachricht_anhaenge, ...n }) => ({
+    ...n,
+    anhangTypen: nachricht_anhaenge.map((a) => a.mime_type),
+    objektArchiviert: n.objekt_id !== null && archivierteIds.has(n.objekt_id),
+  }))
 }
 
 // "Firma lehnt ab" nur für Treffer, die noch "Angeboten" sind (Spec §2); ohne Kandidaten

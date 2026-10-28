@@ -8,6 +8,7 @@ import { MailsWocheChart } from "@/components/zahlen/MailsWocheChart"
 import { EntwuerfeChart } from "@/components/zahlen/EntwuerfeChart"
 import { BalkenChart } from "@/components/zahlen/BalkenChart"
 import { PulsBalken } from "@/components/zahlen/PulsBalken"
+import { RapportKnopf } from "@/components/zahlen/RapportKnopf"
 import { holeEigenesProfil } from "@/lib/queries/profile"
 import { holeSpeicher, holeZahlen } from "@/lib/queries/zahlen"
 import { formatZahl } from "@/lib/format"
@@ -30,7 +31,12 @@ export default async function ZahlenPage() {
 
   return (
     <>
-      <Seitenkopf titel="Zahlen" kontext="Kacheln: gesamter Bestand · Diagramme: Zeitraum jeweils in der Beschreibung" />
+      <Seitenkopf
+        titel="Zahlen"
+        kontext="Kacheln: gesamter Bestand · Diagramme: Zeitraum jeweils in der Beschreibung"
+        aktion={<RapportKnopf />}
+        aktionMobil={<RapportKnopf mobil />}
+      />
       <main className={SEITEN_INHALT_KLASSE}>
         {/* Fünf Kacheln: auf mittleren Breiten drei je Zeile, damit die Labels nicht umbrechen. */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">

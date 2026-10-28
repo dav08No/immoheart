@@ -84,7 +84,7 @@ describe("matchSenden", () => {
     vi.mocked(legeNachrichtAn).mockResolvedValue({ id: "entwurf-neu" } as never)
 
     await expect(matchSenden(MATCH_ID)).resolves.toEqual({ entwurfId: "entwurf-neu" })
-    expect(legeNachrichtAn).toHaveBeenCalledWith(expect.objectContaining({ an: "kontakt@muster.ch", typ: "angebot", match_id: MATCH_ID }))
+    expect(legeNachrichtAn).toHaveBeenCalledWith(expect.objectContaining({ an: "kontakt@muster.ch", typ: "angebot", match_id: MATCH_ID, anfrage_id: ANFRAGE_ID, objekt_id: "o1" }))
     // erstelleServerClient wird nur für das eine Lesen aufgerufen -- kein zweiter
     // Aufruf für ein Status-Update, matchSenden setzt den Status nicht mehr selbst.
     expect(erstelleServerClient).toHaveBeenCalledTimes(1)

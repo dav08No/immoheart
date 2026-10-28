@@ -15,6 +15,12 @@ function zuercherTeile(datum: Date): { jahr: number; monat: number; tag: number 
   return { jahr: wert("year"), monat: wert("month"), tag: wert("day") }
 }
 
+// Kalendertag in Zürich als yyyy-mm-dd: Stringvergleich ersetzt dann Zeitzonenrechnung.
+export function zuercherDatum(datum: Date): string {
+  const { jahr, monat, tag } = zuercherTeile(datum)
+  return `${jahr}-${String(monat).padStart(2, "0")}-${String(tag).padStart(2, "0")}`
+}
+
 export function monatSchluessel(datum: Date): string {
   const { jahr, monat } = zuercherTeile(datum)
   return `${jahr}-${String(monat).padStart(2, "0")}`

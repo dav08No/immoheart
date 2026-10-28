@@ -41,6 +41,17 @@ const GESAMT_BUDGET_MS = 22_000
 // Weniger Restzeit lohnt keinen weiteren Versuch mehr.
 const MIN_RESTZEIT_MS = 2_000
 
+const ZEITUEBERSCHREITUNG_TEXT = "Zeitüberschreitung bei der KI-Anfrage."
+
+// Eigene Klasse, damit die Schleife einen Timeout vom Rest unterscheidet: ein langsames
+// Modell soll zum nächsten wechseln, nicht dieselbe Anfrage nochmals ausbremsen.
+export class KiZeitueberschreitung extends Error {
+  constructor() {
+    super(ZEITUEBERSCHREITUNG_TEXT)
+    this.name = "KiZeitueberschreitung"
+  }
+}
+
 function holeStatus(fehler: unknown): number | undefined {
   if (typeof fehler !== "object" || fehler === null) return undefined
   const objekt = fehler as Record<string, unknown>
@@ -84,9 +95,8 @@ function baueErzeugeStandard(client: GoogleGenAI): Erzeuge {
       const antwort = await client.models.generateContent({ model: modell, contents: prompt, config: { abortSignal: signal } })
       return antwort.text
     } catch (fehler) {
-      // Eigene, verständliche Meldung statt "This operation was aborted"; ohne Status,
-      // also kein weiterer Versuch -- das Zeitbudget ist danach ohnehin aufgebraucht.
-      if (signal.aborted) throw new Error("Zeitüberschreitung bei der KI-Anfrage.")
+      // Eigene, verständliche Meldung statt "This operation was aborted".
+      if (signal.aborted) throw new KiZeitueberschreitung()
       throw fehler
     }
   }
@@ -100,14 +110,23 @@ export type GeneriereTextOptionen = {
   erzeuge?: Erzeuge
   warte?: (ms: number) => Promise<void>
   jetzt?: () => number
+  // Rapport-Prompts sind länger als Mails und brauchen mehr Zeit als die Mail-Vorgaben.
+  gesamtBudgetMs?: number
+  anfrageTimeoutMs?: number
 }
 
 export async function generiereText(
   prompt: string,
-  { erzeuge, warte = warteStandard, jetzt = Date.now }: GeneriereTextOptionen = {}
+  {
+    erzeuge,
+    warte = warteStandard,
+    jetzt = Date.now,
+    gesamtBudgetMs = GESAMT_BUDGET_MS,
+    anfrageTimeoutMs = ANFRAGE_TIMEOUT_MS,
+  }: GeneriereTextOptionen = {}
 ): Promise<string> {
   const aufruf = erzeuge ?? baueErzeugeStandard(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }))
-  const ende = jetzt() + GESAMT_BUDGET_MS
+  const ende = jetzt() + gesamtBudgetMs
   let letzterFehler: unknown
 
   for (const modell of MODELLE) {
@@ -116,7 +135,7 @@ export async function generiereText(
       // letzterFehler ist hier immer gesetzt: der erste Versuch hat das volle Budget.
       if (rest < MIN_RESTZEIT_MS) throw letzterFehler
       try {
-        const text = await aufruf(modell, prompt, Math.min(ANFRAGE_TIMEOUT_MS, rest))
+        const text = await aufruf(modell, prompt, Math.min(anfrageTimeoutMs, rest))
         // Eine leere Antwort hat keinen HTTP-Status, gilt also weder als
         // vorübergehend noch als "Modell nicht verfügbar" -- sie wird unten
         // sofort geworfen, bewusst ohne Versuch auf dem Ersatzmodell: ein
@@ -126,7 +145,7 @@ export async function generiereText(
         return text
       } catch (fehler) {
         letzterFehler = fehler
-        if (istModellNichtVerfuegbar(fehler) || istKontingentErschoepft(fehler)) break
+        if (istModellNichtVerfuegbar(fehler) || istKontingentErschoepft(fehler) || fehler instanceof KiZeitueberschreitung) break
         if (!istVoruebergehend(fehler)) throw fehler
         const wartezeit = WARTEZEITEN_MS[versuch]
         if (wartezeit !== undefined) await warte(wartezeit)

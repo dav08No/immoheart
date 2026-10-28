@@ -11,7 +11,8 @@ type ObjektEinfuegen = Database["public"]["Tables"]["objekte"]["Insert"]
 // CRUD/Listing für Objekte folgt in M7.
 export async function holeVerfuegbareObjekte(): Promise<ObjektRow[]> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("objekte").select("*").eq("status", "verfuegbar")
+  // Archivierte Objekte sind von der Treffersuche ausgeschlossen (Spec §1).
+  const { data, error } = await supabase.from("objekte").select("*").eq("status", "verfuegbar").is("archiviert_am", null)
   if (error) throw error
   return data
 }
@@ -31,7 +32,11 @@ export function zuObjektDomain(row: ObjektRow): Objekt {
 
 export async function holeObjekte(): Promise<ObjektRow[]> {
   const supabase = await erstelleServerClient()
-  const { data, error } = await supabase.from("objekte").select("*").order("created_at", { ascending: false })
+  const { data, error } = await supabase
+    .from("objekte")
+    .select("*")
+    .is("archiviert_am", null)
+    .order("created_at", { ascending: false })
   if (error) throw error
   return data
 }

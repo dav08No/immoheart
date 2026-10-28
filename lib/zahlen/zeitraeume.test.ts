@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { isoWocheSchluessel, letzteMonate, letzteWochen, monatLabel, monatSchluessel, wocheLabel } from "./zeitraeume"
+import { isoWocheSchluessel, letzteMonate, letzteWochen, monatLabel, monatSchluessel, wocheLabel, zuercherDatum } from "./zeitraeume"
 
 describe("monatSchluessel", () => {
   it("bucketet nach Zürcher Lokalzeit, nicht nach UTC", () => {
@@ -48,5 +48,13 @@ describe("wocheLabel", () => {
 describe("letzteWochen", () => {
   it("überquert den 53/1-Jahreswechsel korrekt", () => {
     expect(letzteWochen(new Date("2021-01-04T12:00:00Z"), 3)).toEqual(["2020-W52", "2020-W53", "2021-W01"])
+  })
+})
+
+describe("zuercherDatum", () => {
+  it("liefert den Zürcher Kalendertag als yyyy-mm-dd, nicht den UTC-Tag", () => {
+    // 22:30 UTC ist im Sommer (UTC+2) bereits 00:30 des Folgetags.
+    expect(zuercherDatum(new Date("2026-06-30T22:30:00Z"))).toBe("2026-07-01")
+    expect(zuercherDatum(new Date("2026-06-30T21:30:00Z"))).toBe("2026-06-30")
   })
 })

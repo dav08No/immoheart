@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 
 export type AbschlussErgebnis = {
   fehler: string | null
@@ -28,7 +29,11 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
 
   useEffect(() => setFehlendAktuell(null), [fehlendeEntwuerfe])
 
-  async function mitSperre(schritt: () => Promise<AbschlussErgebnis>, erfolgText: string): Promise<boolean> {
+  async function mitSperre(
+    schritt: () => Promise<AbschlussErgebnis>,
+    erfolgText: string,
+    dialogSchliessen = false,
+  ): Promise<boolean> {
     setLaufend(true)
     // Alte Hinweise mit zurücksetzen, sonst stehen sie neben einem neuen Fehler.
     setErfolg(null)
@@ -38,10 +43,17 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
       const e = await schritt()
       setFehler(e.fehler)
       if (e.fehler) return false
-      setErfolg(erfolgText)
-      setHinweise(e.hinweise ?? [])
-      setFehlendAktuell(e.fehlend ?? 0)
-      setHintergrund(e.hintergrund === true)
+      if (dialogSchliessen) erfolgRef.current = true
+      // Dialog zu und Sperre weg, committet bevor onFertig (Refresh) den Baum umbaut:
+      // sonst kann ein Dialog mit "Wird ausgeführt…" stehen bleiben (Live-Fix Archivieren).
+      flushSync(() => {
+        setErfolg(erfolgText)
+        setHinweise(e.hinweise ?? [])
+        setFehlendAktuell(e.fehlend ?? 0)
+        setHintergrund(e.hintergrund === true)
+        setLaufend(false)
+        if (dialogSchliessen) setDialogOffen(false)
+      })
       onFertig()
       return true
     } catch {
@@ -59,8 +71,9 @@ export function useAbschlussLauf(fehlendeEntwuerfe: number, onFertig: () => void
 
   async function bestaetigen(schritt: () => Promise<AbschlussErgebnis>, erfolgText: string) {
     if (laufend) return
-    erfolgRef.current = await mitSperre(schritt, erfolgText)
-    setDialogOffen(false)
+    // Bei Erfolg schliesst mitSperre den Dialog selbst; hier nur noch der Fehlerfall.
+    const ok = await mitSperre(schritt, erfolgText, true)
+    if (!ok) setDialogOffen(false)
   }
 
   // Nach Erfolg kann der auslösende Knopf verschwunden sein -> Fokus auf die Rückmeldung.
