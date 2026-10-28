@@ -3,38 +3,46 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Farben und Schrift von espaceSOLOTHURN, für Website, Admin und Login gleich.
+   Kontraste (WCAG): Text >= 4.5:1, Flächen/Grafik >= 3:1, in beiden Modi; Werte siehe
+   Kommentare. Rot sparsam: Signalrot #FF1C38 nur als Grafik (Herz, EKG, Puls,
+   Diagramm), dazu der rote Hero-Knopf und der Fokusring. Text, Icons und übrige Knöpfe
+   in Anthrazit. */
 :root {
   color-scheme: light;
-  --bg: #EEF2F5; --surface: #FFFFFF; --surface-2: #F7F9FA; --surface-3: #EAF2F7;
-  --ink: #1F2429; --ink-2: #5A6472; --ink-3: #98A2AE;
-  --line: #E1E7EC; --line-2: #CFD8E0;
-  --brand: #065A82; --brand-2: #1C7293; --on-brand: #FFFFFF; --brand-soft: #EAF2F7;
-  --navy: #21295C;
-  --good: #0F6E56; --good-bg: #F0F6F3;
-  --warn: #A85D14; --warn-bg: #FDF3E3;
+  --bg: #F4F0EE; --surface: #FFFFFF; --surface-2: #FAF9F5; --surface-3: #EDE7E1;
+  /* ink-2 6.2:1, ink-3 5.3:1 auf bg (espace-Grau #928781 hätte nur 3.1:1). */
+  --ink: #282828; --ink-2: #5F5752; --ink-3: #6B625D;
+  /* line: dekorative Trenner (dezent). line-2: Ränder von Feldern und Bedienelementen,
+     >= 3:1 auf bg/surface/surface-2 (3.2 / 3.6 / 3.5). */
+  --line: #E8E1D8; --line-2: #8F847D;
+  /* brand: Anthrazit für Links, Icons, Chips und gefüllte Knöpfe (13:1 auf bg, weisse
+     Schrift darauf 14:1). brand-2 (Fokusring) rot, 4.2:1. */
+  --brand: #282828; --brand-2: #E4132F; --on-brand: #FFFFFF; --brand-soft: #EDE7E1;
+  --navy: #1A1817;
+  /* Status-Text >= 4.5:1 auf bg und auf der eigenen Fläche. */
+  --good: #0F6E56; --good-bg: #EAF3EE;
+  --warn: #965210; --warn-bg: #FBF0DF;
   --crit: #9B3232; --crit-bg: #F8EBEB;
-  --heart: #E24B5B; --heart-soft: #FCE9EB;
-  /* Neutrale Diagrammserie (Nebenquelle, "gelöscht"): je Modus die Neutrale, die neben
-     --brand/--heart den dataviz-Validator besteht (hell ink-3, dunkel ink). */
+  --heart: #FF1C38; --heart-soft: #FCEBEC;
+  /* Neutrale Diagrammserie neben --brand (Anthrazit) und --heart (Rot): ink-3 liegt in
+     der Helligkeit zwischen beiden (zu Rot 1.6:1, zu Anthrazit 2.6:1). */
   --chart-neutral: var(--ink-3);
-  /* Hero-Fläche (Petrol→Navy) ist in beiden Modi dunkel, Schrift darauf immer hell. */
-  --hero-von: #065A82; --hero-bis: #21295C; --on-hero: #FFFFFF; --on-hero-2: #D5E6F0;
-  /* Haupt-Knopf im Hero: bewusst in beiden Modi gleich (weiss/Petrol), sonst kippt
-     der Kontrast auf dem dunklen Verlauf. */
-  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
+  /* Hero: einfarbiges, warmes Anthrazit statt Verlauf. CTA-Rot: weisse Schrift
+     4.7:1, Fläche gegen den Hero 3.3:1. */
+  --hero-bg: #252321; --on-hero: #FFFFFF; --on-hero-2: #D9D2CC;
+  --hero-cta-bg: #E4132F; --hero-cta-bg-hover: #C8102E; --hero-cta-fg: #FFFFFF;
+  /* Bauten des Stadtmodells: warme Grautöne auf dem dunklen Hero. */
+  --stadt-a: #4A4541; --stadt-b: #5E5853;
 
-  /* Admin-Seitenleiste: Verlauf wie der Hero, daher in beiden Modi dunkel mit heller
-     Schrift. Text #FFF/#D5E6F0 hält >= 4.5:1 auf beiden Verlaufsenden (auch mit
-     Hover-/Aktiv-Aufhellung); der Akzent ist heller als --heart, weil dieses auf
-     Petrol nur 1.9:1 erreicht (UI-Elemente brauchen >= 3:1). */
-  --nav-von: #065A82; --nav-bis: #21295C; --nav-text: #FFFFFF; --nav-text-2: #D5E6F0;
-  --nav-hover: rgb(255 255 255 / 0.08); --nav-aktiv-bg: rgb(255 255 255 / 0.14);
-  --nav-linie: rgb(255 255 255 / 0.14); --nav-akzent: #FF9AA5;
-  --nav-badge-bg: #FFFFFF; --nav-badge-fg: #065A82;
-  --panel-schatten: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.04);
-  /* Eingaberahmen: --line-2 erreicht nur 1.4:1, Felder müssen aber als solche
-     erkennbar sein (UI-Grenze >= 3:1 auf surface/surface-2/bg). */
-  --eingabe-rand: #7D8896;
+  /* Admin-Seitenleiste und Login-Spalte: einfarbiges Anthrazit wie der Hero, in beiden
+     Modi dunkel mit heller Schrift (#D9D2CC 10.5:1). Akzent #FF9AA5 7.8:1. */
+  --nav-bg: #252321; --nav-text: #FFFFFF; --nav-text-2: #D9D2CC;
+  --nav-hover: rgb(255 255 255 / 0.08); --nav-aktiv-bg: rgb(255 255 255 / 0.12);
+  --nav-linie: rgb(255 255 255 / 0.12); --nav-akzent: #FF9AA5;
+  --nav-badge-bg: #FFFFFF; --nav-badge-fg: #252321;
+  --panel-schatten: 0 1px 2px rgb(40 36 33 / 0.04), 0 4px 16px rgb(40 36 33 / 0.05);
+  --eingabe-rand: #8F847D;
 
   /* shadcn/ui-Namen, auf die bestehenden Tokens abgebildet */
   --background: var(--bg); --foreground: var(--ink);
@@ -50,25 +58,36 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #161A33; --surface: #1E2447; --surface-2: #262C55; --surface-3: #2E3560;
-  --ink: #EEF2F7; --ink-2: #B8C2D4; --ink-3: #8792AB;
-  --line: #333A66; --line-2: #414A7A;
-  --brand: #8CBFDC; --brand-2: #A8D2EA; --on-brand: #0E1330; --brand-soft: #29315C;
-  --navy: #0E1330;
-  --good: #5DCAA5; --good-bg: #1A3B33;
-  --warn: #E5B23C; --warn-bg: #3A2E14;
-  --crit: #F0908B; --crit-bg: #3D2020;
-  --heart: #F27A87; --heart-soft: #3D2027;
-  --chart-neutral: var(--ink);
-  --hero-von: #0F4566; --hero-bis: #0E1330; --on-hero: #EEF2F7; --on-hero-2: #B8C2D4;
-  --hero-cta-bg: #FFFFFF; --hero-cta-bg-hover: #EAF2F7; --hero-cta-fg: #065A82;
-  --nav-von: #0F4566; --nav-bis: #0E1330; --nav-text: #FFFFFF; --nav-text-2: #D5E6F0;
-  --nav-hover: rgb(255 255 255 / 0.07); --nav-aktiv-bg: rgb(255 255 255 / 0.12);
-  --nav-linie: rgb(255 255 255 / 0.12); --nav-akzent: #FF9AA5;
-  --nav-badge-bg: #D5E6F0; --nav-badge-fg: #0E1330;
+  --bg: #1E1C1B; --surface: #282624; --surface-2: #2F2C2A; --surface-3: #37332F;
+  /* ink-2 8.8:1, ink-3 6.8:1 auf bg; >= 5.5:1 auf surface-2. */
+  --ink: #EEEBE8; --ink-2: #C2B9B2; --ink-3: #ABA29B;
+  /* line-2 >= 3:1 auf allen dunklen Flächen (bg 4.1, surface 3.6, surface-3 3.0). */
+  --line: #3A3633; --line-2: #857B74;
+  /* brand hell auf dunkel (14:1 auf bg); dunkle Schrift darauf 14:1. Fokusring rot. */
+  --brand: #EEEBE8; --brand-2: #FF8291; --on-brand: #1A1817; --brand-soft: #37332F;
+  --navy: #0E0D0C;
+  --good: #5DCAA5; --good-bg: #1F3530;
+  --warn: #E5B23C; --warn-bg: #3A2F17;
+  --crit: #F0908B; --crit-bg: #3D2322;
+  --heart: #FF4D63; --heart-soft: #3D2427;
+  /* ink-2: zwischen hellem brand und Rot (je ~1.6:1), 7:1 auf surface. */
+  --chart-neutral: var(--ink-2);
+  --hero-bg: #141312; --on-hero: #EEEBE8; --on-hero-2: #C9C1BA;
+  --hero-cta-bg: #E4132F; --hero-cta-bg-hover: #C8102E; --hero-cta-fg: #FFFFFF;
+  --stadt-a: #3A3633; --stadt-b: #4D4743;
+  --nav-bg: #141312; --nav-text: #FFFFFF; --nav-text-2: #D9D2CC;
+  --nav-hover: rgb(255 255 255 / 0.07); --nav-aktiv-bg: rgb(255 255 255 / 0.11);
+  --nav-linie: rgb(255 255 255 / 0.10); --nav-akzent: #FF9AA5;
+  --nav-badge-bg: #D9D2CC; --nav-badge-fg: #141312;
   /* Auf dunklem Grund sind 4 % Schatten unsichtbar -- dort trägt eher der Rand. */
   --panel-schatten: 0 1px 2px rgb(0 0 0 / 0.25), 0 4px 16px rgb(0 0 0 / 0.20);
-  --eingabe-rand: #7580A6;
+  --eingabe-rand: #857B74;
+}
+
+/* Halyard Display ist Medium, nicht Bold: Überschriften in 600. Bewusst ausserhalb
+   der Layer, damit es die font-bold-Utility übersteuert. */
+:is(.font-display, .text-inhalt h2) {
+  font-weight: 600;
 }
 
 @theme inline {
@@ -94,15 +113,15 @@
   --color-crit-bg: var(--crit-bg);
   --color-heart: var(--heart);
   --color-heart-soft: var(--heart-soft);
-  --color-hero-von: var(--hero-von);
-  --color-hero-bis: var(--hero-bis);
+  --color-hero: var(--hero-bg);
+  --color-stadt-a: var(--stadt-a);
+  --color-stadt-b: var(--stadt-b);
   --color-on-hero: var(--on-hero);
   --color-on-hero-2: var(--on-hero-2);
   --color-hero-cta-bg: var(--hero-cta-bg);
   --color-hero-cta-bg-hover: var(--hero-cta-bg-hover);
   --color-hero-cta-fg: var(--hero-cta-fg);
-  --color-nav-von: var(--nav-von);
-  --color-nav-bis: var(--nav-bis);
+  --color-nav-bg: var(--nav-bg);
   --color-nav-text: var(--nav-text);
   --color-nav-text-2: var(--nav-text-2);
   --color-nav-hover: var(--nav-hover);
@@ -135,8 +154,9 @@
 
   --radius-card: 10px;
   --radius-panel: 14px;
-  --font-sans: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-fraunces, Georgia), serif;
+  /* Über --schrift-*: next/font setzt --font-hanken erst auf dem body (siehe unten). */
+  --font-sans: var(--schrift-text);
+  --font-display: var(--schrift-display);
 }
 
 @layer base {
@@ -145,7 +165,11 @@
   *, ::after, ::before, ::backdrop, ::file-selector-button {
     border-color: var(--line);
   }
+  /* Schrift hier statt in :root: next/font setzt --font-hanken erst auf dem body.
+     Hanken Grotesk ist die freie Verwandte von Halyard (espaceSOLOTHURN). */
   body {
+    --schrift-text: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
+    --schrift-display: var(--font-hanken), "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
     color: var(--ink);
   }
@@ -205,7 +229,7 @@
   }
   .text-inhalt :where(h2) {
     margin-top: 2rem;
-    font-family: var(--font-display);
+    font-family: var(--schrift-display);
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--ink);

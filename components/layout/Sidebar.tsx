@@ -40,7 +40,7 @@ export function SidebarInhalt({ onNavigation }: { onNavigation?: () => void }) {
   const badges: Record<string, number> = { "/admin/postfach": postfachAnzahl, "/admin/entwuerfe": entwurfAnzahl }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-linear-to-b from-nav-von to-nav-bis text-nav-text">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-nav-bg text-nav-text">
       <div className="border-b border-nav-linie px-5 pb-4 pt-5">
         <div className="flex items-center gap-2">
           {/* Sonst ruht das Icon (kein Dauer-Herzschlag wie HerzLogo auf der Website --

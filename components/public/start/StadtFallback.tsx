@@ -1,5 +1,5 @@
-// Statisches Bild des Stadtmodells: isometrische Gewerbebauten in Petrol-Tönen,
-// ein Gebäude in Koralle, EKG-Linie am Boden. Steht im Server-HTML und bleibt der
+// Statisches Bild des Stadtmodells: isometrische Gewerbebauten in warmen Grautönen,
+// ein Gebäude in Rot, EKG-Linie am Boden. Steht im Server-HTML und bleibt der
 // Fallback, wenn kein WebGL geladen werden darf (reduzierte Bewegung, schwaches Gerät).
 
 import { BAUTEN, EKG_PUNKTE, EKG_Y, type Bau } from "./stadtDaten"
@@ -41,12 +41,12 @@ export function StadtFallback() {
         const f = flaechen(bau)
         return (
           <g key={`${bau.x}-${bau.y}`}>
-            <polygon points={f.links} className={bau.herz ? "fill-heart" : "fill-brand-2"} />
-            <polygon points={f.rechts} className={bau.herz ? "fill-heart" : "fill-brand"} />
+            <polygon points={f.links} className={bau.herz ? "fill-heart" : "fill-stadt-b"} />
+            <polygon points={f.rechts} className={bau.herz ? "fill-heart" : "fill-stadt-a"} />
             {/* Schattenseite deckend abdunkeln, damit dahinterliegende Bauten nicht durchscheinen. */}
             {bau.herz && <polygon points={f.rechts} className="fill-navy/30" />}
             <polygon points={f.dach} className={bau.herz ? "fill-heart" : "fill-on-hero-2"} />
-            {/* heart-soft wäre im Dunkelmodus fast schwarz -- darum Koralle aufgehellt. */}
+            {/* heart-soft wäre im Dunkelmodus fast schwarz -- darum das Rot aufgehellt. */}
             {bau.herz && <polygon points={f.dach} className="fill-on-hero/40" />}
           </g>
         )

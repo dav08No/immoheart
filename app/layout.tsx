@@ -1,13 +1,13 @@
 import type { Metadata } from "next"
-import { Fraunces, Outfit } from "next/font/google"
+import { Hanken_Grotesk } from "next/font/google"
 import { cookies } from "next/headers"
 import { Toaster } from "@/components/shadcn/sonner"
 import { oeffentlicheBasisUrl } from "@/lib/basis-url"
 import { OPEN_GRAPH_BASIS } from "@/lib/open-graph"
 import "./globals.css"
 
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" })
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", axes: ["opsz", "SOFT"] })
+// Freie Verwandte von Halyard, der Hausschrift von espaceSOLOTHURN.
+const hanken = Hanken_Grotesk({ subsets: ["latin"], variable: "--font-hanken" })
 
 export const metadata: Metadata = {
   // Löst relative og:image-URLs (z. B. das generierte opengraph-image) in
@@ -27,7 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="de" data-theme={theme}>
-      <body className={`${outfit.variable} ${fraunces.variable} font-sans`}>
+      <body className={`${hanken.variable} font-sans`}>
         {children}
         {/* Oben statt unten rechts: dort liegen die Knöpfe der Sheet-Fusszeilen. */}
         <Toaster position="top-center" />

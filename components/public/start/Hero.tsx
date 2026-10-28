@@ -6,7 +6,7 @@ export function Hero() {
   return (
     <section
       aria-labelledby="hero-titel"
-      className="overflow-hidden bg-gradient-to-br from-hero-von to-hero-bis"
+      className="overflow-hidden bg-hero"
     >
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-14 pb-12 sm:pt-20 lg:grid-cols-[1.1fr_1fr] lg:pb-20">
         <div className="flex flex-col gap-8">

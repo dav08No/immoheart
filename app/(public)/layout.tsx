@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/public/SiteFooter"
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
+    <div className="flex min-h-screen flex-col bg-bg font-sans text-ink">
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

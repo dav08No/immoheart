@@ -23,7 +23,7 @@ export function StadtBauten({ farben }: { farben: StadtFarben }) {
   const herzMaterial = useRef<MeshStandardMaterial>(null)
   const hilfe = useMemo(() => new Object3D(), [])
 
-  // Ein InstancedMesh für alle Petrol-Bauten: ein Draw-Call statt acht.
+  // Ein InstancedMesh für alle grauen Bauten: ein Draw-Call statt acht.
   useLayoutEffect(() => {
     const mesh = petrol.current
     if (!mesh) return
@@ -32,7 +32,7 @@ export function StadtBauten({ farben }: { farben: StadtFarben }) {
       hilfe.scale.set(b, h, t)
       hilfe.updateMatrix()
       mesh.setMatrixAt(i, hilfe.matrix)
-      mesh.setColorAt(i, new Color(i % 2 === 0 ? farben.brand : farben.brand2))
+      mesh.setColorAt(i, new Color(i % 2 === 0 ? farben.bau : farben.bau2))
     })
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true

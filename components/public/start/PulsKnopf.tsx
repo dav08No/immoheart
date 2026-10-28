@@ -21,8 +21,8 @@ export function PulsKnopf({ href, ton, hauptsache = false, children }: Props) {
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-0 animate-pulsring rounded-full",
-          // Hell-Modus: brand-2 (#1C7293) verschwände auf dem Petrol-Verlauf -- darum dort hell.
-          ton === "herz" ? "text-heart" : "text-on-hero-2 dark:text-brand-2"
+          // Zweitknopf: heller Ring auf dem dunklen Hero, der Hauptknopf pulsiert rot.
+          ton === "herz" ? "text-heart" : "text-on-hero-2"
         )}
       />
       {children}

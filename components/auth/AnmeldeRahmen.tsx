@@ -18,7 +18,7 @@ export const AUTH_LINK_KLASSE =
 export function AnmeldeRahmen({ titel, children }: { titel: string; children: ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col bg-bg lg:flex-row">
-      <div className="flex-none bg-linear-to-br from-nav-von to-nav-bis px-4 py-3 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:p-12">
+      <div className="flex-none bg-nav-bg px-4 py-3 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:p-12">
         <HerzLogo className={LOGO_HELL} />
         {/* Das Stadtmodell der Startseite (gleicher Verlauf), nur auf Desktop: auf dem
             Handy bleibt der Streifen schmal und das Login lädt kein three. */}

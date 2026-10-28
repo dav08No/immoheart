@@ -3,6 +3,7 @@ import { StatusChip, type StatusTon } from "@/components/ui/StatusChip"
 import type { NeuerMatch } from "@/lib/queries/matches"
 import type { KriteriumStatus } from "@/types"
 import { formatZeitpunkt } from "@/lib/format"
+import { ObjektPlatzhalter } from "@/components/ui/ObjektPlatzhalter"
 
 function mapsLink(adresse: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`
@@ -32,9 +33,11 @@ export function MatchCard({
           (order-last); ab sm die fünfspaltige Zeile mit Pfeil. */}
       <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 p-3 sm:grid-cols-[118px_minmax(0,1fr)_34px_minmax(0,1fr)_auto] sm:gap-3.5">
         <div className="size-16 overflow-hidden rounded-lg bg-surface-3 sm:h-20 sm:w-[118px]">
-          {match.objekt.titelbild && (
+          {match.objekt.titelbild ? (
             // eslint-disable-next-line @next/next/no-img-element -- Storage- oder freie URL, kein next/image-Loader konfiguriert
             <img src={match.objekt.titelbild} alt={match.objekt.titel} className="h-full w-full object-cover" />
+          ) : (
+            <ObjektPlatzhalter />
           )}
         </div>
         <div className="min-w-0">

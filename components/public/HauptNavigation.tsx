@@ -27,7 +27,7 @@ export function HauptNavigation({ className }: { className?: string }) {
             aria-current={aktiv ? "page" : undefined}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-              aktiv ? "text-ink" : "text-ink-2"
+              aktiv ? "text-brand" : "text-ink-2"
             )}
           >
             {link.label}

@@ -43,7 +43,7 @@ export function MobilLeiste() {
       <SheetContent
         side="left"
         aria-describedby={undefined}
-        className="w-[260px] gap-0 border-r-0 bg-nav-bis p-0 text-nav-text sm:max-w-[260px] [&>button:last-child]:bg-transparent [&>button:last-child]:text-nav-text [&>button:last-child]:opacity-90 [&>button:last-child]:ring-offset-nav-von [&>button:last-child]:focus:ring-nav-text"
+        className="w-[260px] gap-0 border-r-0 bg-nav-bg p-0 text-nav-text sm:max-w-[260px] [&>button:last-child]:bg-transparent [&>button:last-child]:text-nav-text [&>button:last-child]:opacity-90 [&>button:last-child]:ring-offset-nav-bg [&>button:last-child]:focus:ring-nav-text"
       >
         <SheetTitle className="sr-only">Admin-Navigation</SheetTitle>
         <SidebarInhalt onNavigation={() => setOffen(false)} />

@@ -1,7 +1,8 @@
 import Link from "next/link"
-import { Heart, MapPin } from "lucide-react"
+import { MapPin } from "lucide-react"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
 import { formatZahl, nutzungLabel } from "./anzeige"
+import { ObjektPlatzhalter } from "@/components/ui/ObjektPlatzhalter"
 
 // Unter einer eigenen Abschnittsüberschrift (z.B. "Ähnliche Objekte") ist der Kartentitel h3.
 export function ObjektKarte({ objekt, titelEbene: Titel = "h2" }: { objekt: OeffentlichesObjekt; titelEbene?: "h2" | "h3" }) {
@@ -11,14 +12,12 @@ export function ObjektKarte({ objekt, titelEbene: Titel = "h2" }: { objekt: Oeff
       href={`/objekte/${objekt.id}`}
       className="group flex w-full flex-col overflow-hidden rounded-card border border-line bg-surface outline-none hover:border-line-2 hover:shadow-md focus-visible:ring-[3px] focus-visible:ring-ring/60 motion-safe:transition-shadow"
     >
-      <div className="relative aspect-[4/3] bg-heart-soft">
+      <div className="relative aspect-[4/3] bg-surface-3">
         {objekt.titelbild ? (
           // eslint-disable-next-line @next/next/no-img-element -- öffentliche Storage-URL, kein next/image-Loader konfiguriert
           <img src={objekt.titelbild} alt={objekt.titel} loading="lazy" className="size-full object-cover" />
         ) : (
-          <div className="grid size-full place-items-center">
-            <Heart className="size-10 fill-heart/20 text-heart" aria-hidden />
-          </div>
+          <ObjektPlatzhalter />
         )}
         {reserviert && (
           <span className="absolute top-3 left-3 rounded-full bg-warn-bg px-2.5 py-0.5 text-xs font-semibold text-warn">

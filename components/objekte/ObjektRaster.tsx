@@ -1,4 +1,5 @@
-import { EyeOff, ImageIcon, Inbox, MapPin, Sparkles } from "lucide-react"
+import { EyeOff, Inbox, MapPin, Sparkles } from "lucide-react"
+import { ObjektPlatzhalter } from "@/components/ui/ObjektPlatzhalter"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { objektStatusTon } from "@/lib/ui/status-ton"
 import type { Database } from "@/types/database"
@@ -57,10 +58,7 @@ export function ObjektRaster({
                 // eslint-disable-next-line @next/next/no-img-element -- Storage- oder freie URL, kein next/image-Loader konfiguriert
                 <img src={bild} alt={o.titel} className="size-full object-cover" />
               ) : (
-                <span className="flex flex-col items-center gap-1">
-                  <ImageIcon className="size-5" aria-hidden />
-                  Foto
-                </span>
+                <ObjektPlatzhalter />
               )}
             </div>
             <div className="flex flex-1 flex-col gap-2 p-4">
