@@ -77,8 +77,8 @@
    Toaster hängen direkt am body und sollen dieselben Tokens bekommen. Admin und Login
    bleiben bei den :root-Werten oben.
    Kontraste (WCAG): Text >= 4.5:1, Flächen/Grafik >= 3:1, in beiden Modi; Werte siehe
-   Kommentare. Signalrot #FF1C38 nur als Grafik (Herz, EKG, Puls), für Text und
-   gefüllte Knöpfe mit weisser Schrift die tieferen Rottöne. */
+   Kommentare. Rot sparsam: Signalrot #FF1C38 nur als Grafik (Herz, EKG, Puls),
+   dazu der rote Hero-Knopf und der Fokusring. Text, Icons und übrige Knöpfe in Anthrazit. */
 .website,
 body:has(.website) {
   --bg: #F4F0EE; --surface: #FFFFFF; --surface-2: #FAF9F5; --surface-3: #EDE7E1;
@@ -87,8 +87,10 @@ body:has(.website) {
   /* line: dekorative Trenner (dezent). line-2: Ränder von Feldern und Bedienelementen,
      >= 3:1 auf bg/surface/surface-2 (3.2 / 3.6 / 3.5). */
   --line: #E8E1D8; --line-2: #8F847D;
-  /* brand: Text 5.2:1 auf bg, weisse Schrift darauf 5.9:1; brand-2 (Fokusring) 4.2:1. */
-  --brand: #C8102E; --brand-2: #E4132F; --on-brand: #FFFFFF; --brand-soft: #FCEBEC;
+  /* brand: zurückhaltend Anthrazit für Links, Icons, Chips und gefüllte Knöpfe (13:1 auf bg,
+     weisse Schrift darauf 14:1). Rot bleibt nur Akzent: Herz, EKG, Hero-Knopf, Fokusring
+     (brand-2, 4.2:1). */
+  --brand: #282828; --brand-2: #E4132F; --on-brand: #FFFFFF; --brand-soft: #EDE7E1;
   --navy: #1A1817;
   --heart: #FF1C38; --heart-soft: #FCEBEC;
   /* Hero: einfarbiges, warmes Anthrazit statt Verlauf. CTA-Rot: weisse Schrift
@@ -125,8 +127,8 @@ body:has(.website) {
   --ink: #EEEBE8; --ink-2: #C2B9B2; --ink-3: #ABA29B;
   /* line-2 >= 3:1 auf allen dunklen Flächen (bg 4.1, surface 3.6, surface-3 3.0). */
   --line: #3A3633; --line-2: #857B74;
-  /* brand 6.3:1 auf bg, 4.7:1 auf surface-3; dunkle Schrift darauf 6.6:1. */
-  --brand: #FF6E80; --brand-2: #FF8291; --on-brand: #1A1817; --brand-soft: #45272B;
+  /* brand hell auf dunkel (14:1 auf bg); dunkle Schrift darauf 14:1. Fokusring brand-2 rot. */
+  --brand: #EEEBE8; --brand-2: #FF8291; --on-brand: #1A1817; --brand-soft: #37332F;
   --navy: #0E0D0C;
   --heart: #FF4D63; --heart-soft: #3D2427;
   --hero-bg: #141312; --on-hero: #EEEBE8; --on-hero-2: #C9C1BA;

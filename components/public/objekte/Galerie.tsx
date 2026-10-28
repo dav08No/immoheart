@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, type KeyboardEvent } from "react"
-import { ChevronLeft, ChevronRight, Expand, Heart, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react"
 import type { OeffentlichesFoto } from "@/lib/queries/oeffentlich"
 import { Button } from "@/components/shadcn/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/shadcn/dialog"
+import { ObjektPlatzhalter } from "./ObjektPlatzhalter"
 
 type Props = { fotos: OeffentlichesFoto[]; titel: string }
 
@@ -22,8 +23,8 @@ export function Galerie({ fotos, titel }: Props) {
 
   if (!foto) {
     return (
-      <div className="grid aspect-[16/10] place-items-center rounded-card bg-heart-soft" role="img" aria-label="Noch keine Fotos vorhanden">
-        <Heart className="size-14 fill-heart/20 text-heart" aria-hidden />
+      <div className="aspect-[16/10] overflow-hidden rounded-card" role="img" aria-label="Noch keine Fotos vorhanden">
+        <ObjektPlatzhalter />
       </div>
     )
   }
@@ -41,7 +42,7 @@ export function Galerie({ fotos, titel }: Props) {
       <button
         type="button"
         onClick={() => setOffen(true)}
-        className="group relative aspect-[16/10] overflow-hidden rounded-card bg-heart-soft outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
+        className="group relative aspect-[16/10] overflow-hidden rounded-card bg-surface-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
         aria-label={`${bildText(titel, aktiv, anzahl)} – im Vollbild öffnen`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- öffentliche Storage-URL, kein next/image-Loader konfiguriert */}
