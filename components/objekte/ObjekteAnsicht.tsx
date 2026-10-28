@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import { ObjektRaster, STATUS_LABEL } from "./ObjektRaster"
@@ -36,7 +36,15 @@ export function ObjekteAnsicht({
   // Klicks auf "Objekt anlegen"/eine Karte steuern modus danach ganz normal weiter.
   // ?id=<Objekt-id> (Links aus dem Postfach) öffnet dieses Objekt direkt.
   const [modus, setModus] = useState<string | null>(vorbelegung ? "neu" : (oeffnenId ?? null))
-  const bearbeitetesObjekt = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
+  const gefunden = modus && modus !== "neu" ? objekte.find((o) => o.id === modus) : undefined
+  // Nach dem Archivieren verschwindet das Objekt per Revalidierung aus `objekte`, bevor der
+  // Drawer zu ist. Ohne diesen Stand würde der Teilbaum samt offenem Dialog mitten im
+  // Ablauf unmounten und das Formular auf "Neues Objekt" springen (Live-Fix Archivieren).
+  const [gemerkt, setGemerkt] = useState<ObjektRow | null>(null)
+  useEffect(() => {
+    if (gefunden) setGemerkt(gefunden)
+  }, [gefunden])
+  const bearbeitetesObjekt = gefunden ?? (gemerkt && gemerkt.id === modus ? gemerkt : undefined)
   // Frischer Status aus dem Interessenten-Nachladen, je Objekt-id; hat Vorrang vor den
   // Seiten-Props, die nach einer Abschluss-Aktion kurz veraltet sein können.
   const [frischerStatus, setFrischerStatus] = useState<Record<string, ObjektRow["status"]>>({})

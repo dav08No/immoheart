@@ -1,12 +1,14 @@
 "use client"
 
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 import { Archive } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/shadcn/dialog"
 import { Button } from "@/components/ui/Button"
 import { EINGABE_KLASSE, FormFeld } from "@/components/ui/FormFeld"
 import { anfrageArchivieren, objektArchivieren } from "@/app/actions/archiv"
 import { GRUND_MAX } from "@/lib/archiv/grund"
+import { nachlaufPlanen } from "@/lib/ui/nachlauf"
 
 type Art = "objekt" | "anfrage"
 
@@ -23,6 +25,8 @@ const TEXTE: Record<Art, { frage: string; folgen: string }> = {
   },
 }
 const AKTION = { objekt: objektArchivieren, anfrage: anfrageArchivieren }
+// Ausblende-Animation des Dialogs dauert 200 ms; danach spätestens das Panel schliessen.
+const NACHLAUF_MS = 400
 
 type Props = {
   art: Art
@@ -43,7 +47,15 @@ export function ArchivierenKnopf({ art, id, bezeichnung, gesperrt = false, onArc
   const [fehler, setFehler] = useState<string | null>(null)
   // Nach Erfolg schliesst das Panel; dessen Fokus-Rückgabe soll gewinnen, nicht die des Dialogs.
   const erfolgRef = useRef(false)
+  // onArchiviert erst nach dem Dialog: es entfernt den Teilbaum, in dem der Dialog lebt.
+  const nachlaufRef = useRef<(() => void) | null>(null)
   const text = TEXTE[art]
+
+  // Unmount mitten im Ablauf: ausstehendes Schliessen/Neuladen trotzdem ausführen.
+  useEffect(() => {
+    const nachlauf = nachlaufRef
+    return () => nachlauf.current?.()
+  }, [])
 
   function oeffnen() {
     setGrund("")
@@ -62,8 +74,15 @@ export function ArchivierenKnopf({ art, id, bezeichnung, gesperrt = false, onArc
         return
       }
       erfolgRef.current = true
-      setOffen(false)
-      onArchiviert()
+      nachlaufRef.current = nachlaufPlanen(() => {
+        nachlaufRef.current = null
+        onArchiviert()
+      }, NACHLAUF_MS)
+      // Dialog zu und Sperre weg, committet bevor Refresh oder Panel den Baum umbauen.
+      flushSync(() => {
+        setOffen(false)
+        setLaufend(false)
+      })
     } catch {
       setFehler("Unerwarteter Fehler. Bitte Seite neu laden.")
     } finally {
@@ -83,6 +102,7 @@ export function ArchivierenKnopf({ art, id, bezeichnung, gesperrt = false, onArc
             if (!erfolgRef.current) return
             ereignis.preventDefault()
             erfolgRef.current = false
+            nachlaufRef.current?.()
           }}
         >
           <DialogHeader>
