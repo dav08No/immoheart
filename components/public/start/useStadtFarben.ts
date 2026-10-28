@@ -9,7 +9,7 @@ export type StadtFarben = {
   hell: string
 }
 
-// Hellmodus-Werte der Website-Tokens aus app/globals.css (.website), falls eine
+// Hellmodus-Werte der Tokens aus app/globals.css, falls eine
 // Variable (noch) fehlt.
 const STANDARD: StadtFarben = {
   bau: "#4A4541",
@@ -19,10 +19,7 @@ const STANDARD: StadtFarben = {
 }
 
 function lesen(): StadtFarben {
-  // Die Website-Farben hängen am .website-Wrapper, nicht an <html> (dort liegen
-  // die Admin-Tokens).
-  const quelle = document.querySelector(".website") ?? document.documentElement
-  const stil = getComputedStyle(quelle)
+  const stil = getComputedStyle(document.documentElement)
   const wert = (name: string, ersatz: string) => stil.getPropertyValue(name).trim() || ersatz
   return {
     bau: wert("--stadt-a", STANDARD.bau),

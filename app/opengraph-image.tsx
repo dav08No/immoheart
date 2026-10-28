@@ -20,7 +20,7 @@ export default function OpengraphImage() {
           alignItems: "center",
           justifyContent: "center",
           gap: 28,
-          // Website-Farben (.website in globals.css): Anthrazit und Signalrot.
+          // Farben aus app/globals.css: Anthrazit und Signalrot.
           background: "#252321",
           fontFamily: "sans-serif",
         }}
