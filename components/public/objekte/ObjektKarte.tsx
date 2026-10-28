@@ -2,7 +2,7 @@ import Link from "next/link"
 import { MapPin } from "lucide-react"
 import type { OeffentlichesObjekt } from "@/lib/objektsuche"
 import { formatZahl, nutzungLabel } from "./anzeige"
-import { ObjektPlatzhalter } from "./ObjektPlatzhalter"
+import { ObjektPlatzhalter } from "@/components/ui/ObjektPlatzhalter"
 
 // Unter einer eigenen Abschnittsüberschrift (z.B. "Ähnliche Objekte") ist der Kartentitel h3.
 export function ObjektKarte({ objekt, titelEbene: Titel = "h2" }: { objekt: OeffentlichesObjekt; titelEbene?: "h2" | "h3" }) {

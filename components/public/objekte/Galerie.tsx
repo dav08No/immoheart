@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react"
 import type { OeffentlichesFoto } from "@/lib/queries/oeffentlich"
 import { Button } from "@/components/shadcn/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/shadcn/dialog"
-import { ObjektPlatzhalter } from "./ObjektPlatzhalter"
+import { ObjektPlatzhalter } from "@/components/ui/ObjektPlatzhalter"
 
 type Props = { fotos: OeffentlichesFoto[]; titel: string }
 

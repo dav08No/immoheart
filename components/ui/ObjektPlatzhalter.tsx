@@ -1,4 +1,4 @@
-// Platzhalterbild für Objekte ohne Foto: schlichte Gewerbebauten in den Grautönen der Website.
+// Platzhalterbild für Objekte ohne Foto (Website und Admin): schlichte Gewerbebauten in Grautönen.
 // Farben über Tokens (currentColor + surface-Klassen), damit es im hellen und dunklen Modus passt.
 export function ObjektPlatzhalter({ className = "" }: { className?: string }) {
   return (
