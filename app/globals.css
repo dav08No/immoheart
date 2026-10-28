@@ -84,7 +84,9 @@ body:has(.website) {
   --bg: #F4F0EE; --surface: #FFFFFF; --surface-2: #FAF9F5; --surface-3: #EDE7E1;
   /* ink-2 6.2:1, ink-3 5.3:1 auf bg (espace-Grau #928781 hätte nur 3.1:1). */
   --ink: #282828; --ink-2: #5F5752; --ink-3: #6B625D;
-  --line: #E8E1D8; --line-2: #D5CBC1;
+  /* line: dekorative Trenner (dezent). line-2: Ränder von Feldern und Bedienelementen,
+     >= 3:1 auf bg/surface/surface-2 (3.2 / 3.6 / 3.5). */
+  --line: #E8E1D8; --line-2: #8F847D;
   /* brand: Text 5.2:1 auf bg, weisse Schrift darauf 5.9:1; brand-2 (Fokusring) 4.2:1. */
   --brand: #C8102E; --brand-2: #E4132F; --on-brand: #FFFFFF; --brand-soft: #FCEBEC;
   --navy: #1A1817;
@@ -96,7 +98,7 @@ body:has(.website) {
   /* Bauten des Stadtmodells: warme Grautöne auf dem dunklen Hero. */
   --stadt-a: #4A4541; --stadt-b: #5E5853;
   --panel-schatten: 0 1px 2px rgb(40 36 33 / 0.04), 0 4px 16px rgb(40 36 33 / 0.05);
-  --eingabe-rand: #857A73;
+  --eingabe-rand: #8F847D;
 
   /* shadcn-Namen hier neu ablegen: in :root sind sie schon zu den alten Werten aufgelöst. */
   --background: var(--bg); --foreground: var(--ink);
@@ -121,7 +123,8 @@ body:has(.website) {
   --bg: #1E1C1B; --surface: #282624; --surface-2: #2F2C2A; --surface-3: #37332F;
   /* ink-2 8.8:1, ink-3 6.8:1 auf bg; >= 5.5:1 auf surface-2. */
   --ink: #EEEBE8; --ink-2: #C2B9B2; --ink-3: #ABA29B;
-  --line: #3A3633; --line-2: #4D4743;
+  /* line-2 >= 3:1 auf allen dunklen Flächen (bg 4.1, surface 3.6, surface-3 3.0). */
+  --line: #3A3633; --line-2: #857B74;
   /* brand 6.3:1 auf bg, 4.7:1 auf surface-3; dunkle Schrift darauf 6.6:1. */
   --brand: #FF6E80; --brand-2: #FF8291; --on-brand: #1A1817; --brand-soft: #45272B;
   --navy: #0E0D0C;
@@ -130,7 +133,7 @@ body:has(.website) {
   --hero-cta-bg: #E4132F; --hero-cta-bg-hover: #C8102E; --hero-cta-fg: #FFFFFF;
   --stadt-a: #3A3633; --stadt-b: #4D4743;
   --panel-schatten: 0 1px 2px rgb(0 0 0 / 0.25), 0 4px 16px rgb(0 0 0 / 0.20);
-  --eingabe-rand: #8A807A;
+  --eingabe-rand: #857B74;
 }
 
 /* Halyard Display ist Medium, nicht Bold: Überschriften der Website in 600. Bewusst
