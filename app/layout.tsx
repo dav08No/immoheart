@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Hanken_Grotesk } from "next/font/google"
 import { cookies } from "next/headers"
+import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/shadcn/sonner"
 import { oeffentlicheBasisUrl } from "@/lib/basis-url"
 import { OPEN_GRAPH_BASIS } from "@/lib/open-graph"
@@ -31,6 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         {/* Oben statt unten rechts: dort liegen die Knöpfe der Sheet-Fusszeilen. */}
         <Toaster position="top-center" />
+        <Analytics />
       </body>
     </html>
   )
