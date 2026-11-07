@@ -31,6 +31,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await erstelleServerClient()
   const { error } = await supabase.auth.verifyOtp({ type: typ, token_hash: tokenHash })
   if (error) {
+    // Abgelaufene Links eigens melden: der häufigste Fall (Einladung erst am
+    // nächsten Tag geöffnet), und der Nutzer kann sich selbst einen neuen holen.
+    if (error.code === "otp_expired") {
+      return NextResponse.redirect(new URL(`${LOGIN_PFAD}?grund=link-abgelaufen`, request.url), 303)
+    }
     return ungueltig
   }
   return NextResponse.redirect(new URL(PASSWORT_SETZEN_PFAD, request.url), 303)
