@@ -30,7 +30,8 @@ export function linkTyp(wert: string | null): LinkTyp | null {
 // Object.hasOwn statt `in`, damit "toString" & Co. nicht als Schlüssel gelten.
 export const LOGIN_HINWEISE: Record<string, string> = {
   inaktiv: "Dieses Konto ist deaktiviert.",
-  "link-ungueltig": "Der Link ist ungültig oder abgelaufen.",
+  "link-ungueltig": "Der Link ist ungültig oder abgelaufen. Fordern Sie über „Passwort vergessen?“ einen neuen an.",
+  "link-abgelaufen": "Der Link ist abgelaufen. Fordern Sie über „Passwort vergessen?“ einen neuen an.",
 }
 
 export function loginHinweis(grund: string | null): string | null {
