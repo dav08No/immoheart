@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { erstelleServerClient } from "@/lib/supabase/server"
-import { loginZielNachAbmelden } from "@/lib/routen"
+import { ADMIN_START, istGleicherUrsprung, loginZielNachAbmelden } from "@/lib/routen"
 
-async function abmelden(request: NextRequest): Promise<NextResponse> {
-  const supabase = await erstelleServerClient()
+type ServerClient = Awaited<ReturnType<typeof erstelleServerClient>>
+
+async function abmelden(request: NextRequest, supabase: ServerClient): Promise<NextResponse> {
   const { error } = await supabase.auth.signOut()
   if (error) {
     // Der serverseitige Widerruf ist fehlgeschlagen (z. B. Netzwerkfehler). Ohne
@@ -20,5 +21,27 @@ async function abmelden(request: NextRequest): Promise<NextResponse> {
   return NextResponse.redirect(new URL(loginZielNachAbmelden(grund), request.url), 303)
 }
 
-export const GET = abmelden
-export const POST = abmelden
+// Abmelde-Knöpfe (Sidebar, Fehlerseite) schicken ein Formular per POST. Ohne
+// Origin-Prüfung könnte eine fremde Seite das Formular nachbauen und abmelden.
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (!istGleicherUrsprung(request.headers.get("origin"), request.url)) {
+    return NextResponse.redirect(new URL(ADMIN_START, request.url), 303)
+  }
+  return abmelden(request, await erstelleServerClient())
+}
+
+// GET nur für den Redirect aus holeEigenesProfil (/abmelden?grund=inaktiv). Ein
+// eingebettetes <img src="/abmelden"> von einer fremden Seite darf eine aktive
+// Sitzung nicht beenden: abgemeldet wird nur, wer kein aktives Profil hat (RLS
+// liefert die eigene Zeile nur bei aktivem Konto).
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const supabase = await erstelleServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) {
+    const { data } = await supabase.from("profiles").select("aktiv").eq("user_id", user.id).maybeSingle()
+    if (data?.aktiv === true) return NextResponse.redirect(new URL(ADMIN_START, request.url), 303)
+  }
+  return abmelden(request, supabase)
+}
