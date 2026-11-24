@@ -10,6 +10,9 @@ export default defineConfig({
     // "Failed to load url @/..." fehlschlagen.
     alias: { "@": path.resolve(__dirname, ".") },
   },
+  // tsconfig.json steht für Next auf "jsx": "preserve"; Vite übernimmt das und
+  // liesse JSX sonst unverändert stehen, sobald ein Test eine .tsx-Datei importiert.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "node",
     // .worktrees enthält einen vollständigen Checkout des aktiven Feature-Branches
